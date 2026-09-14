@@ -1,0 +1,27 @@
+- generic [ref=f4e3]:
+  - generic [ref=f4e7]:
+    - generic [ref=f4e47]: 
+    - generic [ref=f4e48]: Accounting data unavailable
+    - generic [ref=f4e49]: Investory API request timed out
+    - generic [ref=f4e50] [cursor=pointer]: Retry
+  - tablist [ref=f4e14]:
+    - tab "  Home" [selected] [ref=f4e16] [cursor=pointer]:
+      - generic [ref=f4e17]:
+        - generic [ref=f4e18]: 
+        - generic [ref=f4e20]: 
+      - generic [ref=f4e22]: Home
+    - tab "  Documents" [ref=f4e24] [cursor=pointer]:
+      - generic [ref=f4e25]:
+        - generic [ref=f4e26]: 
+        - generic [ref=f4e28]: 
+      - generic [ref=f4e30]: Documents
+    - tab "  Tasks" [ref=f4e32] [cursor=pointer]:
+      - generic [ref=f4e33]:
+        - generic [ref=f4e34]: 
+        - generic [ref=f4e36]: 
+      - generic [ref=f4e38]: Tasks
+    - tab "  More" [ref=f4e40] [cursor=pointer]:
+      - generic [ref=f4e41]:
+        - generic [ref=f4e42]: 
+        - generic [ref=f4e44]: 
+      - generic [ref=f4e46]: More

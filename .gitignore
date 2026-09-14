@@ -1,0 +1,9 @@
+/.idea/
+/node_modules/
+/.expo/
+
+.expo/
+*:Zone.Identifier
+
+.expo/
+*:Zone.Identifier
