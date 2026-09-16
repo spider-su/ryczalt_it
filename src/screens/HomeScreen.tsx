@@ -11,13 +11,17 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 
 import { AccountingMonth } from '../model/accounting';
-import { createAccountingRepository, DEFAULT_ACCOUNTING_MONTH } from '../api/config';
+import { createAccountingRepository } from '../api/config';
 import { SummaryCard } from '../components/SummaryCard';
 import { AccountingListCard } from '../components/AccountingListCard';
 import { PaymentCard } from '../components/PaymentCard';
 import { SectionHeader } from '../components/SectionHeader';
 import { theme } from '../theme/theme';
 import { ApiError, ConfigurationError } from '../api/client';
+import { useNavigation } from '@react-navigation/native';
+import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
+import type { AppTabParamList } from '../navigation/AppNavigator';
+import { useAccountingMonth } from '../navigation/AccountingMonthContext';
 
 function accountingErrorMessage(error: unknown): string {
   if (error instanceof ConfigurationError) return 'Accounting API configuration is invalid';
@@ -26,9 +30,10 @@ function accountingErrorMessage(error: unknown): string {
 }
 
 export function HomeScreen() {
+  const navigation = useNavigation<BottomTabNavigationProp<AppTabParamList>>();
+  const { month: selectedMonth, setMonth: setSelectedMonth } = useAccountingMonth();
   const [month, setMonth] = useState<AccountingMonth | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [selectedMonth, setSelectedMonth] = useState(DEFAULT_ACCOUNTING_MONTH);
   const [monthPickerVisible, setMonthPickerVisible] = useState(false);
   const repository = useMemo(() => createAccountingRepository(), []);
 
@@ -127,21 +132,21 @@ export function HomeScreen() {
         <SummaryCard month={month} />
 
         <View style={styles.section}>
-          <SectionHeader title="Income" meta={`${month.income.length} invoices`} onPress={() => {}} />
-          <AccountingListCard items={month.income} kind="income" />
+          <SectionHeader title="Income" meta={`${month.income.length} invoices`} onPress={() => navigation.navigate('Documents', { kind: 'INCOME' })} />
+          <AccountingListCard items={month.income} kind="income" onItemPress={() => navigation.navigate('Documents', { kind: 'INCOME' })} />
         </View>
 
         <View style={styles.section}>
-          <SectionHeader title="Costs" meta={`${month.costs.length} documents`} onPress={() => {}} />
-          <AccountingListCard items={month.costs} kind="cost" />
+          <SectionHeader title="Costs" meta={`${month.costs.length} documents`} onPress={() => navigation.navigate('Documents', { kind: 'COSTS' })} />
+          <AccountingListCard items={month.costs} kind="cost" onItemPress={() => navigation.navigate('Documents', { kind: 'COSTS' })} />
         </View>
 
         <View style={styles.section}>
-          <SectionHeader title="To pay" onPress={() => {}} />
-          <PaymentCard items={month.payments} />
+          <SectionHeader title="To pay" onPress={() => navigation.navigate('Payments')} />
+          <PaymentCard items={month.payments} onItemPress={() => navigation.navigate('Payments')} />
         </View>
 
-        <Pressable style={styles.attentionCard} onPress={() => {}}>
+        <Pressable style={styles.attentionCard} onPress={() => navigation.navigate('Tasks', { attentionOnly: true })} accessibilityRole="button" accessibilityLabel="Open tasks needing attention">
           <View style={styles.attentionIcon}>
             <Ionicons name="alert-circle-outline" size={22} color={theme.colors.warning} />
           </View>

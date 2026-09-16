@@ -7,3 +7,4 @@
 
 .expo/
 *:Zone.Identifier
+.playwright-mcp/

@@ -15,7 +15,10 @@ Implemented skeleton:
 - cost preview
 - payment preview
 - "needs attention" card
-- placeholder Documents, Tasks and More tabs
+- Documents filtered by income/cost/review status
+- shared month selection across Home, Documents, Tasks and Payments
+- read-only document, task-resolution and payment detail sheets
+- local auto-approval policy settings with an explicit backend-write guardrail
 - repository boundary for replacing mocks with a REST implementation later
 
 No backend, authentication, KSeF, JPK, persistence, real accounting calculations or production security are included.
@@ -45,6 +48,20 @@ npm start
 ```
 
 Then open the app using Expo Go or an Android/iOS development build.
+
+## Release validation
+
+The managed Expo project has Android and iOS prebuild support and three EAS profiles:
+
+```bash
+npx expo-doctor
+npx expo prebuild --no-install --platform android
+npx expo prebuild --no-install --platform ios
+npx eas-cli build --profile production --platform all
+npx eas-cli submit --profile production --platform all
+```
+
+The last two commands require an authenticated Expo account and a linked EAS project. Do not commit generated `android/` or `ios/` directories unless the project moves to a bare workflow.
 
 ## Structure
 
@@ -115,9 +132,6 @@ Keep all canonical accounting calculations on the Investory backend. The mobile 
 
 ## Suggested next increment
 
-1. Add month-selection bottom sheet.
-2. Add invoice/document detail screen.
-3. Add task/reconciliation detail screen.
-4. Add visual regression screenshots.
-5. Introduce `RestAccountingRepository`.
-6. Add authentication only when the backend integration starts.
+1. Connect auto-approval settings to authenticated backend write actions.
+2. Add native authentication.
+3. Validate Android/iOS builds and the EAS release flow.

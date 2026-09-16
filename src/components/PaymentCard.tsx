@@ -4,13 +4,14 @@ import { PaymentLine } from '../model/accounting';
 import { formatMoney } from '../utils/money';
 import { theme } from '../theme/theme';
 
-export function PaymentCard({ items }: { items: PaymentLine[] }) {
+export function PaymentCard({ items, onItemPress }: { items: PaymentLine[]; onItemPress?: (item: PaymentLine) => void }) {
   return (
     <View style={styles.card}>
       {items.map((item, index) => (
         <Pressable
           key={item.id}
-          onPress={() => {}}
+          onPress={() => onItemPress?.(item)}
+          disabled={!onItemPress}
           style={({ pressed }) => [
             styles.row,
             index !== items.length - 1 && styles.divider,

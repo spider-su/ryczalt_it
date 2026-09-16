@@ -16,7 +16,8 @@
       "package": "pl.investory.accounting"
     },
     "plugins": [
-      "expo-font"
+      "expo-font",
+      "expo-secure-store"
     ]
   }
 }

@@ -7,15 +7,17 @@ import { theme } from '../theme/theme';
 type Props = {
   items: AccountingLine[];
   kind: 'income' | 'cost';
+  onItemPress?: (item: AccountingLine) => void;
 };
 
-export function AccountingListCard({ items, kind }: Props) {
+export function AccountingListCard({ items, kind, onItemPress }: Props) {
   return (
     <View style={styles.card}>
       {items.map((item, index) => (
         <Pressable
           key={item.id}
-          onPress={() => {}}
+          onPress={() => onItemPress?.(item)}
+          disabled={!onItemPress}
           style={({ pressed }) => [
             styles.row,
             index !== items.length - 1 && styles.divider,

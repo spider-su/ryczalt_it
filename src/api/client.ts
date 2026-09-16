@@ -24,14 +24,16 @@ type HttpClientOptions = {
   baseUrl: string;
   timeoutMs?: number;
   fetchImpl?: typeof fetch;
+  token?: string | null;
 };
 
 export class HttpClient {
   private readonly baseUrl: string;
   private readonly timeoutMs: number;
   private readonly fetchImpl: typeof fetch;
+  private readonly token: string | null;
 
-  constructor({ baseUrl, timeoutMs = 10_000, fetchImpl = fetch }: HttpClientOptions) {
+  constructor({ baseUrl, timeoutMs = 10_000, fetchImpl = fetch, token }: HttpClientOptions) {
     if (!baseUrl || !/^https?:\/\//.test(baseUrl)) {
       throw new ConfigurationError('Investory API URL is not configured correctly');
     }
@@ -39,9 +41,22 @@ export class HttpClient {
     this.timeoutMs = timeoutMs;
     // Keep the browser Window receiver required by native window.fetch.
     this.fetchImpl = fetchImpl.bind(globalThis);
+    this.token = token ?? null;
   }
 
   async get<T>(path: string, init: RequestInit = {}): Promise<T> {
+    return this.request<T>(path, init);
+  }
+
+  async post<T>(path: string, body: unknown): Promise<T> {
+    return this.request<T>(path, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+  }
+
+  private async request<T>(path: string, init: RequestInit): Promise<T> {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), this.timeoutMs);
 
@@ -54,6 +69,7 @@ export class HttpClient {
         credentials: 'include',
         headers: {
           Accept: 'application/json',
+          ...(this.token ? { Authorization: `Bearer ${this.token}` } : {}),
           ...init.headers,
         },
         signal: controller.signal

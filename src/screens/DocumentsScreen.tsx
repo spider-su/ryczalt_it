@@ -3,7 +3,10 @@ import { ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, Text, View
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { AccountingLine } from '../model/accounting';
-import { createAccountingRepository, DEFAULT_ACCOUNTING_MONTH } from '../api/config';
+import { createAccountingRepository } from '../api/config';
+import { useRoute, type RouteProp } from '@react-navigation/native';
+import type { AppTabParamList } from '../navigation/AppNavigator';
+import { useAccountingMonth } from '../navigation/AccountingMonthContext';
 import { formatMoney } from '../utils/money';
 import { theme } from '../theme/theme';
 import { ApiError, ConfigurationError } from '../api/client';
@@ -19,7 +22,8 @@ type Review = 'ALL' | 'REVIEW' | 'CLEAR';
 
 export function DocumentsScreen() {
   const repository = useMemo(() => createAccountingRepository(), []);
-  const [month, setMonth] = useState(DEFAULT_ACCOUNTING_MONTH);
+  const { month, setMonth } = useAccountingMonth();
+  const route = useRoute<RouteProp<AppTabParamList, 'Documents'>>();
   const [documents, setDocuments] = useState<{ income: AccountingLine[]; costs: AccountingLine[] }>({ income: [], costs: [] });
   const [kind, setKind] = useState<Kind>('ALL');
   const [review, setReview] = useState<Review>('ALL');
@@ -27,6 +31,11 @@ export function DocumentsScreen() {
   const [selected, setSelected] = useState<AccountingLine | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (route.params?.kind) setKind(route.params.kind);
+    if (route.params?.review) setReview(route.params.review);
+  }, [route.params]);
 
   useEffect(() => {
     let active = true;
@@ -43,7 +52,7 @@ export function DocumentsScreen() {
   const all = [...documents.income, ...documents.costs];
   const categories = [...new Set(all.map((item) => item.categoryLabel).filter(Boolean) as string[])].sort();
   const visible = (kind === 'INCOME' ? documents.income : kind === 'COSTS' ? documents.costs : all)
-    .filter((item) => review === 'ALL' || (review === 'REVIEW' ? Boolean(item.reviewStatus) : !item.reviewStatus))
+    .filter((item) => review === 'ALL' || (review === 'REVIEW' ? item.reviewStatus?.toUpperCase() === 'REVIEW_REQUIRED' : item.reviewStatus?.toUpperCase() !== 'REVIEW_REQUIRED'))
     .filter((item) => category === 'ALL' || item.categoryLabel === category);
 
   return (
