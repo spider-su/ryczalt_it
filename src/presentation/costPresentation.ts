@@ -1,5 +1,5 @@
 import { ApiError } from '../api/client';
-import { CandidateDto, DocumentMutationDto, RequiredInputDto } from '../api/dto/accounting';
+import { CandidateDto, DocumentMutationDto, RequiredInputDto, ReviewedDocumentDto } from '../api/dto/accounting';
 
 export type CostReviewState = 'supported' | 'unsupported' | 'requires_input' | 'duplicate';
 export type CostOption = { value: string; label: string; recommended: boolean };
@@ -57,6 +57,32 @@ export function mapRecognizedCost(candidate: CandidateDto): CostReview {
     requiresVatDecision: requiresInput,
     options,
     requiredInputs
+  };
+}
+
+export function reviewedDocumentFromCandidate(candidate: CandidateDto, values: { vatTreatment: string | null; vatRate: string | null; counterpartyCountry: string | null }, requiredInputs: RequiredInputDto[]): ReviewedDocumentDto {
+  const countryInput = requiredInputs.find((input) => input.field === 'counterpartyCountry');
+  const rateInput = requiredInputs.find((input) => input.field === 'vatRate');
+  return {
+    sourceReference: candidate.sourceReference,
+    documentType: candidate.documentType,
+    issueDate: candidate.issueDate,
+    saleDate: candidate.saleDate,
+    dueDate: candidate.dueDate,
+    reference: candidate.reference,
+    counterpartyAlias: candidate.seller || candidate.buyer,
+    counterpartyTaxIdentifier: candidate.sellerNip,
+    counterpartyCountry: countryInput && isRequiredInputActive(countryInput, values) ? values.counterpartyCountry : null,
+    category: candidate.category,
+    currency: candidate.currency,
+    netAmount: candidate.netAmount,
+    vatAmount: candidate.vatAmount,
+    grossAmount: candidate.grossAmount,
+    vatDeductionRatio: null,
+    vatTreatment: values.vatTreatment,
+    note: candidate.note,
+    taxPeriod: null,
+    vatRate: rateInput && isRequiredInputActive(rateInput, values) ? values.vatRate?.trim().replace(',', '.') ?? null : candidate.vatRate ?? null
   };
 }
 

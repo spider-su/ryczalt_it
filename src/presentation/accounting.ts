@@ -35,9 +35,10 @@ export function orderedIssues(issues: AccountingIssue[]): AccountingIssue[] {
 
 export function statusForIssue(issue: AccountingIssue): PresentationStatus {
   const severity = issue.severity.toUpperCase();
-  if (severity === 'ERROR' || severity === 'CRITICAL') return 'error';
+  if (severity === 'ERROR' || severity === 'CRITICAL' || severity === 'BLOCKING') return 'error';
   if (issue.kind.toUpperCase() === 'INFO') return 'informational';
-  if (['WARNING', 'ACTION', 'REVIEW', 'REQUIRES_ACTION', 'NEEDS_ANSWER'].includes(severity) || ['WARNING', 'ACTION', 'REVIEW', 'REQUIRES_ACTION', 'NEEDS_ANSWER'].includes(issue.kind.toUpperCase())) return 'requires_action';
+  if (['BLOCKED'].includes(issue.kind.toUpperCase())) return 'error';
+  if (['WARNING', 'ACTION', 'REVIEW', 'REQUIRES_ACTION', 'NEEDS_ANSWER'].includes(severity) || ['WARNING', 'ACTION', 'REVIEW', 'REQUIRES_ACTION', 'NEEDS_ANSWER', 'SETUP'].includes(issue.kind.toUpperCase())) return 'requires_action';
   return 'unknown';
 }
 

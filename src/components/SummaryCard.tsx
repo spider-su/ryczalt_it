@@ -3,6 +3,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { AccountingMonth } from '../model/accounting';
 import { formatMoney } from '../utils/money';
 import { theme } from '../theme/theme';
+import { t } from '../i18n';
 
 type Props = {
   month: AccountingMonth;
@@ -16,7 +17,7 @@ export function SummaryCard({ month }: Props) {
       <View style={styles.top}>
         <View>
           <Text style={styles.total}>{formatMoney(month.totalToPay)}</Text>
-          <Text style={styles.caption}>to pay</Text>
+          <Text style={styles.caption}>{t('home.obligations')}</Text>
         </View>
 
         <View style={[styles.status, !matched && styles.statusWarning]}>
@@ -26,15 +27,15 @@ export function SummaryCard({ month }: Props) {
             color={matched ? theme.colors.success : theme.colors.warning}
           />
           <Text style={[styles.statusText, !matched && styles.statusWarningText]}>
-            {matched ? 'No issues' : 'Check required'}
+            {matched ? t('home.noIssues') : t('home.attention')}
           </Text>
         </View>
       </View>
 
       <View style={styles.taxRow}>
-        <TaxTile label="Ryczałt 12%" value={formatMoney(month.taxes.ryczalt)} />
-        <TaxTile label="VAT" value={formatMoney(month.taxes.vat)} />
-        <TaxTile label="ZUS" value={formatMoney(month.taxes.zus)} />
+        <TaxTile label={t('home.ryczalt')} value={formatMoney(month.taxes.ryczalt)} />
+        <TaxTile label={t('payments.types.vat')} value={formatMoney(month.taxes.vat)} />
+        <TaxTile label={t('payments.types.zus')} value={formatMoney(month.taxes.zus)} />
       </View>
     </View>
   );

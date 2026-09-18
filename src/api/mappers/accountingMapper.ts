@@ -39,16 +39,19 @@ export function mapDocument(document: AccountingDocumentDto): AccountingLine {
     .filter(Boolean)
     .join(' · ');
 
+  const status = document.status?.toUpperCase();
+  const reviewStatus = document.reviewStatus?.toUpperCase();
+  const state = status === 'FAILED' || reviewStatus === 'REVIEW_REQUIRED'
+    ? 'attention'
+    : status && ['IMPORTED', 'PARSED', 'PROMOTED', 'STAGED', 'CREATED'].includes(status)
+      ? 'ok'
+      : 'unknown';
   return {
     id: String(document.id),
     title: document.counterparty ?? document.documentNumber ?? '',
     ...(subtitle ? { subtitle } : {}),
     amount: requiredMoney(document.amount, document.currency),
-    state:
-      document.status?.toUpperCase() === 'FAILED' ||
-      document.reviewStatus?.toUpperCase() === 'REVIEW_REQUIRED'
-        ? 'attention'
-        : 'ok',
+    state,
     sourceLabel: document.sourceTypeLabel,
     categoryLabel: document.categoryLabel,
     reviewStatus: document.reviewStatus,
@@ -71,7 +74,7 @@ export function mapPaymentHistory(payments: PaymentHistoryDto[]): PaymentHistory
   return payments.map((payment, index) => ({
     id: `${payment.type}-${payment.period}-${index}`,
     title: payment.type,
-    dueDate: payment.dueDate ?? '',
+    dueDate: payment.dueDate,
     amount: requiredMoney(payment.amount, POLISH_OBLIGATION_CURRENCY),
     paidAmount: requiredMoney(payment.paidAmount, POLISH_OBLIGATION_CURRENCY),
     outstandingAmount: requiredMoney(payment.outstandingAmount, POLISH_OBLIGATION_CURRENCY),

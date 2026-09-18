@@ -5,7 +5,7 @@ import { ApiAccountingRepository } from '../data/apiAccountingRepository';
 import { MockAccountingRepository } from '../data/mockAccountingRepository';
 
 export const ACCOUNTING_PROFILE_ID = 1;
-export const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:8080';
+export const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL ?? 'https://investory-61359240267.europe-central2.run.app/';
 export const ACCOUNTING_DATA_SOURCE = process.env.EXPO_PUBLIC_ACCOUNTING_DATA_SOURCE ?? 'api';
 export const DEFAULT_ACCOUNTING_MONTH =
   process.env.EXPO_PUBLIC_ACCOUNTING_MONTH ?? new Date().toISOString().slice(0, 7);

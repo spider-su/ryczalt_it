@@ -9,7 +9,7 @@ export type AccountingLine = {
   title: string;
   subtitle?: string;
   amount: Money;
-  state?: 'ok' | 'attention';
+  state?: 'ok' | 'attention' | 'unknown';
   sourceLabel?: string | null;
   categoryLabel?: string | null;
   reviewStatus?: string | null;
@@ -27,7 +27,7 @@ export type AccountingLine = {
 export type PaymentLine = {
   id: string;
   title: string;
-  dueDate: string;
+  dueDate: string | null;
   amount: Money;
   paidAmount: Money;
   outstandingAmount: Money;

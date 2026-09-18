@@ -6,7 +6,7 @@ import { AutoApprovalProvider } from './src/settings/AutoApprovalContext';
 import { AuthProvider, useAuth } from './src/auth/AuthContext';
 import { AuthScreen } from './src/screens/AuthScreen';
 import { ACCOUNTING_DATA_SOURCE } from './src/api/config';
-import { LocaleProvider } from './src/i18n/LocaleContext';
+import { LocaleProvider, useLocale } from './src/i18n/LocaleContext';
 
 export default function App() {
   return (
@@ -16,7 +16,8 @@ export default function App() {
 
 function AppContent() {
   const { token, loading } = useAuth();
-  if (loading) return null;
+  const { ready: localeReady } = useLocale();
+  if (loading || !localeReady) return null;
   if (ACCOUNTING_DATA_SOURCE === 'api' && !token) return <AuthScreen />;
   return <AutoApprovalProvider><AccountingMonthProvider><NavigationContainer><StatusBar style="dark" /><AppNavigator /></NavigationContainer></AccountingMonthProvider></AutoApprovalProvider>;
 }

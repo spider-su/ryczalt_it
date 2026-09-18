@@ -110,7 +110,15 @@ src/
 
 The UI does not know where Accounting data comes from.
 
-Run Expo Web against the local Investory backend:
+By default, the app uses the deployed Investory backend:
+
+```bash
+EXPO_PUBLIC_ACCOUNTING_DATA_SOURCE=api \
+EXPO_PUBLIC_ACCOUNTING_MONTH=2025-01 \
+npx expo start --web
+```
+
+To run Expo Web against the local Investory backend instead:
 
 ```bash
 EXPO_PUBLIC_API_URL=http://localhost:8080 \
@@ -118,6 +126,9 @@ EXPO_PUBLIC_ACCOUNTING_DATA_SOURCE=api \
 EXPO_PUBLIC_ACCOUNTING_MONTH=2025-01 \
 npx expo start --web
 ```
+
+`EXPO_PUBLIC_API_URL` overrides the deployed default. Expo reads `EXPO_PUBLIC_*`
+variables when the development server starts, so restart Expo after changing one.
 
 `EXPO_PUBLIC_ACCOUNTING_MONTH` selects the `YYYY-MM` month used by Home. The default data source is `api`; use `EXPO_PUBLIC_ACCOUNTING_DATA_SOURCE=mock` for the bundled July 2026 fixture.
 
