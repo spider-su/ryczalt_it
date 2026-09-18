@@ -9,11 +9,13 @@ const strings = {
     thisMonth: 'Ten miesiąc', previousMonth: 'Poprzedni miesiąc', last3Months: 'Ostatnie 3 miesiące', customRange: 'Własny zakres',
     back: 'Wstecz', next: 'Dalej', save: 'Zapisz', confirm: 'Potwierdź', cancel: 'Anuluj', select: 'Wybierz', today: 'Dzisiaj'
   },
+  month: { selector: 'Wybrany miesiąc', previous: 'Poprzedni miesiąc', next: 'Następny miesiąc' },
   home: {
     greeting: 'Dzień dobry', healthyTitle: 'Wszystko załatwione', healthyBody: 'Nie masz teraz nic do zrobienia.',
     attentionTitle: 'Wymaga Twojej uwagi', attentionBody: 'Sprawdź elementy, które wymagają działania.',
     period: 'Bieżący okres', revenue: 'Przychód', costs: 'Koszty', income: 'Dochód (szac.)',
-    payments: 'Najbliższe płatności', noPayments: 'Brak najbliższych płatności'
+    payments: 'Najbliższe płatności', noPayments: 'Brak najbliższych płatności',
+    obligations: 'Do zapłaty', attention: 'Wymaga uwagi', noIssues: 'Brak elementów wymagających działania', issueCount: 'rzeczy do sprawdzenia'
   },
   invoices: {
     title: 'Faktury', search: 'Szukaj kontrahenta, numeru lub NIP', emptyTitle: 'Brak faktur',
@@ -24,7 +26,7 @@ const strings = {
   },
   settlements: {
     title: 'Rozliczenia', upcoming: 'Najbliższe płatności', history: 'Historia', noPayments: 'Brak płatności w tym okresie',
-    period: 'Okres', dueDate: 'Termin płatności', amount: 'Kwota', status: 'Status', historyUnavailable: 'Historia płatności będzie dostępna po udostępnieniu odpowiedniego API.'
+    period: 'Okres', dueDate: 'Termin płatności', amount: 'Kwota', paidAmount: 'Opłacono', remaining: 'Pozostało', status: 'Status', historyUnavailable: 'Historia płatności będzie dostępna po udostępnieniu odpowiedniego API.'
   },
   more: {
     title: 'Więcej', company: 'Dane firmy', systems: 'Połączone systemy', settings: 'Ustawienia', reports: 'Eksporty i raporty',

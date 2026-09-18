@@ -1,10 +1,10 @@
-# Investory Accounting Mobile — prototype
+# Investory Accounting Mobile
 
-Standalone Expo + React Native + TypeScript prototype for the Investory Accounting mobile app.
+Expo + React Native + TypeScript client for the Investory Accounting mobile app.
 
 ## Scope
 
-The app supports the read-only Investory accounting API and an explicit mock mode.
+The app presents authoritative monthly accounting data from the Investory API and an explicit mock mode.
 
 Implemented skeleton:
 
@@ -16,12 +16,16 @@ Implemented skeleton:
 - payment preview
 - "needs attention" card
 - Documents filtered by income/cost/review status
-- shared month selection across Home, Documents, Tasks and Payments
+- shared month selection across Home, Faktury and Rozliczenia
+- backend-driven month status and actionable issue summaries
+- authoritative PPE, VAT, ZUS and total outstanding values
+- settlement detail sheets with paid, unpaid and overdue states
+- genuine multi-month invoice filtering (repository fetches each requested month)
 - read-only document, task-resolution and payment detail sheets
 - local auto-approval policy settings with an explicit backend-write guardrail
 - repository boundary for replacing mocks with a REST implementation later
 
-No backend, authentication, KSeF, JPK, persistence, real accounting calculations or production security are included.
+The mobile client does not calculate tax, obligations or lifecycle state. It does not initiate payments. Settlement history remains unavailable because the current backend does not expose a dedicated history endpoint.
 
 ## Design direction
 
@@ -118,6 +122,8 @@ The API calls are:
 - `GET /api/v1/profiles/1/accounting/months/{month}`
 - `GET /api/v1/profiles/1/accounting/months/{month}/documents`
 
+Invoice range filters call the same two endpoints for each required month. There is currently no backend month-index or settlement-history endpoint, so month navigation is bounded by the current calendar month and unavailable older periods are shown as an API error.
+
 The backend must allow the Expo Web origin (`http://localhost:8081`) through its `/api/v1/**` CORS configuration. The mobile app does not add a browser CORS workaround.
 
 The UI keeps canonical accounting calculations on Investory. `paymentSummary.totalOutstanding` is displayed as the authoritative total-to-pay value; the current backend response does not provide its currency, so it is displayed without an invented currency suffix.
@@ -129,6 +135,14 @@ createAccountingRepository();
 ```
 
 Keep all canonical accounting calculations on the Investory backend. The mobile project should display server results and perform only presentation-level formatting.
+
+## Validation
+
+```bash
+npm run typecheck
+npm test
+npm run ci
+```
 
 ## Suggested next increment
 

@@ -12,12 +12,11 @@ function mapIssue(issue: AccountingIssueDto): AccountingIssue {
 
 function formatDate(date: string | null): string | undefined { return date ? date.slice(0, 10) : undefined; }
 
-function isSale(type: string): boolean {
-  return ['SALE', 'SALES', 'INCOME'].includes(type.toUpperCase());
-}
-
-function isPurchase(type: string): boolean {
-  return ['PURCHASE', 'PURCHASES', 'COST', 'COSTS'].includes(type.toUpperCase());
+export function mapDirection(type: string): AccountingLine['direction'] {
+  const normalized = type.toUpperCase();
+  if (['SALE', 'SALES', 'INCOME'].includes(normalized)) return 'SALE';
+  if (['PURCHASE', 'PURCHASES', 'COST', 'COSTS'].includes(normalized)) return 'PURCHASE';
+  return 'UNKNOWN';
 }
 
 function mapDocument(document: AccountingDocumentDto): AccountingLine {
@@ -44,7 +43,7 @@ function mapDocument(document: AccountingDocumentDto): AccountingLine {
     categoryLabel: document.categoryLabel,
     reviewStatus: document.reviewStatus,
     source: document.source,
-    direction: isSale(document.type) ? 'SALE' : 'PURCHASE',
+    direction: mapDirection(document.type),
     counterparty: document.counterparty,
     documentNumber: document.documentNumber,
     issueDate: formatDate(document.issueDate ?? document.saleDate) ?? null,
@@ -76,7 +75,7 @@ export function mapAccountingMonth(
     lifecycleLabel: overview.lifecycleLabel,
     nextAction: overview.nextAction,
     nextActionLabel: overview.nextActionLabel,
-    totalToPay: requiredMoney(overview.summary.totalObligations, 'PLN'),
+    totalToPay: requiredMoney(paymentAmount, 'PLN'),
     matchStatus: hasAttention ? 'WARNING' : 'MATCH',
     taxes: {
       ryczalt: requiredMoney(overview.summary.ryczalt, 'PLN'),
@@ -85,10 +84,10 @@ export function mapAccountingMonth(
     },
     summary: { revenue: requiredMoney(overview.summary.revenue, 'PLN') },
     income: documents
-      .filter((document) => isSale(document.type))
+      .filter((document) => mapDirection(document.type) === 'SALE')
       .map(mapDocument),
     costs: documents
-      .filter((document) => isPurchase(document.type))
+      .filter((document) => mapDirection(document.type) === 'PURCHASE')
       .map(mapDocument),
     payments: overview.paymentSummary.payments.map((payment) => ({
       id: payment.obligationType,

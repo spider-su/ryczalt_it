@@ -13,7 +13,7 @@ export type AccountingLine = {
   categoryLabel?: string | null;
   reviewStatus?: string | null;
   source?: string | null;
-  direction?: 'SALE' | 'PURCHASE';
+  direction?: 'SALE' | 'PURCHASE' | 'UNKNOWN';
   counterparty?: string | null;
   documentNumber?: string | null;
   issueDate?: string | null;

@@ -1,7 +1,7 @@
 import { AccountingApi } from '../api/accountingApi';
 import { mapAccountingMonth } from '../api/mappers/accountingMapper';
 import { AccountingRepository } from './accountingRepository';
-import { AccountingMonth } from '../model/accounting';
+import { AccountingLine, AccountingMonth } from '../model/accounting';
 
 export class ApiAccountingRepository implements AccountingRepository {
   constructor(private readonly api: AccountingApi, private readonly profileId: number) {}
@@ -17,4 +17,16 @@ export class ApiAccountingRepository implements AccountingRepository {
     ]);
     return mapAccountingMonth(overview, documents);
   }
+
+  async getDocumentsForRange(month: string, months: number): Promise<AccountingLine[]> {
+    const ids = Array.from({ length: Math.max(1, months) }, (_, index) => shiftMonth(month, -index));
+    const values = await Promise.all(ids.map((id) => this.getMonth(id)));
+    return values.flatMap((value) => [...value.income, ...value.costs]);
+  }
+}
+
+function shiftMonth(value: string, offset: number): string {
+  const date = new Date(`${value}-01T00:00:00Z`);
+  date.setUTCMonth(date.getUTCMonth() + offset);
+  return date.toISOString().slice(0, 7);
 }
