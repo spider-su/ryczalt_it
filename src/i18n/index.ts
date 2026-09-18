@@ -31,7 +31,7 @@ const strings = {
     help: 'Pomoc i kontakt', signOut: 'Wyloguj się', connected: 'Połączono', notConnected: 'Nie połączono', unknownStatus: 'Brak danych', ksef: 'KSeF', bank: 'Bank', zus: 'ZUS'
   },
   actions: {
-    title: 'Co chcesz zrobić?', invoice: 'Wystaw fakturę', cost: 'Dodaj koszt', income: 'Dodaj przychód', close: 'Zamknij'
+    title: 'Co chcesz zrobić?', invoice: 'Wystaw fakturę', cost: 'Dodaj koszt', income: 'Dodaj przychód', close: 'Zamknij', onlyAvailable: 'Dostępne akcje'
   },
   invoice: {
     title: 'Wystaw fakturę', client: 'Klient', chooseClient: 'Wybierz klienta', clientSearch: 'Szukaj po nazwie lub NIP', newClient: 'Nowy klient',
@@ -44,7 +44,9 @@ const strings = {
   cost: {
     title: 'Dodaj koszt', chooseDocument: 'Wybierz dokument', chooseDocumentHint: 'PDF lub zdjęcie faktury', recognize: 'Odczytaj dokument',
     confirm: 'Dodaj koszt', recognized: 'Odczytane dane', noDocument: 'Wybierz dokument, aby kontynuować.', saved: 'Dokument zapisany do weryfikacji.',
-    duplicate: 'Ta faktura jest już w Twoich dokumentach.', failed: 'Nie udało się odczytać dokumentu. Sprawdź plik i spróbuj ponownie.'
+    duplicate: 'Ta faktura jest już w Twoich dokumentach.', failed: 'Nie udało się odczytać dokumentu. Sprawdź plik i spróbuj ponownie.',
+    unsupportedDirection: 'Wybrany dokument nie jest dokumentem zakupu.', vatTreatment: 'Sposób rozliczenia VAT', domesticPurchase: 'Zakup krajowy',
+    vatRate: 'Stawka VAT', vatRateRequired: 'Podaj stawkę VAT wymaganą do zapisania kosztu.'
   },
   income: {
     title: 'Dodaj przychód', amount: 'Kwota', date: 'Data', description: 'Opis lub źródło', submit: 'Dodaj przychód',
