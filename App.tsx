@@ -14,9 +14,9 @@ export default function App() {
 }
 
 function AppContent() {
-  const { token, loading } = useAuth();
+  const { token, profileId, loading } = useAuth();
   const { ready: localeReady } = useLocale();
   if (loading || !localeReady) return null;
-  if (ACCOUNTING_DATA_SOURCE === 'api' && !token) return <AuthScreen />;
+  if (ACCOUNTING_DATA_SOURCE === 'api' && (!token || profileId == null)) return <AuthScreen />;
   return <AutoApprovalProvider><AccountingMonthProvider><NavigationContainer><StatusBar style="dark" /><AppNavigator /></NavigationContainer></AccountingMonthProvider></AutoApprovalProvider>;
 }
