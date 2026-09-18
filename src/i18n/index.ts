@@ -70,7 +70,7 @@ function formatExactDecimal(amount: string | number, currency?: string | null): 
     ? new Intl.NumberFormat(locale, { style: 'currency', currency, minimumFractionDigits: 0, maximumFractionDigits: 0 })
     : new Intl.NumberFormat(locale, { minimumFractionDigits: 0, maximumFractionDigits: 0 });
   const groupedInteger = new Intl.NumberFormat(locale, { useGrouping: true, maximumFractionDigits: 0 }).format(BigInt(parts.integer));
-  const template = formatter.formatToParts(parts.negative ? -0 : 0);
+  const template = formatter.formatToParts(parts.negative ? -1 : 1);
   const decimal = new Intl.NumberFormat(locale).formatToParts(1.1).find((part) => part.type === 'decimal')?.value ?? '.';
   return template.map((part) => part.type === 'integer'
     ? `${groupedInteger}${parts.fraction ? `${decimal}${parts.fraction}` : ''}`

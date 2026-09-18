@@ -26,8 +26,10 @@ describe('localized presentation', () => {
   it('formats decimal strings without converting canonical money through Number', () => {
     for (const locale of ['pl', 'en'] as const) {
       setActiveLocale(locale);
-      for (const amount of ['0.00', '1.23', '1000.00', '1234567.89']) {
-        expect(formatCurrency(amount, 'PLN').replace(/[^\d]/g, '')).toBe(amount.replace('.', ''));
+      for (const amount of ['0.00', '1.23', '-1.23', '1000.00', '1234567.89', '-1234567.89', '1.2345']) {
+        const formatted = formatCurrency(amount, 'PLN');
+        expect(formatted.replace(/[^\d]/g, '')).toBe(amount.replace(/[.-]/g, ''));
+        if (amount.startsWith('-')) expect(formatted).toContain('-');
       }
       expect(formatCurrency(null, 'PLN')).toBe(t('common.unknown'));
       expect(formatCurrency('not-a-decimal', 'PLN')).toBe(t('common.unknown'));
