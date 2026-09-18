@@ -3,11 +3,11 @@ import { ConfigurationError, HttpClient } from './client';
 import { AccountingRepository } from '../data/accountingRepository';
 import { ApiAccountingRepository } from '../data/apiAccountingRepository';
 import { MockAccountingRepository } from '../data/mockAccountingRepository';
+import { currentLocalAccountingMonth } from '../utils/calendar';
 
 export const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL ?? 'https://investory-61359240267.europe-central2.run.app/';
 export const ACCOUNTING_DATA_SOURCE = process.env.EXPO_PUBLIC_ACCOUNTING_DATA_SOURCE ?? 'api';
-export const DEFAULT_ACCOUNTING_MONTH =
-  process.env.EXPO_PUBLIC_ACCOUNTING_MONTH ?? new Date().toISOString().slice(0, 7);
+export const DEFAULT_ACCOUNTING_MONTH = process.env.EXPO_PUBLIC_ACCOUNTING_MONTH ?? currentLocalAccountingMonth();
 let authToken: string | null = null;
 export function setAccountingAuthToken(token: string | null) { authToken = token; }
 let accountingProfileId: number | null = null;

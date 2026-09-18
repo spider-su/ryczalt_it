@@ -2,12 +2,13 @@ import { AccountingApi } from '../api/accountingApi';
 import { mapAccountingMonth, mapDocuments, mapPaymentHistory } from '../api/mappers/accountingMapper';
 import { AccountingRepository } from './accountingRepository';
 import { AccountingLine, AccountingMonth, PaymentHistoryLine } from '../model/accounting';
+import { currentLocalAccountingMonth } from '../utils/calendar';
 
 export class ApiAccountingRepository implements AccountingRepository {
   constructor(private readonly api: AccountingApi, private readonly profileId: number) {}
 
   async getCurrentMonth(): Promise<AccountingMonth> {
-    return this.getMonth(new Date().toISOString().slice(0, 7));
+    return this.getMonth(currentLocalAccountingMonth());
   }
 
   async getMonth(month: string): Promise<AccountingMonth> {

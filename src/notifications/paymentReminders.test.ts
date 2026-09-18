@@ -17,6 +17,8 @@ describe('payment reminder policy', () => {
     expect(parseLocalDate('2026-12-20')?.getHours()).toBe(9);
     expect(parseLocalDate('2026-02-30')).toBeNull();
     expect(parseLocalDate('2026-12-20T00:00:00Z')).toBeNull();
+    expect(parseLocalDate('2028-02-29')?.getDate()).toBe(29);
+    expect(parseLocalDate('2027-02-29')).toBeNull();
   });
 
   it('does not schedule in the past and keeps stable profile-scoped identity', () => {

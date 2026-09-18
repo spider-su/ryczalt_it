@@ -42,7 +42,14 @@ export async function saveNotificationPreferences(profileId: number, preferences
 
 export async function cancelAllProfileReminders(profileId: number): Promise<void> {
   const records = await readRecords(profileId);
-  await Promise.all(records.map((record) => Notifications.cancelScheduledNotificationAsync(record.id)));
+  let scheduled: Notifications.NotificationRequest[] = [];
+  try { scheduled = await Notifications.getAllScheduledNotificationsAsync(); } catch { /* best effort; recorded IDs are still cancelled below */ }
+  const ids = new Set(records.map((record) => record.id));
+  for (const notification of scheduled) {
+    const data = notification.content.data as { profileId?: number } | undefined;
+    if (data?.profileId === profileId || notification.identifier.startsWith(`${profileId}:`)) ids.add(notification.identifier);
+  }
+  await Promise.all([...ids].map((id) => Notifications.cancelScheduledNotificationAsync(id).catch(() => undefined)));
   await AsyncStorage.removeItem(scheduleKey(profileId));
 }
 
