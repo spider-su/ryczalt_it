@@ -23,6 +23,23 @@ jobs:
       TEST_PASSWORD: ${{ secrets.INVESTORY_TEST_PASSWORD }}
       REQUESTED_MONTH: ${{ inputs.month }}
     steps:
+      - name: Preflight live API credentials
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          echo "::add-mask::$TEST_USER"
+          echo "::add-mask::$TEST_PASSWORD"
+
+          if [[ -z "$TEST_USER" ]]; then
+            echo "::error::Missing repository secret INVESTORY_TEST_USER"
+            exit 1
+          fi
+          if [[ -z "$TEST_PASSWORD" ]]; then
+            echo "::error::Missing repository secret INVESTORY_TEST_PASSWORD"
+            exit 1
+          fi
+
       - name: Run live accounting API smoke
         id: smoke
         shell: bash
@@ -38,9 +55,6 @@ jobs:
           if [[ -z "$MONTH" ]]; then
             MONTH="$(date -u +%Y-%m)"
           fi
-
-          echo "::add-mask::$TEST_USER"
-          echo "::add-mask::$TEST_PASSWORD"
 
           fail_check() {
             FAIL=$((FAIL + 1))
@@ -92,37 +106,35 @@ jobs:
 
           safe_body_summary() {
             local name="$1"
+            local status="$2"
+            local semantic_error="${3:-}"
             local body="$ARTIFACT_DIR/${name}.body"
             local summary="$ARTIFACT_DIR/${name}.body.safe"
 
             if [[ -s "$body" ]] && jq -e . "$body" >/dev/null 2>&1; then
-              jq -c '
-                if type == "array" then
-                  {type: "array", length: length, firstItemKeys: (if (length > 0) and ((.[0] | type) == "object") then (.[0] | keys | sort) else [] end)}
-                elif type == "object" then
-                  {type: "object", keys: (keys | sort)}
-                else
-                  {type: type}
-                end
-              ' "$body" > "$summary"
+              if [[ "$status" == 2?? ]]; then
+                jq -c '
+                  if type == "array" then
+                    {type: "array", length: length, firstItemKeys: (if (length > 0) and ((.[0] | type) == "object") then (.[0] | keys | sort) else [] end)}
+                  elif type == "object" then
+                    {type: "object", keys: (keys | sort)}
+                  else
+                    {type: type}
+                  end
+                ' "$body" > "$summary"
+              elif [[ -n "$semantic_error" ]]; then
+                jq -cn --arg error "$semantic_error" '{error: $error}' > "$summary"
+              else
+                jq -c '{status: .status, path: .path, error: .error} | with_entries(select(.value != null))' "$body" > "$summary"
+              fi
               mv "$summary" "$body"
             else
               printf '%s\n' '{"response":"empty-or-non-json"}' > "$body"
             fi
           }
 
-          if [[ -z "$TEST_USER" ]]; then
-            echo '::error::Missing repository secret INVESTORY_TEST_USER'
-            fail_check 'credential preflight: INVESTORY_TEST_USER is missing'
-          fi
-          if [[ -z "$TEST_PASSWORD" ]]; then
-            echo '::error::Missing repository secret INVESTORY_TEST_PASSWORD'
-            fail_check 'credential preflight: INVESTORY_TEST_PASSWORD is missing'
-          fi
-
-          if [[ -n "$TEST_USER" && -n "$TEST_PASSWORD" ]]; then
-            request openapi GET /v3/api-docs yes
-            request openapi-unauthenticated GET /v3/api-docs no
+          request openapi GET /v3/api-docs yes
+          request openapi-unauthenticated GET /v3/api-docs no
 
             OPENAPI_STATUS="$(cat "$ARTIFACT_DIR/openapi.status")"
             OPENAPI_RC="$(cat "$ARTIFACT_DIR/openapi.rc")"
@@ -145,73 +157,75 @@ jobs:
               warn_check "OpenAPI unauthenticated: curl rc=$OPENAPI_UNAUTH_RC HTTP=$OPENAPI_UNAUTH_STATUS"
             fi
 
-            if [[ "$OPENAPI_VALID" == true ]]; then
-              jq -r '
-                .paths
-                | to_entries[]
-                | select(.key | ascii_downcase | contains("accounting"))
-                | .key as $path
-                | .value
-                | to_entries[]
-                | select(.key | IN("get", "post", "put", "patch", "delete"))
-                | "\(.key | ascii_upcase) \($path)"
-              ' "$ARTIFACT_DIR/openapi.json" | sort -u > "$ARTIFACT_DIR/accounting-operations.txt"
-              jq -r '.paths | keys[] | select((ascii_downcase | contains("payment")) or (ascii_downcase | contains("settlement")))' "$ARTIFACT_DIR/openapi.json" | sort -u > "$ARTIFACT_DIR/payment-route-candidates.txt"
-              jq -r '.paths | keys[] | select((ascii_downcase | contains("document")) or (ascii_downcase | contains("recognize")) or (ascii_downcase | contains("counterpart")))' "$ARTIFACT_DIR/openapi.json" | sort -u > "$ARTIFACT_DIR/document-route-candidates.txt"
-              pass_check 'Accounting OpenAPI discovery'
-            else
-              : > "$ARTIFACT_DIR/accounting-operations.txt"
-              : > "$ARTIFACT_DIR/payment-route-candidates.txt"
-              : > "$ARTIFACT_DIR/document-route-candidates.txt"
-              fail_check 'Accounting OpenAPI discovery unavailable'
-            fi
-
-            request accounting-month GET "/api/v1/profiles/$PROFILE_ID/accounting/months/$MONTH" yes
-            MONTH_STATUS="$(cat "$ARTIFACT_DIR/accounting-month.status")"
-            MONTH_RC="$(cat "$ARTIFACT_DIR/accounting-month.rc")"
-            if [[ "$MONTH_RC" == "28" ]]; then
-              fail_check "ACCOUNTING_MONTH_TIMEOUT: curl rc=28 HTTP=$MONTH_STATUS"
-            elif [[ "$MONTH_RC" != "0" ]]; then
-              fail_check "Accounting month transport failure: curl rc=$MONTH_RC HTTP=$MONTH_STATUS"
-            elif [[ "$MONTH_STATUS" != "200" ]]; then
-              fail_check "Accounting month: HTTP $MONTH_STATUS"
-            else
-              pass_check 'Accounting month: HTTP 200'
-            fi
-
-            request documents GET "/api/v1/profiles/$PROFILE_ID/accounting/months/$MONTH/documents" yes
-            DOCUMENTS_STATUS="$(cat "$ARTIFACT_DIR/documents.status")"
-            DOCUMENTS_RC="$(cat "$ARTIFACT_DIR/documents.rc")"
-            if [[ "$DOCUMENTS_RC" != "0" ]]; then
-              fail_check "Documents transport failure: curl rc=$DOCUMENTS_RC HTTP=$DOCUMENTS_STATUS"
-            elif [[ "$DOCUMENTS_STATUS" != "200" ]]; then
-              fail_check "Documents: HTTP $DOCUMENTS_STATUS"
-            else
-              pass_check 'Documents: HTTP 200'
-            fi
-            safe_body_summary documents
-
-            request payment-history GET "/api/v1/profiles/$PROFILE_ID/accounting/payments/history" yes
-            PAYMENT_STATUS="$(cat "$ARTIFACT_DIR/payment-history.status")"
-            PAYMENT_RC="$(cat "$ARTIFACT_DIR/payment-history.rc")"
-            if [[ "$PAYMENT_RC" != "0" ]]; then
-              fail_check "Payment history transport failure: curl rc=$PAYMENT_RC HTTP=$PAYMENT_STATUS"
-            elif [[ "$PAYMENT_STATUS" == "404" ]]; then
-              fail_check 'PAYMENT_HISTORY_ROUTE_MISMATCH: expected mobile route returned HTTP 404'
-            elif [[ "$PAYMENT_STATUS" != "200" ]]; then
-              fail_check "Payment history: HTTP $PAYMENT_STATUS"
-            else
-              pass_check 'Payment history: HTTP 200'
-            fi
-            safe_body_summary payment-history
-
-            safe_body_summary openapi-unauthenticated
-            printf '%s\n' '{"response":"saved-as-openapi.json"}' > "$ARTIFACT_DIR/openapi.body"
+          if [[ "$OPENAPI_VALID" == true ]]; then
+            jq -r '
+              .paths
+              | to_entries[]
+              | select(.key | ascii_downcase | contains("accounting"))
+              | .key as $path
+              | .value
+              | to_entries[]
+              | select(.key | IN("get", "post", "put", "patch", "delete"))
+              | "\(.key | ascii_upcase) \($path)"
+            ' "$ARTIFACT_DIR/openapi.json" | sort -u > "$ARTIFACT_DIR/accounting-operations.txt"
+            jq -r '.paths | keys[] | select((ascii_downcase | contains("payment")) or (ascii_downcase | contains("settlement")))' "$ARTIFACT_DIR/openapi.json" | sort -u > "$ARTIFACT_DIR/payment-route-candidates.txt"
+            jq -r '.paths | keys[] | select((ascii_downcase | contains("document")) or (ascii_downcase | contains("recognize")) or (ascii_downcase | contains("counterpart")))' "$ARTIFACT_DIR/openapi.json" | sort -u > "$ARTIFACT_DIR/document-route-candidates.txt"
+            pass_check 'Accounting OpenAPI discovery'
           else
             : > "$ARTIFACT_DIR/accounting-operations.txt"
             : > "$ARTIFACT_DIR/payment-route-candidates.txt"
             : > "$ARTIFACT_DIR/document-route-candidates.txt"
+            fail_check 'Accounting OpenAPI discovery unavailable'
           fi
+
+            request accounting-month GET "/api/v1/profiles/$PROFILE_ID/accounting/months/$MONTH" yes
+            MONTH_STATUS="$(cat "$ARTIFACT_DIR/accounting-month.status")"
+            MONTH_RC="$(cat "$ARTIFACT_DIR/accounting-month.rc")"
+            if [[ "$MONTH_RC" == "0" && "$MONTH_STATUS" == "200" ]]; then
+              MONTH_RESULT='PASS'
+            elif [[ "$MONTH_RC" == "28" ]]; then
+              MONTH_RESULT='FAIL (ACCOUNTING_MONTH_TIMEOUT)'
+            elif [[ "$MONTH_RC" != "0" ]]; then
+              MONTH_RESULT="FAIL (TRANSPORT_ERROR rc=$MONTH_RC)"
+            elif [[ "$MONTH_STATUS" != "200" ]]; then
+              MONTH_RESULT="FAIL (HTTP_$MONTH_STATUS)"
+            fi
+            [[ "$MONTH_RESULT" == PASS ]] && pass_check 'Accounting month: PASS' || fail_check "Accounting month: $MONTH_RESULT"
+
+            request documents GET "/api/v1/profiles/$PROFILE_ID/accounting/months/$MONTH/documents" yes
+            DOCUMENTS_STATUS="$(cat "$ARTIFACT_DIR/documents.status")"
+            DOCUMENTS_RC="$(cat "$ARTIFACT_DIR/documents.rc")"
+            if [[ "$DOCUMENTS_RC" == "0" && "$DOCUMENTS_STATUS" == "200" ]]; then
+              DOCUMENTS_RESULT='PASS'
+            elif [[ "$DOCUMENTS_RC" != "0" ]]; then
+              DOCUMENTS_RESULT="FAIL (TRANSPORT_ERROR rc=$DOCUMENTS_RC)"
+            else
+              DOCUMENTS_RESULT="FAIL (HTTP_$DOCUMENTS_STATUS)"
+            fi
+            [[ "$DOCUMENTS_RESULT" == PASS ]] && pass_check 'Documents: PASS' || fail_check "Documents: $DOCUMENTS_RESULT"
+            safe_body_summary documents "$DOCUMENTS_STATUS"
+
+            request payment-history GET "/api/v1/profiles/$PROFILE_ID/accounting/payments/history" yes
+            PAYMENT_STATUS="$(cat "$ARTIFACT_DIR/payment-history.status")"
+            PAYMENT_RC="$(cat "$ARTIFACT_DIR/payment-history.rc")"
+            if [[ "$PAYMENT_RC" == "0" && "$PAYMENT_STATUS" == "200" ]]; then
+              PAYMENT_RESULT='PASS'
+            elif [[ "$PAYMENT_RC" != "0" ]]; then
+              PAYMENT_RESULT="FAIL (TRANSPORT_ERROR rc=$PAYMENT_RC)"
+            elif [[ "$PAYMENT_STATUS" == "404" ]]; then
+              PAYMENT_RESULT='FAIL (PAYMENT_HISTORY_ROUTE_MISMATCH)'
+            else
+              PAYMENT_RESULT="FAIL (HTTP_$PAYMENT_STATUS)"
+            fi
+            [[ "$PAYMENT_RESULT" == PASS ]] && pass_check 'Payment history: PASS' || fail_check "Payment history: $PAYMENT_RESULT"
+            if [[ "$PAYMENT_RC" == "0" && "$PAYMENT_STATUS" == "404" ]]; then
+              safe_body_summary payment-history "$PAYMENT_STATUS" PAYMENT_HISTORY_ROUTE_MISMATCH
+            else
+              safe_body_summary payment-history "$PAYMENT_STATUS"
+            fi
+
+          safe_body_summary openapi-unauthenticated "$(cat "$ARTIFACT_DIR/openapi-unauthenticated.status")"
+          printf '%s\n' '{"response":"saved-as-openapi.json"}' > "$ARTIFACT_DIR/openapi.body"
 
           OPENAPI_STATUS="${OPENAPI_STATUS:-000}"
           OPENAPI_UNAUTH_STATUS="${OPENAPI_UNAUTH_STATUS:-000}"
@@ -232,9 +246,9 @@ jobs:
             echo
             echo '| Check | HTTP | curl | Result |'
             echo '| --- | ---: | ---: | --- |'
-            if [[ "$MONTH_RC" == "28" ]]; then MONTH_RESULT='FAIL (ACCOUNTING_MONTH_TIMEOUT)'; else MONTH_RESULT='see job log'; fi
-            if [[ "${DOCUMENTS_RC:-not-run}" == "0" && "$DOCUMENTS_STATUS" == "200" ]]; then DOCUMENTS_RESULT='PASS'; else DOCUMENTS_RESULT='FAIL'; fi
-            if [[ "${PAYMENT_RC:-not-run}" == "0" && "$PAYMENT_STATUS" == "200" ]]; then PAYMENT_RESULT='PASS'; else PAYMENT_RESULT='FAIL'; fi
+            if [[ "$MONTH_RC" == "0" && "$MONTH_STATUS" == "200" ]]; then MONTH_RESULT='PASS'; elif [[ "$MONTH_RC" == "28" ]]; then MONTH_RESULT='FAIL (ACCOUNTING_MONTH_TIMEOUT)'; elif [[ "$MONTH_RC" != "0" ]]; then MONTH_RESULT="FAIL (TRANSPORT_ERROR rc=$MONTH_RC)"; else MONTH_RESULT="FAIL (HTTP_$MONTH_STATUS)"; fi
+            if [[ "${DOCUMENTS_RC:-not-run}" == "0" && "$DOCUMENTS_STATUS" == "200" ]]; then DOCUMENTS_RESULT='PASS'; elif [[ "${DOCUMENTS_RC:-not-run}" != "0" ]]; then DOCUMENTS_RESULT="FAIL (TRANSPORT_ERROR rc=${DOCUMENTS_RC:-not-run})"; else DOCUMENTS_RESULT="FAIL (HTTP_$DOCUMENTS_STATUS)"; fi
+            if [[ "${PAYMENT_RC:-not-run}" == "0" && "$PAYMENT_STATUS" == "200" ]]; then PAYMENT_RESULT='PASS'; elif [[ "${PAYMENT_RC:-not-run}" != "0" ]]; then PAYMENT_RESULT="FAIL (TRANSPORT_ERROR rc=${PAYMENT_RC:-not-run})"; elif [[ "$PAYMENT_STATUS" == "404" ]]; then PAYMENT_RESULT='FAIL (PAYMENT_HISTORY_ROUTE_MISMATCH)'; else PAYMENT_RESULT="FAIL (HTTP_$PAYMENT_STATUS)"; fi
             echo "| Accounting month | $MONTH_STATUS | $MONTH_RC | $MONTH_RESULT |"
             echo "| Documents | $DOCUMENTS_STATUS | ${DOCUMENTS_RC:-not-run} | $DOCUMENTS_RESULT |"
             echo "| Payment history | $PAYMENT_STATUS | ${PAYMENT_RC:-not-run} | $PAYMENT_RESULT |"
