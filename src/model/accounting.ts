@@ -42,8 +42,8 @@ export type AccountingIssue = {
   code: string;
   severity: string;
   kind: string;
-  title: string;
-  message: string;
+  title: string | null;
+  message: string | null;
   sourceReference?: string | null;
   resolution: {
     type: string;
