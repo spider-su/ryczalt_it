@@ -1,4 +1,5 @@
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { createNavigationContainerRef } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { Pressable } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -22,6 +23,7 @@ export type AppTabParamList = {
   Payments: undefined;
   More: undefined;
 };
+export const navigationRef = createNavigationContainerRef<AppTabParamList>();
 
 const icons: Record<string, keyof typeof Ionicons.glyphMap> = {
   Home: 'home-outline',

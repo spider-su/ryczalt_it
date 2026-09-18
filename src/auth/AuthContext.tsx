@@ -1,9 +1,10 @@
 import * as SecureStore from 'expo-secure-store';
-import { createContext, useCallback, useContext, useEffect, useState, type PropsWithChildren } from 'react';
+import { createContext, useCallback, useContext, useEffect, useRef, useState, type PropsWithChildren } from 'react';
 import { API_BASE_URL, setAccountingAuthFailureHandler, setAccountingAuthToken, setAccountingProfileId } from '../api/config';
 import { DEFAULT_REQUEST_TIMEOUT_MS } from '../api/client';
 import { authErrorForFailure, authErrorForStatus, type AuthErrorCode } from './authErrors';
 import { profileIdentityFromResponse, type ProfileIdentity } from './profileIdentity';
+import { cancelAllProfileReminders } from '../notifications/notificationService';
 
 const TOKEN_KEY = 'investory.authToken';
 const PROFILE_ID_KEY = 'investory.accountingProfileId';
@@ -15,9 +16,11 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 export function AuthProvider({ children }: PropsWithChildren) {
   const [token, setToken] = useState<string | null>(null);
   const [profileId, setProfileId] = useState<number | null>(null);
+  const profileIdRef = useRef<number | null>(null);
+  profileIdRef.current = profileId;
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<AuthErrorCode | null>(null);
-  const invalidateSession = useCallback(async () => { await SecureStore.deleteItemAsync(TOKEN_KEY); await SecureStore.deleteItemAsync(PROFILE_ID_KEY); setAccountingAuthToken(null); setAccountingProfileId(null); setToken(null); setProfileId(null); }, []);
+  const invalidateSession = useCallback(async () => { const activeProfileId = profileIdRef.current; if (activeProfileId != null) await cancelAllProfileReminders(activeProfileId).catch(() => undefined); await SecureStore.deleteItemAsync(TOKEN_KEY); await SecureStore.deleteItemAsync(PROFILE_ID_KEY); setAccountingAuthToken(null); setAccountingProfileId(null); setToken(null); setProfileId(null); }, []);
   async function resolveProfile(nextToken: string): Promise<ProfileIdentity> {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), DEFAULT_REQUEST_TIMEOUT_MS);
