@@ -1,6 +1,6 @@
 import { HttpClient } from './client';
 import { accountingPaths } from './accountingPaths';
-import { AccountingDocumentDto, AccountingMonthOverviewDto, CandidateDto, CounterpartyDto, DocumentMutationDto, PaymentHistoryDto, ReviewedDocumentDto } from './dto/accounting';
+import { AccountingDocumentDto, AccountingMonthOverviewDto, AutoApprovalSettingsDto, CandidateDto, CounterpartyDto, DocumentMutationDto, PaymentHistoryDto, ReviewedDocumentDto } from './dto/accounting';
 
 export class AccountingApi {
   constructor(private readonly client: HttpClient) {}
@@ -17,6 +17,14 @@ export class AccountingApi {
     const query = new URLSearchParams({ from, to });
     if (type) query.set('type', type);
     return this.client.get(`${accountingPaths.paymentHistory(profileId)}?${query.toString()}`);
+  }
+
+  getAutoApprovalSettings(profileId: number): Promise<AutoApprovalSettingsDto> {
+    return this.client.get(accountingPaths.autoApproval(profileId));
+  }
+
+  updateAutoApprovalSettings(profileId: number, settings: AutoApprovalSettingsDto): Promise<AutoApprovalSettingsDto> {
+    return this.client.put(accountingPaths.autoApproval(profileId), settings);
   }
 
   getCounterparties(profileId: number): Promise<CounterpartyDto[]> {

@@ -5,6 +5,8 @@ export const accountingPaths = {
     `/api/v1/profiles/${profileId}/accounting/months/${month}/documents`,
   paymentHistory: (profileId: number) =>
     `/api/v1/profiles/${profileId}/accounting/payments/history`,
+  autoApproval: (profileId: number) =>
+    `/api/v1/profiles/${profileId}/accounting/auto-approval`,
   counterparties: (profileId: number) =>
     `/api/profiles/${profileId}/accounting/counterparties`,
   recognizeDocument: (profileId: number) =>

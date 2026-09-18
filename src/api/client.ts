@@ -62,6 +62,14 @@ export class HttpClient {
     });
   }
 
+  async put<T>(path: string, body: unknown): Promise<T> {
+    return this.request<T>(path, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+  }
+
   async postForm<T>(path: string, body: FormData): Promise<T> {
     return this.request<T>(path, { method: 'POST', body });
   }

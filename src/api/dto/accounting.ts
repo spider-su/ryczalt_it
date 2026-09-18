@@ -60,6 +60,12 @@ export type AccountingMonthOverviewDto = {
   allowedActions: string[];
 };
 
+export type AutoApprovalSettingsDto = {
+  enabled: boolean;
+  maxAmount: string;
+  trustedCategories: string[];
+};
+
 export type AccountingIssueDto = {
   id: string;
   code: string;
