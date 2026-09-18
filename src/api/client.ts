@@ -56,7 +56,19 @@ export class HttpClient {
     });
   }
 
-  private async request<T>(path: string, init: RequestInit): Promise<T> {
+  async postForm<T>(path: string, body: FormData): Promise<T> {
+    return this.request<T>(path, { method: 'POST', body });
+  }
+
+  async postVoid(path: string, body: unknown): Promise<void> {
+    await this.request<unknown>(path, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    }, false);
+  }
+
+  private async request<T>(path: string, init: RequestInit, expectJson = true): Promise<T> {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), this.timeoutMs);
 
@@ -92,6 +104,7 @@ export class HttpClient {
         throw new ApiError(`Investory API returned HTTP ${response.status}`, response.status);
       }
 
+      if (!expectJson || response.status === 204) return undefined as T;
       try {
         return (await response.json()) as T;
       } catch (error) {

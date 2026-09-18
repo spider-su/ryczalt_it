@@ -6,7 +6,8 @@ const strings = {
     all: 'Wszystkie', sales: 'Sprzedaż', purchases: 'Zakupy', filters: 'Filtry', close: 'Zamknij',
     retry: 'Spróbuj ponownie', loading: 'Ładowanie…', unavailable: 'Nie udało się pobrać danych.',
     paid: 'Opłacone', unpaid: 'Nieopłacone', overdue: 'Po terminie', unknown: 'Brak danych',
-    thisMonth: 'Ten miesiąc', previousMonth: 'Poprzedni miesiąc', last3Months: 'Ostatnie 3 miesiące', customRange: 'Własny zakres'
+    thisMonth: 'Ten miesiąc', previousMonth: 'Poprzedni miesiąc', last3Months: 'Ostatnie 3 miesiące', customRange: 'Własny zakres',
+    back: 'Wstecz', next: 'Dalej', save: 'Zapisz', confirm: 'Potwierdź', cancel: 'Anuluj', select: 'Wybierz', today: 'Dzisiaj'
   },
   home: {
     greeting: 'Dzień dobry', healthyTitle: 'Wszystko załatwione', healthyBody: 'Nie masz teraz nic do zrobienia.',
@@ -28,7 +29,28 @@ const strings = {
   more: {
     title: 'Więcej', company: 'Dane firmy', systems: 'Połączone systemy', settings: 'Ustawienia', reports: 'Eksporty i raporty',
     help: 'Pomoc i kontakt', signOut: 'Wyloguj się', connected: 'Połączono', notConnected: 'Nie połączono', unknownStatus: 'Brak danych', ksef: 'KSeF', bank: 'Bank', zus: 'ZUS'
-  }
+  },
+  actions: {
+    title: 'Co chcesz zrobić?', invoice: 'Wystaw fakturę', cost: 'Dodaj koszt', income: 'Dodaj przychód', close: 'Zamknij'
+  },
+  invoice: {
+    title: 'Wystaw fakturę', client: 'Klient', chooseClient: 'Wybierz klienta', clientSearch: 'Szukaj po nazwie lub NIP', newClient: 'Nowy klient',
+    item: 'Pozycja', description: 'Opis usługi lub produktu', quantity: 'Ilość', unitPrice: 'Cena jednostkowa',
+    currency: 'Waluta', issueDate: 'Data wystawienia', dueDate: 'Termin płatności', review: 'Sprawdź fakturę',
+    total: 'Razem', issue: 'Wystaw fakturę', unavailable: 'Wystawianie faktur nie jest jeszcze obsługiwane przez backend.',
+    clientRequired: 'Wybierz klienta.', descriptionRequired: 'Podaj opis pozycji.', amountRequired: 'Podaj poprawną kwotę.',
+    dateRequired: 'Podaj datę wystawienia.', dueDateRequired: 'Podaj termin płatności.'
+  },
+  cost: {
+    title: 'Dodaj koszt', chooseDocument: 'Wybierz dokument', chooseDocumentHint: 'PDF lub zdjęcie faktury', recognize: 'Odczytaj dokument',
+    confirm: 'Dodaj koszt', recognized: 'Odczytane dane', noDocument: 'Wybierz dokument, aby kontynuować.', saved: 'Dokument zapisany do weryfikacji.',
+    duplicate: 'Ta faktura jest już w Twoich dokumentach.', failed: 'Nie udało się odczytać dokumentu. Sprawdź plik i spróbuj ponownie.'
+  },
+  income: {
+    title: 'Dodaj przychód', amount: 'Kwota', date: 'Data', description: 'Opis lub źródło', submit: 'Dodaj przychód',
+    amountRequired: 'Podaj poprawną kwotę.', dateRequired: 'Podaj datę.', descriptionRequired: 'Podaj opis lub źródło.', unavailable: 'Ręczne dodawanie przychodu nie jest jeszcze obsługiwane przez backend.'
+  },
+  backend: { actionUnavailable: 'Ta czynność nie jest jeszcze dostępna.', requestFailed: 'Nie udało się wykonać operacji. Sprawdź połączenie i spróbuj ponownie.' }
 } as const;
 
 export function t(path: string): string {

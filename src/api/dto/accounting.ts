@@ -94,3 +94,55 @@ export type AccountingDocumentDto = {
   reviewStatus: string | null;
   paymentStatus: string | null;
 };
+
+export type CounterpartyDto = {
+  id: number;
+  taxIdentifier: string | null;
+  country: string | null;
+  name: string;
+  alias: string | null;
+  documentCount: number;
+};
+
+export type CandidateDto = {
+  sourceReference: string;
+  documentType: string;
+  issueDate: string | null;
+  saleDate: string | null;
+  dueDate: string | null;
+  reference: string | null;
+  seller: string | null;
+  buyer: string | null;
+  sellerNip: string | null;
+  buyerNip: string | null;
+  category: string | null;
+  currency: string | null;
+  netAmount: number | null;
+  vatAmount: number | null;
+  grossAmount: number | null;
+  note: string | null;
+  status: string;
+};
+
+export type ReviewedDocumentDto = {
+  sourceReference: string;
+  documentType: string;
+  issueDate: string | null;
+  saleDate: string | null;
+  dueDate: string | null;
+  reference: string | null;
+  counterpartyAlias: string | null;
+  counterpartyTaxIdentifier: string | null;
+  counterpartyCountry: string | null;
+  category: string | null;
+  currency: string | null;
+  netAmount: number | null;
+  vatAmount: number | null;
+  grossAmount: number | null;
+  vatDeductionRatio: number | null;
+  vatTreatment: string | null;
+  note: string | null;
+  taxPeriod: string;
+  vatRate: number | null;
+  correctsDocumentReference?: string | null;
+};

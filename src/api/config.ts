@@ -1,5 +1,5 @@
 import { AccountingApi } from './accountingApi';
-import { HttpClient } from './client';
+import { ConfigurationError, HttpClient } from './client';
 import { AccountingRepository } from '../data/accountingRepository';
 import { ApiAccountingRepository } from '../data/apiAccountingRepository';
 import { MockAccountingRepository } from '../data/mockAccountingRepository';
@@ -21,4 +21,9 @@ export function createAccountingRepository(): AccountingRepository {
     new AccountingApi(new HttpClient({ baseUrl: API_BASE_URL, token: authToken })),
     ACCOUNTING_PROFILE_ID
   );
+}
+
+export function createAccountingApi(): AccountingApi {
+  if (ACCOUNTING_DATA_SOURCE !== 'api') throw new ConfigurationError('Accounting actions require the API data source');
+  return new AccountingApi(new HttpClient({ baseUrl: API_BASE_URL, token: authToken }));
 }
