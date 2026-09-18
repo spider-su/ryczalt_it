@@ -74,20 +74,15 @@ export function issuePresentation(issue: AccountingIssue): {
   status: PresentationStatus;
   title: string;
   body: string;
-  actionLabel?: string;
 } {
   const code = issue.code.trim().toUpperCase();
   const copyKey = knownIssueCopy[code] ?? (code.startsWith('SOURCE_') ? 'review' : undefined);
   const title = copyKey ? `home.issueCodes.${copyKey}Title` : safeIssueText(issue.title, code, 'home.issueCodes.unknownTitle');
   const body = copyKey ? `home.issueCodes.${copyKey}Body` : safeIssueText(issue.message, code, 'home.issueCodes.unknownBody');
-  const resolutionType = issue.resolution.type.trim().toUpperCase();
-  const supportedResolution = ['SETUP', 'CHOICE', 'MATCH'].includes(resolutionType)
-    && (Boolean(issue.resolution.settingsPath?.trim()) || issue.resolution.options.length > 0);
   return {
     status: statusForIssue(issue),
     title: t(title),
-    body: t(body),
-    ...(supportedResolution ? { actionLabel: issue.resolution.actionLabel?.trim() || t('home.checkIssue') } : {})
+    body: t(body)
   };
 }
 

@@ -1,0 +1,26 @@
+import { AccountingIssue, AccountingLine } from '../model/accounting';
+
+export type IssueAction =
+  | { kind: 'SUPPORTED_NAVIGATION'; destination: 'document'; document: AccountingLine }
+  | { kind: 'DISPLAY_ONLY'; reason?: string }
+  | { kind: 'BACKEND_COMMAND_NOT_EXPOSED'; reason?: string }
+  | { kind: 'UNKNOWN'; reason?: string };
+
+export function resolveIssueAction(issue: AccountingIssue, documents: AccountingLine[] = []): IssueAction {
+  const sourceReference = issue.sourceReference?.trim();
+  if (sourceReference) {
+    const document = documents.find((item) => item.source?.trim() === sourceReference);
+    if (document) return { kind: 'SUPPORTED_NAVIGATION', destination: 'document', document };
+  }
+
+  const type = (issue.resolution.type ?? '').trim().toUpperCase();
+  const reason = issue.resolution.reason?.trim() || undefined;
+  if (type === 'NONE') return { kind: 'DISPLAY_ONLY', ...(reason ? { reason } : {}) };
+  if (type === 'SETUP') return { kind: 'DISPLAY_ONLY', ...(reason ? { reason } : {}) };
+  if (type === 'CHOICE' || type === 'MATCH') {
+    return issue.resolution.command?.trim()
+      ? { kind: 'BACKEND_COMMAND_NOT_EXPOSED', ...(reason ? { reason } : {}) }
+      : { kind: 'UNKNOWN', ...(reason ? { reason } : {}) };
+  }
+  return { kind: 'UNKNOWN', ...(reason ? { reason } : {}) };
+}

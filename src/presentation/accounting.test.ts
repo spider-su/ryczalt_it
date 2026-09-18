@@ -27,10 +27,10 @@ describe('accounting presentation', () => {
     unknown.code = 'FUTURE_TECHNICAL_CODE'; unknown.title = null; unknown.message = null;
     expect(issuePresentation(unknown)).toMatchObject({ status: 'unknown', title: 'Nie można określić szczegółów', body: 'Dostępne dane nie pozwalają opisać tego elementu.' });
   });
-  it('exposes only supported issue resolution actions', () => {
+  it('does not expose backend resolution labels before routing proves support', () => {
     const supported = issue('INFO', 'SETUP'); supported.resolution = { type: 'SETUP', settingsPath: '/accounting', actionLabel: null, options: [] };
-    expect(issuePresentation(supported).actionLabel).toBe('Sprawdź');
-    expect(issuePresentation(issue('WARNING', 'NEEDS_ANSWER')).actionLabel).toBeUndefined();
+    expect(issuePresentation(supported)).not.toHaveProperty('actionLabel');
+    expect(issuePresentation(issue('WARNING', 'NEEDS_ANSWER'))).not.toHaveProperty('actionLabel');
   });
   it('maps documented payment states and keeps unknown states neutral', () => { expect(statusForPayment(payment('PAID'))).toBe('resolved'); expect(statusForPayment(payment('SETTLED'))).toBe('resolved'); expect(statusForPayment(payment('MATCHED'))).toBe('resolved'); expect(statusForPayment(payment('OVERDUE'))).toBe('error'); expect(statusForPayment(payment('NOT_PAID'))).toBe('requires_action'); expect(statusForPayment(payment('NOT_DUE'))).toBe('informational'); expect(statusForPayment(payment('UNKNOWN'))).toBe('unknown'); expect(paymentMatches(line({ paymentStatus: 'OVERDUE' }), 'OVERDUE')).toBe(true); expect(paymentMatches(line({ paymentStatus: 'UNKNOWN' }), 'UNPAID')).toBe(false); });
   it('supports multi-month date filtering and locale-neutral invoice search', () => { expect(dateMatches(line({ issueDate: '2026-08-16' }), 'PREVIOUS_MONTH', '2026-09')).toBe(true); expect(dateMatches(line({ issueDate: '2026-07-16' }), 'LAST_3_MONTHS', '2026-09')).toBe(true); expect(matchesInvoice(line({ nip: '1234567890' }), '1234567890')).toBe(true); expect(matchesInvoice(line({ counterparty: 'Łódź Usługi' }), 'łódź')).toBe(true); });
