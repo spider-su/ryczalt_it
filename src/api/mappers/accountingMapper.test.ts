@@ -29,6 +29,9 @@ describe('accounting response mappers', () => {
   });
 
   it('keeps unknown document and payment statuses unknown/raw', () => {
+    expect(mapDocument(document({ status: 'IMPORTED' })).state).toBe('ok');
+    expect(mapDocument(document({ status: 'FAILED' })).state).toBe('attention');
+    expect(mapDocument(document({ reviewStatus: 'REVIEW_REQUIRED' })).state).toBe('attention');
     expect(mapDocument(document({ status: 'NEW_BACKEND_STATE' })).state).toBe('unknown');
     const payment: PaymentHistoryDto = { type: 'VAT', period: '2026-09', amount: null, paidAmount: null, outstandingAmount: null, dueDate: null, paymentDate: null, status: 'NEW_BACKEND_STATE' };
     expect(mapPaymentHistory([payment])[0]).toMatchObject({ status: 'NEW_BACKEND_STATE', amount: { amount: null, currency: 'PLN' }, dueDate: null });
@@ -37,5 +40,14 @@ describe('accounting response mappers', () => {
   it('keeps empty documents distinct and rejects invalid accounting months', () => {
     expect(mapAccountingMonth(overview(), [])).toMatchObject({ income: [], costs: [], payments: [], attentionCount: 0 });
     expect(() => mapAccountingMonth(overview({ month: '2026-13' }), [])).toThrow('invalid month');
+  });
+
+  it('preserves unknown issue state for the attention layer', () => {
+    const unknownIssue = {
+      id: 'issue-1', code: 'NEW', severity: 'NEW_SEVERITY', kind: 'NEW_KIND', title: 'Unknown', message: 'Unknown',
+      sourceReference: null, resolution: { type: 'NONE', command: null, options: [], settingsPath: null, actionLabel: null, reason: null }
+    };
+    const mapped = mapAccountingMonth(overview({ issues: [unknownIssue] }), []);
+    expect(mapped.issues[0]?.kind).toBe('NEW_KIND');
   });
 });
