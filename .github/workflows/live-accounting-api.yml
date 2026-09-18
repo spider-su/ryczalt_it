@@ -224,7 +224,7 @@ jobs:
             [[ "$DOCUMENTS_RESULT" == PASS ]] && pass_check 'Documents: PASS' || fail_check "Documents: $DOCUMENTS_RESULT"
             safe_body_summary documents "$DOCUMENTS_STATUS"
 
-            request payment-history GET "/api/v1/profiles/$PROFILE_ID/accounting/payments/history" yes
+            request payment-history GET "/api/v1/profiles/$PROFILE_ID/accounting/payments/history?from=$MONTH&to=$MONTH" yes
             PAYMENT_STATUS="$(cat "$ARTIFACT_DIR/payment-history.status")"
             PAYMENT_RC="$(cat "$ARTIFACT_DIR/payment-history.rc")"
             if [[ "$PAYMENT_RC" == "0" && "$PAYMENT_STATUS" == "200" ]]; then
