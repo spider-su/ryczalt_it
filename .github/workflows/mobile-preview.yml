@@ -12,7 +12,6 @@ on:
       - "tsconfig.json"
       - "App.tsx"
       - "src/**"
-      - ".github/workflows/mobile-preview.yml"
 
   workflow_dispatch:
 
