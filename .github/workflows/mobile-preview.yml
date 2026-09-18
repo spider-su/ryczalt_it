@@ -9,8 +9,12 @@ on:
       - "package-lock.json"
       - "app.json"
       - "eas.json"
+      - "tsconfig.json"
+      - "App.tsx"
       - "src/**"
-      - ".github/workflows/**"
+      - ".github/workflows/mobile-preview.yml"
+
+  workflow_dispatch:
 
 permissions:
   contents: read
