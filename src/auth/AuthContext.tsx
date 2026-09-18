@@ -1,6 +1,7 @@
 import * as SecureStore from 'expo-secure-store';
 import { createContext, useCallback, useContext, useEffect, useState, type PropsWithChildren } from 'react';
 import { API_BASE_URL, setAccountingAuthFailureHandler, setAccountingAuthToken } from '../api/config';
+import { DEFAULT_REQUEST_TIMEOUT_MS } from '../api/client';
 import { authErrorForFailure, authErrorForStatus, type AuthErrorCode } from './authErrors';
 
 const TOKEN_KEY = 'investory.authToken';
@@ -17,14 +18,16 @@ export function AuthProvider({ children }: PropsWithChildren) {
   useEffect(() => { setAccountingAuthFailureHandler(() => { void invalidateSession(); }); return () => setAccountingAuthFailureHandler(null); }, [invalidateSession]);
   async function signIn(email: string, password: string) {
     setError(null);
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), DEFAULT_REQUEST_TIMEOUT_MS);
     try {
-      const response = await fetch(`${API_BASE_URL}${LOGIN_PATH}`, { method: 'POST', headers: { Accept: 'application/json', 'Content-Type': 'application/json' }, body: JSON.stringify({ email, password }) });
+      const response = await fetch(`${API_BASE_URL}${LOGIN_PATH}`, { method: 'POST', headers: { Accept: 'application/json', 'Content-Type': 'application/json' }, body: JSON.stringify({ email, password }), signal: controller.signal });
       if (!response.ok) throw new Error(authErrorForStatus(response.status));
       const body = (await response.json()) as { token?: string; accessToken?: string };
       const nextToken = body.token ?? body.accessToken;
       if (!nextToken) throw new Error('invalid_response');
       await SecureStore.setItemAsync(TOKEN_KEY, nextToken); setAccountingAuthToken(nextToken); setToken(nextToken);
-    } catch (reason) { const code = authErrorForFailure(reason); setError(code); throw new Error(code); }
+    } catch (reason) { const code = authErrorForFailure(reason); setError(code); throw new Error(code); } finally { clearTimeout(timeout); }
   }
   async function signOut() { await invalidateSession(); }
   return <AuthContext.Provider value={{ token, loading, error, signIn, signOut }}>{children}</AuthContext.Provider>;

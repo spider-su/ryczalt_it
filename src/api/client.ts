@@ -28,6 +28,8 @@ type HttpClientOptions = {
   onUnauthorized?: () => void;
 };
 
+export const DEFAULT_REQUEST_TIMEOUT_MS = 180_000;
+
 export class HttpClient {
   private readonly baseUrl: string;
   private readonly timeoutMs: number;
@@ -35,7 +37,7 @@ export class HttpClient {
   private readonly token: string | null | (() => string | null);
   private readonly onUnauthorized?: () => void;
 
-  constructor({ baseUrl, timeoutMs = 10_000, fetchImpl = fetch, token, onUnauthorized }: HttpClientOptions) {
+  constructor({ baseUrl, timeoutMs = DEFAULT_REQUEST_TIMEOUT_MS, fetchImpl = fetch, token, onUnauthorized }: HttpClientOptions) {
     if (!baseUrl || !/^https?:\/\//.test(baseUrl)) {
       throw new ConfigurationError('Investory API URL is not configured correctly');
     }
