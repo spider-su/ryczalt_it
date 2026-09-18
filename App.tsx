@@ -7,11 +7,10 @@ import { AuthProvider, useAuth } from './src/auth/AuthContext';
 import { AuthScreen } from './src/screens/AuthScreen';
 import { ACCOUNTING_DATA_SOURCE } from './src/api/config';
 import { LocaleProvider, useLocale } from './src/i18n/LocaleContext';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 export default function App() {
-  return (
-    <LocaleProvider><AuthProvider><AppContent /></AuthProvider></LocaleProvider>
-  );
+  return <SafeAreaProvider><LocaleProvider><AuthProvider><AppContent /></AuthProvider></LocaleProvider></SafeAreaProvider>;
 }
 
 function AppContent() {

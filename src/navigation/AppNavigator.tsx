@@ -1,6 +1,7 @@
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
 import { Pressable } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { HomeScreen } from '../screens/HomeScreen';
 import { DocumentsScreen } from '../screens/DocumentsScreen';
@@ -10,6 +11,7 @@ import { ActionLauncherScreen } from '../screens/ActionLauncherScreen';
 import { theme } from '../theme/theme';
 import { t } from '../i18n';
 import { useLocale } from '../i18n/LocaleContext';
+import { getTabBarLayout } from './tabBarLayout';
 
 const Tab = createBottomTabNavigator();
 
@@ -31,6 +33,8 @@ const icons: Record<string, keyof typeof Ionicons.glyphMap> = {
 
 export function AppNavigator() {
   useLocale();
+  const insets = useSafeAreaInsets();
+  const tabBarLayout = getTabBarLayout(insets.bottom);
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
@@ -42,9 +46,7 @@ export function AppNavigator() {
           fontWeight: '700'
         },
         tabBarStyle: {
-          height: 82,
-          paddingTop: 10,
-          paddingBottom: 12,
+          ...tabBarLayout,
           borderTopWidth: 1,
           borderTopColor: theme.colors.borderSubtle,
           backgroundColor: theme.colors.surfaceElevated
