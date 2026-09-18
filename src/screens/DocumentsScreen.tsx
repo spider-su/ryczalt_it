@@ -10,11 +10,13 @@ import { dateMatches, matchesInvoice, paymentMatches } from '../presentation/acc
 import { theme } from '../theme/theme';
 import { useAccountingMonth } from '../navigation/AccountingMonthContext';
 import { MonthSelector } from '../components/MonthSelector';
+import { useLocale } from '../i18n/LocaleContext';
 
 type Filters = { direction: 'ALL' | 'SALE' | 'PURCHASE'; currency: string; payment: 'ALL' | 'PAID' | 'UNPAID' | 'OVERDUE'; date: 'ALL' | 'THIS_MONTH' | 'PREVIOUS_MONTH' | 'LAST_3_MONTHS' };
 const initialFilters: Filters = { direction: 'ALL', currency: 'ALL', payment: 'ALL', date: 'ALL' };
 
 export function DocumentsScreen() {
+  useLocale();
   const repository = useMemo(() => createAccountingRepository(), []); const { month, refreshVersion } = useAccountingMonth();
   const [items, setItems] = useState<AccountingLine[]>([]); const [filters, setFilters] = useState(initialFilters); const [query, setQuery] = useState(''); const [loading, setLoading] = useState(true); const [error, setError] = useState(false); const [sheet, setSheet] = useState(false); const [selected, setSelected] = useState<AccountingLine | null>(null);
   useEffect(() => { let active = true; setLoading(true); setError(false); setItems([]); const count = filters.date === 'LAST_3_MONTHS' ? 3 : filters.date === 'PREVIOUS_MONTH' ? 2 : 1; repository.getDocumentsForRange(month, count).then((value) => active && setItems(value)).catch(() => active && setError(true)).finally(() => active && setLoading(false)); return () => { active = false; }; }, [repository, month, filters.date, refreshVersion]);

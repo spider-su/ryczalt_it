@@ -9,6 +9,7 @@ import { MoreScreen } from '../screens/MoreScreen';
 import { ActionLauncherScreen } from '../screens/ActionLauncherScreen';
 import { theme } from '../theme/theme';
 import { t } from '../i18n';
+import { useLocale } from '../i18n/LocaleContext';
 
 const Tab = createBottomTabNavigator();
 
@@ -29,6 +30,7 @@ const icons: Record<string, keyof typeof Ionicons.glyphMap> = {
 };
 
 export function AppNavigator() {
+  useLocale();
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({

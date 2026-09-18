@@ -24,6 +24,7 @@ Implemented mobile surface:
 - Add Cost document recognition and backend-confirmed staging submission using backend-provided treatment options
 - typed mutation/duplicate/error mapping and refresh invalidation after confirmed mutations
 - local auto-approval policy settings with an explicit backend-write guardrail
+- Polish and English UI with persisted language selection under More → Settings
 - replaceable repository boundary with REST and explicit mock modes
 
 The mobile client does not calculate tax, obligations or lifecycle state. It does not initiate payments. Settlement history is read from the backend payment-history endpoint in API mode. Add Cost renders backend-provided VAT-treatment options, sends selected facts to the backend staging workflow, and leaves tax-period selection to the backend. The mobile client does not infer a VAT rate or use a client-side tax-period fallback.
@@ -143,6 +144,8 @@ The backend must allow the Expo Web origin (`http://localhost:8081`) through its
 Known product state follows `backend code → mobile semantic presentation state → UI translation`. Backend human-readable fields remain optional detail and are not machine-translated. Current issue titles/messages, lifecycle/next-action labels, document source/category labels, resolution labels/reasons/options, and recognition input/option labels are backend display copy; their stable codes are retained where available. A future English UI must either localize states from those codes or keep backend copy explicitly marked as server-provided until the backend exposes a complete semantic contract.
 
 The UI keeps canonical accounting calculations on Investory. `paymentSummary.totalOutstanding` and PPE/VAT/ZUS values are displayed as authoritative backend values. The Polish accounting-obligation contract has no currency field and is PLN-scoped, so PLN is attached once in the accounting mapper rather than reconstructed in screens. Document currencies remain backend-provided. Accounting API monetary responses use decimal strings; the mobile mapper accepts legacy numeric fixtures only during rollout and stores domain money as strings. Mobile formats amounts but does not perform accounting arithmetic.
+
+The UI supports exactly `pl` and `en`. English uses `en-GB` formatting for a European financial presentation; tax jurisdiction remains Poland. Saved locale preference takes precedence over supported device English, with Polish as fallback. Locale changes affect presentation strings and formatting only: accounting month IDs, backend enums, tax periods, amounts, currencies, profile and mutation payload semantics remain unchanged. Backend human-readable display fields are not machine-translated; stable backend codes are required for complete future localization.
 
 Authentication uses the current token at request time. A confirmed HTTP 401 invalidates the central session and returns the app to sign-in. The accounting profile is currently fixed to `ACCOUNTING_PROFILE_ID = 1`; authenticated profile selection is not yet available and remains a pre-production blocker.
 

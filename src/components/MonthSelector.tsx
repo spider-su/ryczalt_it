@@ -3,8 +3,10 @@ import { Ionicons } from '@expo/vector-icons';
 import { formatMonth, t } from '../i18n';
 import { useAccountingMonth } from '../navigation/AccountingMonthContext';
 import { theme } from '../theme/theme';
+import { useLocale } from '../i18n/LocaleContext';
 
 export function MonthSelector({ loading = false }: { loading?: boolean }) {
+  useLocale();
   const { month, previousMonth, nextMonth, canGoNext } = useAccountingMonth();
   return <View style={styles.row} accessibilityLabel={t('month.selector')}>
     <Pressable onPress={previousMonth} style={styles.button} accessibilityRole="button" accessibilityLabel={t('month.previous')}>

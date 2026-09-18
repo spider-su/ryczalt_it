@@ -51,10 +51,10 @@ export function statusForPayment(payment: PaymentLine): PresentationStatus {
 }
 
 export function matchesInvoice(line: AccountingLine, query: string): boolean {
-  const needle = query.trim().toLocaleLowerCase();
+  const needle = query.trim().toLowerCase();
   if (!needle) return true;
   return [line.counterparty, line.documentNumber, line.nip, line.title, line.subtitle]
-    .filter(Boolean).some((value) => value!.toLocaleLowerCase().includes(needle));
+    .filter(Boolean).some((value) => value!.toLowerCase().includes(needle));
 }
 
 export function paymentMatches(line: AccountingLine, filter: 'ALL' | 'PAID' | 'UNPAID' | 'OVERDUE'): boolean {

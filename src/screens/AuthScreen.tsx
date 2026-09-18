@@ -5,8 +5,10 @@ import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../auth/AuthContext';
 import { t } from '../i18n';
 import { theme } from '../theme/theme';
+import { useLocale } from '../i18n/LocaleContext';
 
 export function AuthScreen() {
+  useLocale();
   const { signIn, error } = useAuth(); const [email, setEmail] = useState(''); const [password, setPassword] = useState(''); const [busy, setBusy] = useState(false);
   async function submit() { if (!email.trim() || !password) return; setBusy(true); try { await signIn(email.trim(), password); } catch { /* context exposes the error */ } finally { setBusy(false); } }
   return <SafeAreaView style={styles.safe}><View style={styles.content}><View style={styles.brand}><Ionicons name="calculator-outline" size={34} color={theme.colors.primary} /><Text style={styles.title}>{t('auth.title')}</Text><Text style={styles.subtitle}>{t('auth.subtitle')}</Text></View><Text style={styles.label}>{t('auth.email')}</Text><TextInput value={email} onChangeText={setEmail} autoCapitalize="none" autoComplete="email" keyboardType="email-address" style={styles.input} placeholder={t('auth.emailPlaceholder')} placeholderTextColor={theme.colors.textMuted} accessibilityLabel={t('auth.email')} /><Text style={styles.label}>{t('auth.password')}</Text><TextInput value={password} onChangeText={setPassword} secureTextEntry autoComplete="password" style={styles.input} placeholder={t('auth.password')} placeholderTextColor={theme.colors.textMuted} accessibilityLabel={t('auth.password')} />{error ? <Text style={styles.error} accessibilityRole="alert">{t(`auth.errors.${error}`)}</Text> : null}<Pressable accessibilityRole="button" accessibilityLabel={busy ? t('auth.signingIn') : t('auth.signIn')} style={[styles.button, (!email.trim() || !password || busy) && styles.disabled]} disabled={!email.trim() || !password || busy} onPress={submit}>{busy ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>{t('auth.signIn')}</Text>}</Pressable><Text style={styles.note}>{t('auth.secureNote')}</Text></View></SafeAreaView>;

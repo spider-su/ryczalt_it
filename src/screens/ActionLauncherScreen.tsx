@@ -5,10 +5,12 @@ import { useIsFocused } from '@react-navigation/native';
 import { t } from '../i18n';
 import { theme } from '../theme/theme';
 import { AddCostScreen } from '../actions/cost/AddCostScreen';
+import { useLocale } from '../i18n/LocaleContext';
 
 type Mode = 'sheet' | 'cost';
 
 export function ActionLauncherScreen() {
+  useLocale();
   const focused = useIsFocused();
   const [mode, setMode] = useState<Mode>('sheet');
   useEffect(() => { if (focused) setMode('sheet'); }, [focused]);

@@ -10,8 +10,10 @@ import { theme } from '../theme/theme';
 import { homeStatusCopy, orderedIssues, statusForIssue, statusForMonth } from '../presentation/accounting';
 import { useAccountingMonth } from '../navigation/AccountingMonthContext';
 import { MonthSelector } from '../components/MonthSelector';
+import { useLocale } from '../i18n/LocaleContext';
 
 export function HomeScreen() {
+  useLocale();
   const [month, setMonth] = useState<AccountingMonth | null>(null);
   const [error, setError] = useState(false);
   const [retry, setRetry] = useState(0);
