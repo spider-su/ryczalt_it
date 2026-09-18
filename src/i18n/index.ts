@@ -1,7 +1,7 @@
 export const locale = 'pl-PL';
 
 const strings = {
-  auth: { title: 'Investory Accounting', subtitle: 'Zaloguj się, aby zobaczyć dane księgowe', email: 'E-mail', password: 'Hasło', emailPlaceholder: 'nazwa@firma.pl', signIn: 'Zaloguj się', signingIn: 'Logowanie…', secureNote: 'Token sesji jest przechowywany w bezpiecznym magazynie urządzenia.' },
+  auth: { title: 'Investory Accounting', subtitle: 'Zaloguj się, aby zobaczyć dane księgowe', email: 'E-mail', password: 'Hasło', emailPlaceholder: 'nazwa@firma.pl', signIn: 'Zaloguj się', signingIn: 'Logowanie…', secureNote: 'Token sesji jest przechowywany w bezpiecznym magazynie urządzenia.', errors: { invalid_credentials: 'Nieprawidłowy e-mail lub hasło.', invalid_response: 'Odpowiedź logowania jest nieprawidłowa.', unavailable: 'Nie udało się połączyć z serwerem. Spróbuj ponownie.', unknown: 'Logowanie nie powiodło się. Spróbuj ponownie.' } },
   app: { home: 'Start', invoices: 'Faktury', settlements: 'Rozliczenia', more: 'Więcej' },
   common: {
     all: 'Wszystkie', sales: 'Sprzedaż', purchases: 'Zakupy', filters: 'Filtry', close: 'Zamknij',
@@ -13,7 +13,7 @@ const strings = {
   month: { selector: 'Wybrany miesiąc', previous: 'Poprzedni miesiąc', next: 'Następny miesiąc' },
   home: {
     greeting: 'Dzień dobry', healthyTitle: 'Wszystko załatwione', healthyBody: 'Nie masz teraz nic do zrobienia.', processingTitle: 'Aktualizujemy dane', processingBody: 'Synchronizacja i obliczenia jeszcze trwają.', unknownTitle: 'Brak danych', unknownBody: 'Nie udało się określić stanu tego miesiąca.',
-    attentionTitle: 'Wymaga Twojej uwagi', attentionBody: 'Sprawdź elementy, które wymagają działania.',
+    attentionTitle: 'Wymaga Twojej uwagi', attentionBody: 'Sprawdź elementy, które wymagają działania.', informationalTitle: 'Dane są dostępne', informationalBody: 'Nie ma teraz niczego, co wymaga Twojego działania.',
     period: 'Bieżący okres', revenue: 'Przychód', costs: 'Koszty', income: 'Dochód (szac.)',
     payments: 'Najbliższe płatności', noPayments: 'Brak najbliższych płatności',
     obligations: 'Do zapłaty', attention: 'Wymaga uwagi', noIssues: 'Brak elementów wymagających działania', issueCount: 'rzeczy do sprawdzenia'
@@ -27,7 +27,7 @@ const strings = {
   },
   settlements: {
     title: 'Rozliczenia', upcoming: 'Najbliższe płatności', history: 'Historia', noPayments: 'Brak płatności w tym okresie', noHistory: 'Brak zapisanych płatności w tym okresie',
-    period: 'Okres', dueDate: 'Termin płatności', amount: 'Kwota', paidAmount: 'Opłacono', remaining: 'Pozostało', status: 'Status', historyUnavailable: 'Historia rozliczeń nie jest jeszcze dostępna.'
+    period: 'Okres', dueDate: 'Termin płatności', amount: 'Kwota', paidAmount: 'Opłacono', remaining: 'Pozostało', status: 'Status'
   },
   more: {
     title: 'Więcej', company: 'Dane firmy', systems: 'Połączone systemy', settings: 'Ustawienia', reports: 'Eksporty i raporty',

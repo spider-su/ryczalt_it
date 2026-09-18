@@ -21,7 +21,7 @@ const PURCHASE_TYPES = new Set(['PURCHASE_INVOICE', 'RECEIPT']);
 function mapRequiredInputs(candidate: CandidateDto): RequiredInputDto[] {
   if (candidate.requiredInputs?.length) return candidate.requiredInputs;
   if (!candidate.vatTreatmentOptions?.length) return [];
-  return [{ field: 'vatTreatment', inputType: 'choice', label: 'Sposób rozliczenia VAT', required: true, options: candidate.vatTreatmentOptions, dependsOn: null, dependsOnValues: [] }];
+  return [{ field: 'vatTreatment', inputType: 'choice', label: '', required: true, options: candidate.vatTreatmentOptions, dependsOn: null, dependsOnValues: [] }];
 }
 
 function mapOptions(inputs: RequiredInputDto[]): CostOption[] {

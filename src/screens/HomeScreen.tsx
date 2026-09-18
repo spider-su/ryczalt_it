@@ -7,7 +7,7 @@ import { createAccountingRepository } from '../api/config';
 import { formatDate, formatMonth, paymentLabel, paymentStatusLabel, t } from '../i18n';
 import { formatMoney } from '../utils/money';
 import { theme } from '../theme/theme';
-import { orderedIssues, statusForIssue, statusForMonth, type PresentationStatus } from '../presentation/accounting';
+import { homeStatusCopy, orderedIssues, statusForIssue, statusForMonth } from '../presentation/accounting';
 import { useAccountingMonth } from '../navigation/AccountingMonthContext';
 import { MonthSelector } from '../components/MonthSelector';
 
@@ -32,7 +32,6 @@ export function HomeScreen() {
     <Text style={styles.sectionTitle}>{t('home.attention')}</Text>{issues.length ? <View style={styles.card}>{issues.map((issue) => <View key={issue.id} style={styles.issue}><Text style={styles.issueTitle}>{issue.title}</Text><Text style={styles.issueBody}>{issue.message}</Text></View>)}</View> : <Text style={styles.empty}>{t('home.noIssues')}</Text>}
   </ScrollView></SafeAreaView>;
 }
-function homeStatusCopy(status: PresentationStatus): { title: string; body: string } { if (status === 'requires_action' || status === 'error') return { title: 'home.attentionTitle', body: 'home.attentionBody' }; if (status === 'processing') return { title: 'home.processingTitle', body: 'home.processingBody' }; if (status === 'resolved') return { title: 'home.healthyTitle', body: 'home.healthyBody' }; return { title: 'home.unknownTitle', body: 'home.unknownBody' }; }
 function Summary({ label, value, muted }: { label: string; value: string; muted?: boolean }) { return <View style={styles.summaryRow}><Text style={styles.summaryLabel}>{label}</Text><Text style={[styles.summaryValue, muted && styles.muted]}>{value}</Text></View>; }
 function PaymentRow({ payment }: { payment: PaymentLine }) { return <View style={styles.paymentRow}><View style={styles.paymentIcon}><Ionicons name="calendar-outline" size={19} color={theme.colors.primary} /></View><View style={styles.paymentCopy}><Text style={styles.paymentTitle}>{paymentLabel(payment.title)}</Text><Text style={styles.paymentDate}>{formatDate(payment.dueDate)}</Text></View><View style={styles.paymentAmount}><Text style={styles.amount}>{formatMoney(payment.outstandingAmount)}</Text><Text style={styles.paymentStatus}>{paymentStatusLabel(payment.status)}</Text></View></View>; }
 function State({ title, action, onPress }: { title: string; action: string; onPress: () => void }) { return <SafeAreaView style={styles.loading}><Ionicons name="cloud-offline-outline" size={34} color={theme.colors.warning} /><Text style={styles.stateTitle}>{title}</Text><Pressable style={styles.retry} onPress={onPress}><Text style={styles.retryText}>{action}</Text></Pressable></SafeAreaView>; }

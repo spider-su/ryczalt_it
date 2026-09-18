@@ -66,7 +66,7 @@ npx eas-cli build --profile production --platform all
 npx eas-cli submit --profile production --platform all
 ```
 
-The last two commands require an authenticated Expo account and a linked EAS project. Do not commit generated `android/` or `ios/` directories unless the project moves to a bare workflow.
+The repository contains the Expo owner (`spider-su`), project slug (`investory-accounting`) and EAS project ID. `EXPO_TOKEN`, Expo account authentication and signing credentials remain external CI/account configuration. Do not commit generated `android/` or `ios/` directories unless the project moves to a bare workflow. A successful cloud EAS build is independent of launching a local Android emulator; missing local SDK executables are local environment issues.
 
 ## Structure
 
@@ -137,6 +137,10 @@ Add Cost uses:
 The save response is authoritative and may report a deterministic duplicate document. Recognition returns backend-supported VAT-treatment options and conditional `requiredInputs` metadata for fields such as VAT rate and counterparty country; mobile renders those requirements without encoding tax rules. Tax-period selection remains backend-owned. If recognition does not provide the metadata needed for a document requiring an accounting decision, mobile stops and directs the user to the web panel.
 
 The backend must allow the Expo Web origin (`http://localhost:8081`) through its `/api/v1/**` CORS configuration. The mobile app does not add a browser CORS workaround.
+
+### Text ownership and localization boundary
+
+Known product state follows `backend code → mobile semantic presentation state → UI translation`. Backend human-readable fields remain optional detail and are not machine-translated. Current issue titles/messages, lifecycle/next-action labels, document source/category labels, resolution labels/reasons/options, and recognition input/option labels are backend display copy; their stable codes are retained where available. A future English UI must either localize states from those codes or keep backend copy explicitly marked as server-provided until the backend exposes a complete semantic contract.
 
 The UI keeps canonical accounting calculations on Investory. `paymentSummary.totalOutstanding` and PPE/VAT/ZUS values are displayed as authoritative backend values. The Polish accounting-obligation contract has no currency field and is PLN-scoped, so PLN is attached once in the accounting mapper rather than reconstructed in screens. Document currencies remain backend-provided. Accounting API monetary responses use decimal strings; the mobile mapper accepts legacy numeric fixtures only during rollout and stores domain money as strings. Mobile formats amounts but does not perform accounting arithmetic.
 

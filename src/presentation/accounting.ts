@@ -2,6 +2,15 @@ import { AccountingIssue, AccountingLine, PaymentLine } from '../model/accountin
 
 export type PresentationStatus = 'resolved' | 'informational' | 'requires_action' | 'error' | 'processing' | 'unknown';
 
+export type HomeStatusCopy = { title: string; body: string };
+export function homeStatusCopy(status: PresentationStatus): HomeStatusCopy {
+  if (status === 'requires_action' || status === 'error') return { title: 'home.attentionTitle', body: 'home.attentionBody' };
+  if (status === 'processing') return { title: 'home.processingTitle', body: 'home.processingBody' };
+  if (status === 'resolved') return { title: 'home.healthyTitle', body: 'home.healthyBody' };
+  if (status === 'informational') return { title: 'home.informationalTitle', body: 'home.informationalBody' };
+  return { title: 'home.unknownTitle', body: 'home.unknownBody' };
+}
+
 export function statusForMonth(month: { lifecycle?: string; nextAction?: string; issues: AccountingIssue[] }): PresentationStatus {
   if (month.issues.some((issue) => statusForIssue(issue) === 'error')) return 'error';
   if (month.issues.some((issue) => statusForIssue(issue) === 'requires_action')) return 'requires_action';
