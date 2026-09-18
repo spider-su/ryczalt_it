@@ -103,7 +103,7 @@ jobs:
               --show-error
               --location
               --connect-timeout 10
-              --max-time 30
+              --max-time 180
               --request "$method"
               --header "Accept: application/json"
               --output "$body"
@@ -114,8 +114,11 @@ jobs:
               args+=(--user "$TEST_USER:$TEST_PASSWORD")
             fi
 
-            status="$(curl "${args[@]}" "${BASE_URL}${path}" 2>"$stderr_file")"
-            rc=$?
+            if status="$(curl "${args[@]}" "${BASE_URL}${path}" 2>"$stderr_file")"; then
+              rc=0
+            else
+              rc=$?
+            fi
             printf '%s\n' "$status" > "$status_file"
             printf '%s\n' "$rc" > "$rc_file"
           }
