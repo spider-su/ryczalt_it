@@ -23,4 +23,20 @@ describe('HttpClient authentication lifecycle', () => {
     await expect(client.get('/private')).rejects.toMatchObject({ kind: 'authentication', status: 401 } satisfies Partial<ApiError>);
     expect(onUnauthorized).toHaveBeenCalledTimes(1);
   });
+
+  it.each([
+    ['HTTP error', async () => new Response('{}', { status: 500 }), 'response'],
+    ['network error', async () => { throw new Error('offline'); }, 'unavailable'],
+    ['malformed JSON', async () => new Response('{', { status: 200 }), 'response']
+  ] as const)('keeps %s distinct from an empty success', async (_label, fetchImpl, kind) => {
+    const client = new HttpClient({ baseUrl: 'https://example.test', fetchImpl: fetchImpl as typeof fetch });
+    await expect(client.get('/accounting')).rejects.toMatchObject({ kind });
+  });
+
+  it('reports an aborted request as a timeout', async () => {
+    const fetchImpl = vi.fn(async () => { throw new DOMException('aborted', 'AbortError'); });
+    const client = new HttpClient({ baseUrl: 'https://example.test', fetchImpl });
+
+    await expect(client.get('/accounting')).rejects.toMatchObject({ message: 'Investory API request timed out', kind: 'response' });
+  });
 });

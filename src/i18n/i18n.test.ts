@@ -23,6 +23,16 @@ describe('localized presentation', () => {
     setActiveLocale('en'); expect(formatMonth('')).toBe('No data'); expect(formatMonth('not-a-month')).toBe('No data');
     expect(paymentStatusKey('OVERDUE')).toBe('overdue'); setActiveLocale('pl'); expect(paymentStatusLabel('OVERDUE')).toBe('Po terminie'); setActiveLocale('en'); expect(paymentStatusLabel('OVERDUE')).toBe('Overdue'); expect(t('payments.status.unknown')).toBe('No data');
   });
+  it('formats decimal strings without converting canonical money through Number', () => {
+    for (const locale of ['pl', 'en'] as const) {
+      setActiveLocale(locale);
+      for (const amount of ['0.00', '1.23', '1000.00', '1234567.89']) {
+        expect(formatCurrency(amount, 'PLN').replace(/[^\d]/g, '')).toBe(amount.replace('.', ''));
+      }
+      expect(formatCurrency(null, 'PLN')).toBe(t('common.unknown'));
+      expect(formatCurrency('not-a-decimal', 'PLN')).toBe(t('common.unknown'));
+    }
+  });
   it('keeps Add Cost recognition semantics independent from UI locale', () => {
     const candidate: CandidateDto = { sourceReference: 'sha256:x', documentType: 'PURCHASE_INVOICE', issueDate: '2026-09-16', saleDate: '2026-09-16', dueDate: null, reference: 'FV/1', seller: 'Adobe', buyer: null, sellerNip: '1234567890', buyerNip: null, category: 'SERVICE', currency: 'PLN', netAmount: '100.00', vatAmount: '23.00', grossAmount: '123.00', note: 'note', status: 'RECOGNIZED', vatTreatment: 'DOMESTIC_PURCHASE', vatRate: '23', requiredInputs: [{ field: 'vatTreatment', inputType: 'choice', label: 'VAT', required: true, options: [], dependsOn: null, dependsOnValues: [] }, { field: 'vatRate', inputType: 'decimal', label: 'VAT rate', required: true, options: [], dependsOn: 'vatTreatment', dependsOnValues: ['DOMESTIC_PURCHASE'] }, { field: 'counterpartyCountry', inputType: 'text', label: 'Country', required: true, options: [], dependsOn: null, dependsOnValues: [] }] };
     setActiveLocale('pl'); const pl = mapRecognizedCost(candidate);

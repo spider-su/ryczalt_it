@@ -28,6 +28,7 @@ type HttpClientOptions = {
   onUnauthorized?: () => void;
 };
 
+// Temporary while backend latency stabilizes; replace with an intentional per-operation policy.
 export const DEFAULT_REQUEST_TIMEOUT_MS = 180_000;
 
 export class HttpClient {

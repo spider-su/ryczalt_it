@@ -54,7 +54,37 @@ export function formatMonth(value: string | null | undefined): string {
     ? t('common.unknown')
     : new Intl.DateTimeFormat(toIntlLocale(), { month: 'long', year: 'numeric' }).format(date);
 }
-export function formatCurrency(amount: string | number | null | undefined, currency?: string | null): string { const numeric = amount == null ? NaN : Number(amount); if (!Number.isFinite(numeric)) return t('common.unknown'); if (!currency) return new Intl.NumberFormat(toIntlLocale(), { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(numeric); try { return new Intl.NumberFormat(toIntlLocale(), { style: 'currency', currency, minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(numeric); } catch { return new Intl.NumberFormat(toIntlLocale(), { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(numeric); } }
+function exactDecimalParts(amount: string | number): { negative: boolean; integer: string; fraction: string } | null {
+  const value = typeof amount === 'number' ? String(amount) : amount.trim();
+  const match = value.match(/^(?<sign>-)?(?<integer>\d+)(?:\.(?<fraction>\d+))?$/);
+  if (!match?.groups?.integer) return null;
+  const integer = match.groups.integer.replace(/^0+(?=\d)/, '');
+  return { negative: Boolean(match.groups.sign), integer, fraction: (match.groups.fraction ?? '').padEnd(2, '0') };
+}
+
+function formatExactDecimal(amount: string | number, currency?: string | null): string | null {
+  const parts = exactDecimalParts(amount);
+  if (!parts) return null;
+  const locale = toIntlLocale();
+  const formatter = currency
+    ? new Intl.NumberFormat(locale, { style: 'currency', currency, minimumFractionDigits: 0, maximumFractionDigits: 0 })
+    : new Intl.NumberFormat(locale, { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+  const groupedInteger = new Intl.NumberFormat(locale, { useGrouping: true, maximumFractionDigits: 0 }).format(BigInt(parts.integer));
+  const template = formatter.formatToParts(parts.negative ? -0 : 0);
+  const decimal = new Intl.NumberFormat(locale).formatToParts(1.1).find((part) => part.type === 'decimal')?.value ?? '.';
+  return template.map((part) => part.type === 'integer'
+    ? `${groupedInteger}${parts.fraction ? `${decimal}${parts.fraction}` : ''}`
+    : part.value).join('');
+}
+
+export function formatCurrency(amount: string | number | null | undefined, currency?: string | null): string {
+  if (amount == null) return t('common.unknown');
+  try {
+    return formatExactDecimal(amount, currency) ?? t('common.unknown');
+  } catch {
+    return t('common.unknown');
+  }
+}
 export type PaymentLabelKey = 'ppe' | 'vat' | 'zus' | 'unknown';
 export function paymentLabelKey(type: string): PaymentLabelKey { const normalized = type.toUpperCase(); return normalized === 'RYCZALT' ? 'ppe' : normalized === 'VAT' ? 'vat' : normalized === 'ZUS' ? 'zus' : 'unknown'; }
 export function paymentLabel(type: string): string { return t(`payments.types.${paymentLabelKey(type)}`); }

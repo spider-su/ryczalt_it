@@ -88,7 +88,7 @@ export function mapAccountingMonth(
   overview: AccountingMonthOverviewDto,
   documents: AccountingDocumentDto[]
 ): AccountingMonth {
-  if (!/^\d{4}-\d{2}$/.test(overview.month)) {
+  if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(overview.month)) {
     throw new Error('Accounting response contains an invalid month');
   }
   const issues = overview.issues.map(mapIssue);
