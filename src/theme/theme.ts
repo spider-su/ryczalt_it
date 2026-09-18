@@ -1,24 +1,40 @@
 export const theme = {
   colors: {
-    background: '#F5F7FA',
+    background: '#F6F8FB',
     surface: '#FFFFFF',
-    surfaceMuted: '#EEF3F8',
-    text: '#111827',
-    textMuted: '#667085',
-    border: '#E3E8EF',
-    primary: '#0052CC',
-    primarySoft: '#EAF2FF',
+    surfaceSecondary: '#F0F4F8',
+    surfaceElevated: '#FFFFFF',
+    surfaceMuted: '#F0F4F8',
+    textPrimary: '#152238',
+    textSecondary: '#516176',
+    textMuted: '#718096',
+    borderSubtle: '#DCE4ED',
+    accent: '#1769E0',
+    accentPressed: '#0F56BD',
+    accentSoft: '#EAF2FF',
     success: '#18794E',
-    successSoft: '#E9F7EF',
+    successSoft: '#E8F6EE',
     warning: '#9A6700',
-    warningSoft: '#FFF6D8',
+    warningSoft: '#FFF5D6',
     danger: '#B42318',
-    dangerSoft: '#FDECEC'
+    dangerSoft: '#FDEDEC',
+    info: '#1769E0',
+    infoSoft: '#EAF2FF',
+    onAccent: '#FFFFFF',
+    overlay: '#15223866',
+    // Compatibility aliases for existing screen styles.
+    text: '#152238',
+    border: '#DCE4ED',
+    primary: '#1769E0',
+    primarySoft: '#EAF2FF'
   },
   radius: {
+    control: 12,
+    card: 20,
+    large: 28,
     sm: 12,
-    md: 18,
-    lg: 24
+    md: 20,
+    lg: 28
   },
   spacing: {
     xs: 4,
@@ -26,12 +42,16 @@ export const theme = {
     md: 12,
     lg: 16,
     xl: 24,
-    xxl: 32
+    xxl: 32,
+    xxxl: 40
   },
   typography: {
-    title: 32,
-    section: 22,
+    display: 34,
+    title: 30,
+    section: 20,
     body: 16,
-    small: 13
+    small: 13,
+    caption: 12,
+    amount: 30
   }
 } as const;

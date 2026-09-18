@@ -35,18 +35,19 @@ export function AppNavigator() {
     <Tab.Navigator
       screenOptions={({ route }) => ({
         headerShown: false,
-        tabBarActiveTintColor: theme.colors.primary,
+        tabBarActiveTintColor: theme.colors.accent,
         tabBarInactiveTintColor: theme.colors.textMuted,
         tabBarLabelStyle: {
           fontSize: 12,
           fontWeight: '700'
         },
         tabBarStyle: {
-          height: 78,
-          paddingTop: 8,
-          paddingBottom: 10,
-          borderTopColor: theme.colors.border,
-          backgroundColor: theme.colors.surface
+          height: 82,
+          paddingTop: 10,
+          paddingBottom: 12,
+          borderTopWidth: 1,
+          borderTopColor: theme.colors.borderSubtle,
+          backgroundColor: theme.colors.surfaceElevated
         },
         tabBarIcon: ({ color, size }) => (
           <Ionicons name={icons[route.name] ?? 'ellipse-outline'} color={color} size={size} />
@@ -68,7 +69,7 @@ export function AppNavigator() {
               accessibilityLabel={t('actions.title')}
               style={{ alignItems: 'center', justifyContent: 'center', width: 56, height: 56, marginTop: -14, borderRadius: 28, backgroundColor: theme.colors.primary }}
             >
-              <Ionicons name="add" size={30} color="#fff" />
+              <Ionicons name="add" size={30} color={theme.colors.onAccent} />
             </Pressable>
           )
         }}

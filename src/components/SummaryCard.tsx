@@ -52,8 +52,10 @@ function TaxTile({ label, value }: { label: string; value: string }) {
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: theme.colors.primarySoft,
-    borderRadius: theme.radius.lg,
+    backgroundColor: theme.colors.surface,
+    borderRadius: theme.radius.card,
+    borderWidth: 1,
+    borderColor: theme.colors.borderSubtle,
     padding: theme.spacing.lg,
     gap: theme.spacing.lg
   },
@@ -103,8 +105,8 @@ const styles = StyleSheet.create({
   taxTile: {
     flex: 1,
     minWidth: 0,
-    backgroundColor: 'rgba(255,255,255,0.82)',
-    borderRadius: theme.radius.md,
+    backgroundColor: theme.colors.surfaceSecondary,
+    borderRadius: theme.radius.control,
     paddingHorizontal: 10,
     paddingVertical: 13
   },

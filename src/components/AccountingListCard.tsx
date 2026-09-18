@@ -51,9 +51,9 @@ const styles = StyleSheet.create({
   card: {
     overflow: 'hidden',
     backgroundColor: theme.colors.surface,
-    borderRadius: theme.radius.md,
+    borderRadius: theme.radius.card,
     borderWidth: 1,
-    borderColor: theme.colors.border
+    borderColor: theme.colors.borderSubtle
   },
   row: {
     minHeight: 76,
@@ -64,10 +64,10 @@ const styles = StyleSheet.create({
   },
   divider: {
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: theme.colors.border
+    borderBottomColor: theme.colors.borderSubtle
   },
   pressed: {
-    backgroundColor: theme.colors.surfaceMuted
+    backgroundColor: theme.colors.surfaceSecondary
   },
   icon: {
     width: 42,
@@ -85,17 +85,17 @@ const styles = StyleSheet.create({
     minWidth: 0
   },
   title: {
-    color: theme.colors.text,
+    color: theme.colors.textPrimary,
     fontSize: 16,
     fontWeight: '700'
   },
   subtitle: {
-    color: theme.colors.textMuted,
+    color: theme.colors.textSecondary,
     fontSize: 13,
     marginTop: 3
   },
   amount: {
-    color: theme.colors.text,
+    color: theme.colors.textPrimary,
     fontSize: 15,
     fontWeight: '700'
   }
