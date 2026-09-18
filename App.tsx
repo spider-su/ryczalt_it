@@ -30,17 +30,18 @@ class AppErrorBoundary extends Component<PropsWithChildren, { failed: boolean }>
   }
 }
 
-let pendingPaymentNavigation = false;
+let pendingPaymentNavigationProfileId: number | null = null;
 function AppContent() {
   const { token, profileId, loading } = useAuth();
   const { ready: localeReady } = useLocale();
   useEffect(() => {
-    if (loading || !localeReady || (ACCOUNTING_DATA_SOURCE === 'api' && (!token || profileId == null))) return;
+    if (loading || !localeReady) return;
+    if (ACCOUNTING_DATA_SOURCE === 'api' && (!token || profileId == null)) { pendingPaymentNavigationProfileId = null; return; }
     const openPayments = (response: Notifications.NotificationResponse | null | undefined) => {
       const data = response?.notification.request.content.data as { route?: string; profileId?: number } | undefined;
       if (data?.route !== 'Payments' || data.profileId !== profileId) return;
       if (navigationRef.isReady()) navigationRef.navigate('Payments');
-      else pendingPaymentNavigation = true;
+      else pendingPaymentNavigationProfileId = profileId;
     };
     const subscription = Notifications.addNotificationResponseReceivedListener(openPayments);
     void Notifications.getLastNotificationResponseAsync().then(openPayments).catch(() => undefined);
@@ -48,5 +49,5 @@ function AppContent() {
   }, [loading, localeReady, profileId, token]);
   if (loading || !localeReady) return <SafeAreaView style={{ flex: 1, backgroundColor: theme.colors.background }}><View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12 }}><ActivityIndicator color={theme.colors.primary} /><Text style={{ color: theme.colors.textSecondary }}>{t('startup.loading')}</Text></View></SafeAreaView>;
   if (ACCOUNTING_DATA_SOURCE === 'api' && (!token || profileId == null)) return <AuthScreen />;
-  return <AutoApprovalProvider><AccountingMonthProvider><NavigationContainer ref={navigationRef} onReady={() => { if (pendingPaymentNavigation) { pendingPaymentNavigation = false; navigationRef.navigate('Payments'); } }}><StatusBar style="dark" /><AppNavigator /></NavigationContainer></AccountingMonthProvider></AutoApprovalProvider>;
+  return <AutoApprovalProvider><AccountingMonthProvider><NavigationContainer ref={navigationRef} onReady={() => { if (pendingPaymentNavigationProfileId === profileId) { pendingPaymentNavigationProfileId = null; navigationRef.navigate('Payments'); } }}><StatusBar style="dark" /><AppNavigator /></NavigationContainer></AccountingMonthProvider></AutoApprovalProvider>;
 }
