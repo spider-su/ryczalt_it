@@ -17,12 +17,34 @@ function requiredMoney(amount: Decimal | null | undefined, currency?: string | n
 }
 
 function mapIssue(issue: AccountingIssueDto): AccountingIssue {
-  return { ...issue, resolution: { ...issue.resolution, options: [...issue.resolution.options] } };
+  const raw = issue as Partial<AccountingIssueDto>;
+  const resolution = (raw.resolution ?? {}) as Partial<AccountingIssueDto['resolution']>;
+  return {
+    id: typeof raw.id === 'string' ? raw.id : 'unknown-issue',
+    code: typeof raw.code === 'string' && raw.code.trim() ? raw.code : 'UNKNOWN_ISSUE',
+    severity: typeof raw.severity === 'string' ? raw.severity : 'UNKNOWN',
+    kind: typeof raw.kind === 'string' ? raw.kind : 'UNKNOWN',
+    title: typeof raw.title === 'string' ? raw.title : null,
+    message: typeof raw.message === 'string' ? raw.message : null,
+    sourceReference: typeof raw.sourceReference === 'string' ? raw.sourceReference : null,
+    resolution: {
+      type: typeof resolution.type === 'string' ? resolution.type : 'NONE',
+      command: typeof resolution.command === 'string' ? resolution.command : null,
+      options: Array.isArray(resolution.options) ? resolution.options.filter(Boolean).map((option) => ({
+        value: typeof option.value === 'string' ? option.value : '',
+        label: typeof option.label === 'string' ? option.label : '',
+        recommended: option.recommended === true
+      })) : [],
+      settingsPath: typeof resolution.settingsPath === 'string' ? resolution.settingsPath : null,
+      actionLabel: typeof resolution.actionLabel === 'string' ? resolution.actionLabel : null,
+      reason: typeof resolution.reason === 'string' ? resolution.reason : null
+    }
+  };
 }
 
-function isActionableIssue(issue: AccountingIssueDto): boolean {
-  const severity = issue.severity.toUpperCase();
-  const kind = issue.kind.toUpperCase();
+function isActionableIssue(issue: Pick<AccountingIssue, 'severity' | 'kind'>): boolean {
+  const severity = String(issue.severity ?? '').toUpperCase();
+  const kind = String(issue.kind ?? '').toUpperCase();
   return [
     'ERROR', 'CRITICAL', 'BLOCKING', 'WARNING', 'ACTION', 'REVIEW', 'REQUIRES_ACTION', 'NEEDS_ANSWER'
   ].includes(severity) || [
@@ -184,10 +206,10 @@ export function mapAccountingMonth(
   if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(overview.month)) {
     throw new Error('Accounting response contains an invalid month');
   }
-  const issues = overview.issues.map(mapIssue);
+  const issues = (Array.isArray(overview.issues) ? overview.issues : []).filter(Boolean).map(mapIssue);
   const paymentAmount = overview.paymentSummary.totalOutstanding;
   // Unknown issue values stay neutral until the backend contract defines them.
-  const attentionCount = overview.issues.filter(isActionableIssue).length;
+  const attentionCount = issues.filter(isActionableIssue).length;
   const hasAttention = attentionCount > 0 || overview.nextAction === 'REVIEW';
 
   return {

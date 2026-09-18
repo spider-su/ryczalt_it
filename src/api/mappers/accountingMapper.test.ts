@@ -76,6 +76,13 @@ describe('accounting response mappers', () => {
     expect(mapped.matchStatus).toBe('MATCH');
   });
 
+  it('normalizes incomplete issue payloads to safe unknown display state', () => {
+    const malformed = { id: 'issue-malformed', code: null, severity: null, kind: null, title: null, message: null, resolution: null } as never;
+    const mapped = mapAccountingMonth(overview({ issues: [malformed] }), []);
+    expect(mapped.issues[0]).toMatchObject({ code: 'UNKNOWN_ISSUE', severity: 'UNKNOWN', kind: 'UNKNOWN', resolution: { type: 'NONE', options: [] } });
+    expect(mapped.attentionCount).toBe(0);
+  });
+
   it('counts only contract-defined actionable issue states', () => {
     const warning = {
       id: 'issue-1', code: 'REVIEW', severity: 'WARNING', kind: 'REVIEW', title: 'Review', message: 'Review',

@@ -41,7 +41,7 @@ export function orderedIssues(issues: AccountingIssue[]): AccountingIssue[] {
 }
 
 export function statusForIssue(issue: AccountingIssue): PresentationStatus {
-  switch (issue.kind.toUpperCase()) {
+  switch (String(issue.kind ?? '').toUpperCase()) {
     case 'INFO': return 'informational';
     case 'NEEDS_ANSWER': return 'requires_action';
     case 'SETUP': return 'setup_required';
@@ -75,7 +75,7 @@ export function issuePresentation(issue: AccountingIssue): {
   title: string;
   body: string;
 } {
-  const code = issue.code.trim().toUpperCase();
+  const code = String(issue.code ?? '').trim().toUpperCase();
   const copyKey = knownIssueCopy[code] ?? (code.startsWith('SOURCE_') ? 'review' : undefined);
   const title = copyKey ? `home.issueCodes.${copyKey}Title` : safeIssueText(issue.title, code, 'home.issueCodes.unknownTitle');
   const body = copyKey ? `home.issueCodes.${copyKey}Body` : safeIssueText(issue.message, code, 'home.issueCodes.unknownBody');

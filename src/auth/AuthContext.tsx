@@ -1,5 +1,7 @@
 import * as SecureStore from 'expo-secure-store';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type PropsWithChildren } from 'react';
+import { Platform } from 'react-native';
 import { API_BASE_URL, setAccountingAuthFailureHandler, setAccountingAuthToken, setAccountingProfileId } from '../api/config';
 import { DEFAULT_REQUEST_TIMEOUT_MS } from '../api/client';
 import { authErrorForFailure, authErrorForStatus, type AuthErrorCode } from './authErrors';
@@ -13,6 +15,14 @@ const CURRENT_PROFILE_PATH = '/api/v1/auth/me';
 type AuthContextValue = { token: string | null; profileId: number | null; loading: boolean; error: AuthErrorCode | null; signIn: (email: string, password: string) => Promise<void>; signOut: () => Promise<void> };
 const AuthContext = createContext<AuthContextValue | null>(null);
 
+// SecureStore is native-only. Expo web uses the existing browser-backed
+// AsyncStorage adapter so local development can exercise the same session flow.
+const sessionStore = {
+  get: (key: string) => Platform.OS === 'web' ? AsyncStorage.getItem(key) : SecureStore.getItemAsync(key),
+  set: (key: string, value: string) => Platform.OS === 'web' ? AsyncStorage.setItem(key, value) : SecureStore.setItemAsync(key, value),
+  delete: (key: string) => Platform.OS === 'web' ? AsyncStorage.removeItem(key) : SecureStore.deleteItemAsync(key)
+};
+
 export function AuthProvider({ children }: PropsWithChildren) {
   const [token, setToken] = useState<string | null>(null);
   const [profileId, setProfileId] = useState<number | null>(null);
@@ -20,7 +30,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
   profileIdRef.current = profileId;
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<AuthErrorCode | null>(null);
-  const invalidateSession = useCallback(async () => { const activeProfileId = profileIdRef.current; if (activeProfileId != null) await cancelAllProfileReminders(activeProfileId).catch(() => undefined); await SecureStore.deleteItemAsync(TOKEN_KEY); await SecureStore.deleteItemAsync(PROFILE_ID_KEY); setAccountingAuthToken(null); setAccountingProfileId(null); setToken(null); setProfileId(null); }, []);
+  const invalidateSession = useCallback(async () => { const activeProfileId = profileIdRef.current; if (activeProfileId != null) await cancelAllProfileReminders(activeProfileId).catch(() => undefined); await sessionStore.delete(TOKEN_KEY); await sessionStore.delete(PROFILE_ID_KEY); setAccountingAuthToken(null); setAccountingProfileId(null); setToken(null); setProfileId(null); }, []);
   async function resolveProfile(nextToken: string): Promise<ProfileIdentity> {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), DEFAULT_REQUEST_TIMEOUT_MS);
@@ -34,11 +44,11 @@ export function AuthProvider({ children }: PropsWithChildren) {
     let cancelled = false;
     async function restore() {
       try {
-        const value = await SecureStore.getItemAsync(TOKEN_KEY);
+        const value = await sessionStore.get(TOKEN_KEY);
         if (!value) return;
         const profile = await resolveProfile(value);
         if (cancelled) return;
-        await SecureStore.setItemAsync(PROFILE_ID_KEY, String(profile.id));
+        await sessionStore.set(PROFILE_ID_KEY, String(profile.id));
         setAccountingAuthToken(value); setAccountingProfileId(profile.id); setToken(value); setProfileId(profile.id);
       } catch (reason) {
         if (!cancelled) { await invalidateSession(); setError(authErrorForFailure(reason)); }
@@ -59,7 +69,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
       const nextToken = body.token ?? body.accessToken;
       if (!nextToken) throw new Error('invalid_response');
       const profile = await resolveProfile(nextToken);
-      await SecureStore.setItemAsync(TOKEN_KEY, nextToken); await SecureStore.setItemAsync(PROFILE_ID_KEY, String(profile.id));
+      await sessionStore.set(TOKEN_KEY, nextToken); await sessionStore.set(PROFILE_ID_KEY, String(profile.id));
       setAccountingAuthToken(nextToken); setAccountingProfileId(profile.id); setToken(nextToken); setProfileId(profile.id);
     } catch (reason) { const code = authErrorForFailure(reason); setError(code); throw new Error(code); } finally { clearTimeout(timeout); }
   }
