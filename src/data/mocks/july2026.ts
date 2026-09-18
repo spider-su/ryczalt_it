@@ -64,5 +64,15 @@ export const july2026: AccountingMonth = {
     }
   ],
   attentionCount: 1,
-  issues: []
+  issues: [],
+  status: {
+    lifecycle: 'OPEN', lifecycleLabel: 'Open', nextAction: 'NONE', nextActionLabel: 'None',
+    sources: { evidenceCount: 4, imported: 4, reviewRequired: 0, failed: 0 },
+    ksefStatus: 'NOT_CONFIGURED',
+    documentSummary: { salesCount: 2, purchaseCount: 2, totalCount: 4, reviewRequired: 0, failed: 0 },
+    bankSummary: { transactionCount: 0, unmatchedCount: 0, importStatus: 'NO_IMPORT', state: 'unavailable' },
+    filingSummary: { lifecycle: 'OPEN', lifecycleLabel: 'Open', ready: false, issues: [], jpkStatus: 'MISSING', jpkGeneratedAt: null, upoStatus: 'MISSING', upoReference: null, upoReceivedAt: null },
+    reconciliationSummary: { rowCount: 0, settledCount: 0, mismatchCount: 0, missingEvidenceCount: 0, state: 'healthy' },
+    allowedActions: []
+  }
 };

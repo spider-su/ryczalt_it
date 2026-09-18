@@ -1,5 +1,5 @@
 import { AccountingDocumentDto, AccountingIssueDto, AccountingMonthOverviewDto, Decimal, PaymentHistoryDto } from '../dto/accounting';
-import { AccountingIssue, AccountingLine, AccountingMonth, Money, PaymentHistoryLine } from '../../model/accounting';
+import { AccountingIssue, AccountingLine, AccountingMonth, AccountingStatus, BankSummary, FilingSummary, Money, PaymentHistoryLine, ReconciliationSummary } from '../../model/accounting';
 
 export const POLISH_OBLIGATION_CURRENCY = 'PLN';
 
@@ -49,11 +49,11 @@ export function mapDocument(document: AccountingDocumentDto): AccountingLine {
     .filter(Boolean)
     .join(' · ');
 
-  const status = document.status?.toUpperCase();
+  const importStatus = document.importStatus?.toUpperCase();
   const reviewStatus = document.reviewStatus?.toUpperCase();
-  const state = status === 'FAILED' || reviewStatus === 'REVIEW_REQUIRED'
+  const state = importStatus === 'FAILED' || reviewStatus === 'REVIEW_REQUIRED'
     ? 'attention'
-    : status && ['IMPORTED', 'PARSED', 'PROMOTED', 'STAGED', 'CREATED'].includes(status)
+    : importStatus && ['IMPORTED', 'PARSED', 'PROMOTED', 'STAGED', 'CREATED'].includes(importStatus)
       ? 'ok'
       : 'unknown';
   return {
@@ -66,18 +66,101 @@ export function mapDocument(document: AccountingDocumentDto): AccountingLine {
     categoryLabel: document.categoryLabel,
     reviewStatus: document.reviewStatus,
     source: document.source,
+    importStatus: document.importStatus,
+    sourceType: document.sourceType,
+    sourceTypeLabel: document.sourceTypeLabel,
     direction: mapDirection(document.type),
     counterparty: document.counterparty,
     documentNumber: document.documentNumber,
     issueDate: formatDate(document.issueDate ?? document.saleDate) ?? null,
     currency: document.currency,
     paymentStatus: document.paymentStatus,
-    ksefStatus: document.importStatus
+    ksefStatus: document.sourceType?.toUpperCase() === 'KSEF' ? document.importStatus : null,
+    documentKind: document.documentKind,
+    correctsDocumentId: document.correctsDocumentId == null ? null : String(document.correctsDocumentId),
+    correctsDocumentReference: document.correctsDocumentReference
   };
 }
 
 export function mapDocuments(documents: AccountingDocumentDto[]): AccountingLine[] {
   return documents.map(mapDocument);
+}
+
+export function mapReconciliationSummary(summary: AccountingMonthOverviewDto['reconciliationSummary']): ReconciliationSummary {
+  const rowCount = summary?.rowCount ?? null;
+  const settledCount = summary?.settledCount ?? null;
+  const mismatchCount = summary?.mismatchCount ?? null;
+  const missingEvidenceCount = summary?.missingEvidenceCount ?? null;
+  const state = [rowCount, settledCount, mismatchCount, missingEvidenceCount].some((value) => value == null)
+    ? 'unknown'
+    : missingEvidenceCount > 0
+      ? 'missing_evidence'
+      : mismatchCount > 0
+        ? 'mismatch'
+        : settledCount === rowCount
+          ? 'healthy'
+          : 'unknown';
+  return { rowCount, settledCount, mismatchCount, missingEvidenceCount, state };
+}
+
+export function mapBankSummary(summary: AccountingMonthOverviewDto['bankSummary']): BankSummary {
+  const transactionCount = summary?.transactionCount ?? null;
+  const unmatchedCount = summary?.unmatchedCount ?? null;
+  const importStatus = summary?.importStatus ?? null;
+  const normalized = importStatus?.toUpperCase();
+  const state = normalized === 'FAILED' || normalized === 'ERROR'
+    ? 'failed'
+    : normalized === 'PENDING' || normalized === 'IMPORTING' || normalized === 'SYNCING'
+      ? 'pending'
+      : normalized === 'NO_IMPORT'
+        ? 'unavailable'
+        : normalized === 'IMPORTED' && unmatchedCount != null
+          ? unmatchedCount > 0 ? 'unmatched' : 'matched'
+          : 'unknown';
+  return { transactionCount, unmatchedCount, importStatus, state };
+}
+
+function mapFilingSummary(summary: AccountingMonthOverviewDto['filingSummary']): FilingSummary {
+  return {
+    lifecycle: summary?.lifecycle ?? null,
+    lifecycleLabel: summary?.lifecycleLabel ?? null,
+    ready: summary?.ready ?? null,
+    issues: [...(summary?.issues ?? [])],
+    jpkStatus: summary?.jpkStatus ?? null,
+    jpkGeneratedAt: summary?.jpkGeneratedAt ?? null,
+    upoStatus: summary?.upoStatus ?? null,
+    upoReference: summary?.upoReference ?? null,
+    upoReceivedAt: summary?.upoReceivedAt ?? null
+  };
+}
+
+function mapStatus(overview: AccountingMonthOverviewDto): AccountingStatus {
+  const sources = overview.sources;
+  const documents = overview.documentSummary;
+  return {
+    lifecycle: overview.lifecycle ?? null,
+    lifecycleLabel: overview.lifecycleLabel ?? null,
+    nextAction: overview.nextAction ?? null,
+    nextActionLabel: overview.nextActionLabel ?? null,
+    sources: {
+      evidenceCount: sources?.evidenceCount ?? null,
+      imported: sources?.imported ?? null,
+      reviewRequired: sources?.reviewRequired ?? null,
+      failed: sources?.failed ?? null
+    },
+    ksefStatus: overview.ksefStatus ?? null,
+    documentSummary: {
+      salesCount: documents?.salesCount ?? null,
+      purchaseCount: documents?.purchaseCount ?? null,
+      totalCount: documents?.totalCount ?? null,
+      reviewRequired: documents?.reviewRequired ?? null,
+      failed: documents?.failed ?? null
+    },
+    bankSummary: mapBankSummary(overview.bankSummary),
+    filingSummary: mapFilingSummary(overview.filingSummary),
+    reconciliationSummary: mapReconciliationSummary(overview.reconciliationSummary),
+    allowedActions: [...(overview.allowedActions ?? [])]
+  };
 }
 
 export function mapPaymentHistory(payments: PaymentHistoryDto[]): PaymentHistoryLine[] {
@@ -135,6 +218,7 @@ export function mapAccountingMonth(
       period: overview.month
     })),
     attentionCount,
-    issues
+    issues,
+    status: mapStatus(overview)
   };
 }

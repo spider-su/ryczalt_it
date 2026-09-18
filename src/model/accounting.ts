@@ -22,6 +22,53 @@ export type AccountingLine = {
   currency?: string | null;
   paymentStatus?: string | null;
   ksefStatus?: string | null;
+  importStatus?: string | null;
+  sourceType?: string | null;
+  sourceTypeLabel?: string | null;
+  documentKind?: string | null;
+  correctsDocumentId?: string | null;
+  correctsDocumentReference?: string | null;
+};
+
+export type ReconciliationSummary = {
+  rowCount: number | null;
+  settledCount: number | null;
+  mismatchCount: number | null;
+  missingEvidenceCount: number | null;
+  state: 'healthy' | 'mismatch' | 'missing_evidence' | 'unknown';
+};
+
+export type BankSummary = {
+  transactionCount: number | null;
+  unmatchedCount: number | null;
+  importStatus: string | null;
+  state: 'matched' | 'unmatched' | 'pending' | 'failed' | 'unavailable' | 'unknown';
+};
+
+export type FilingSummary = {
+  lifecycle: string | null;
+  lifecycleLabel: string | null;
+  ready: boolean | null;
+  issues: string[];
+  jpkStatus: string | null;
+  jpkGeneratedAt: string | null;
+  upoStatus: string | null;
+  upoReference: string | null;
+  upoReceivedAt: string | null;
+};
+
+export type AccountingStatus = {
+  lifecycle: string | null;
+  lifecycleLabel: string | null;
+  nextAction: string | null;
+  nextActionLabel: string | null;
+  sources: { evidenceCount: number | null; imported: number | null; reviewRequired: number | null; failed: number | null };
+  ksefStatus: string | null;
+  documentSummary: { salesCount: number | null; purchaseCount: number | null; totalCount: number | null; reviewRequired: number | null; failed: number | null };
+  bankSummary: BankSummary;
+  filingSummary: FilingSummary;
+  reconciliationSummary: ReconciliationSummary;
+  allowedActions: string[];
 };
 
 export type PaymentLine = {
@@ -75,4 +122,5 @@ export type AccountingMonth = {
   payments: PaymentLine[];
   attentionCount: number;
   issues: AccountingIssue[];
+  status: AccountingStatus;
 };

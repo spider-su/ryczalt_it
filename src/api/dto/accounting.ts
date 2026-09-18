@@ -96,6 +96,9 @@ export type AccountingDocumentDto = {
   importStatus: string | null;
   reviewStatus: string | null;
   paymentStatus: string | null;
+  documentKind?: string | null;
+  correctsDocumentId?: number | null;
+  correctsDocumentReference?: string | null;
 };
 
 export type PaymentHistoryDto = {

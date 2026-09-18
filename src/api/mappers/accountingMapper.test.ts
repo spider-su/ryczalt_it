@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { mapAccountingMonth, mapDocument, mapPaymentHistory } from './accountingMapper';
+import { mapAccountingMonth, mapBankSummary, mapDocument, mapPaymentHistory, mapReconciliationSummary } from './accountingMapper';
 import type { AccountingDocumentDto, AccountingMonthOverviewDto, PaymentHistoryDto } from '../dto/accounting';
 
 const overview = (overrides: Partial<AccountingMonthOverviewDto> = {}): AccountingMonthOverviewDto => ({
@@ -29,12 +29,35 @@ describe('accounting response mappers', () => {
   });
 
   it('keeps unknown document and payment statuses unknown/raw', () => {
-    expect(mapDocument(document({ status: 'IMPORTED' })).state).toBe('ok');
-    expect(mapDocument(document({ status: 'FAILED' })).state).toBe('attention');
+    expect(mapDocument(document({ status: 'IMPORTED' })).state).toBe('unknown');
+    expect(mapDocument(document({ importStatus: 'IMPORTED' })).state).toBe('ok');
+    expect(mapDocument(document({ importStatus: 'FAILED' })).state).toBe('attention');
     expect(mapDocument(document({ reviewStatus: 'REVIEW_REQUIRED' })).state).toBe('attention');
     expect(mapDocument(document({ status: 'NEW_BACKEND_STATE' })).state).toBe('unknown');
     const payment: PaymentHistoryDto = { type: 'VAT', period: '2026-09', amount: null, paidAmount: null, outstandingAmount: null, dueDate: null, paymentDate: null, status: 'NEW_BACKEND_STATE' };
     expect(mapPaymentHistory([payment])[0]).toMatchObject({ status: 'NEW_BACKEND_STATE', amount: { amount: null, currency: 'PLN' }, dueDate: null });
+  });
+
+  it('keeps document processing dimensions separate and preserves corrections', () => {
+    const mapped = mapDocument(document({ sourceType: 'KSEF', sourceTypeLabel: 'KSeF', importStatus: 'IMPORTED', reviewStatus: 'REVIEW_REQUIRED', paymentStatus: 'PAID', documentKind: 'CORRECTION', correctsDocumentId: 7, correctsDocumentReference: 'FV/7', status: 'LEGACY_UNKNOWN' }));
+    expect(mapped.state).toBe('attention');
+    expect(mapped.ksefStatus).toBe('IMPORTED');
+    expect(mapped.importStatus).toBe('IMPORTED');
+    expect(mapped.paymentStatus).toBe('PAID');
+    expect(mapped.documentKind).toBe('CORRECTION');
+    expect(mapped.correctsDocumentId).toBe('7');
+    expect(mapped.correctsDocumentReference).toBe('FV/7');
+  });
+
+  it('maps reconciliation and bank states without treating zero as disconnected or healthy by default', () => {
+    expect(mapReconciliationSummary({ rowCount: 4, settledCount: 4, mismatchCount: 0, missingEvidenceCount: 0 }).state).toBe('healthy');
+    expect(mapReconciliationSummary({ rowCount: 4, settledCount: 2, mismatchCount: 2, missingEvidenceCount: 0 }).state).toBe('mismatch');
+    expect(mapReconciliationSummary({ rowCount: 4, settledCount: 3, mismatchCount: 0, missingEvidenceCount: 1 }).state).toBe('missing_evidence');
+    expect(mapReconciliationSummary({ rowCount: null as never, settledCount: 0, mismatchCount: 0, missingEvidenceCount: 0 }).state).toBe('unknown');
+    expect(mapBankSummary({ transactionCount: 0, unmatchedCount: 0, importStatus: 'NO_IMPORT' }).state).toBe('unavailable');
+    expect(mapBankSummary({ transactionCount: 3, unmatchedCount: 0, importStatus: 'IMPORTED' }).state).toBe('matched');
+    expect(mapBankSummary({ transactionCount: 3, unmatchedCount: 1, importStatus: 'IMPORTED' }).state).toBe('unmatched');
+    expect(mapBankSummary({ transactionCount: 3, unmatchedCount: 0, importStatus: 'NEW_BACKEND_STATE' }).state).toBe('unknown');
   });
 
   it('keeps empty documents distinct and rejects invalid accounting months', () => {
