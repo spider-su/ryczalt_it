@@ -28,15 +28,31 @@ jobs:
         run: |
           set -euo pipefail
 
-          echo "::add-mask::$TEST_USER"
-          echo "::add-mask::$TEST_PASSWORD"
+          ARTIFACT_DIR="$RUNNER_TEMP/investory-live-api"
+          mkdir -p "$ARTIFACT_DIR"
+          PREFLIGHT_FILE="$ARTIFACT_DIR/credential-preflight.txt"
+          MISSING_CREDENTIAL=0
 
           if [[ -z "$TEST_USER" ]]; then
             echo "::error::Missing repository secret INVESTORY_TEST_USER"
-            exit 1
+            printf '%s\n' 'FAIL: INVESTORY_TEST_USER missing' > "$PREFLIGHT_FILE"
+            MISSING_CREDENTIAL=1
+          else
+            echo "::add-mask::$TEST_USER"
           fi
           if [[ -z "$TEST_PASSWORD" ]]; then
             echo "::error::Missing repository secret INVESTORY_TEST_PASSWORD"
+            if [[ "$MISSING_CREDENTIAL" -eq 1 ]]; then
+              printf '%s\n' 'FAIL: INVESTORY_TEST_PASSWORD missing' >> "$PREFLIGHT_FILE"
+            else
+              printf '%s\n' 'FAIL: INVESTORY_TEST_PASSWORD missing' > "$PREFLIGHT_FILE"
+            fi
+            MISSING_CREDENTIAL=1
+          else
+            echo "::add-mask::$TEST_PASSWORD"
+          fi
+
+          if [[ "$MISSING_CREDENTIAL" -ne 0 ]]; then
             exit 1
           fi
 
