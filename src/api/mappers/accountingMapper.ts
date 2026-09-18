@@ -20,6 +20,16 @@ function mapIssue(issue: AccountingIssueDto): AccountingIssue {
   return { ...issue, resolution: { ...issue.resolution, options: [...issue.resolution.options] } };
 }
 
+function isActionableIssue(issue: AccountingIssueDto): boolean {
+  const severity = issue.severity.toUpperCase();
+  const kind = issue.kind.toUpperCase();
+  return [
+    'ERROR', 'CRITICAL', 'BLOCKING', 'WARNING', 'ACTION', 'REVIEW', 'REQUIRES_ACTION', 'NEEDS_ANSWER'
+  ].includes(severity) || [
+    'BLOCKED', 'WARNING', 'ACTION', 'REVIEW', 'REQUIRES_ACTION', 'NEEDS_ANSWER', 'SETUP'
+  ].includes(kind);
+}
+
 function formatDate(date: string | null): string | undefined { return date ? date.slice(0, 10) : undefined; }
 
 export function mapDirection(type: string | null | undefined): AccountingLine['direction'] {
@@ -93,7 +103,8 @@ export function mapAccountingMonth(
   }
   const issues = overview.issues.map(mapIssue);
   const paymentAmount = overview.paymentSummary.totalOutstanding;
-  const attentionCount = issues.filter((issue) => issue.kind.toUpperCase() !== 'INFO').length;
+  // Unknown issue values stay neutral until the backend contract defines them.
+  const attentionCount = overview.issues.filter(isActionableIssue).length;
   const hasAttention = attentionCount > 0 || overview.nextAction === 'REVIEW';
 
   return {

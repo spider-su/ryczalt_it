@@ -49,5 +49,18 @@ describe('accounting response mappers', () => {
     };
     const mapped = mapAccountingMonth(overview({ issues: [unknownIssue] }), []);
     expect(mapped.issues[0]?.kind).toBe('NEW_KIND');
+    expect(mapped.attentionCount).toBe(0);
+    expect(mapped.matchStatus).toBe('MATCH');
+  });
+
+  it('counts only contract-defined actionable issue states', () => {
+    const warning = {
+      id: 'issue-1', code: 'REVIEW', severity: 'WARNING', kind: 'REVIEW', title: 'Review', message: 'Review',
+      sourceReference: null, resolution: { type: 'NONE', command: null, options: [], settingsPath: null, actionLabel: null, reason: null }
+    };
+    const informational = { ...warning, id: 'issue-2', severity: 'INFO', kind: 'INFO' };
+    const mapped = mapAccountingMonth(overview({ issues: [warning, informational] }), []);
+    expect(mapped.attentionCount).toBe(1);
+    expect(mapped.matchStatus).toBe('WARNING');
   });
 });
