@@ -10,8 +10,9 @@ const issue = (overrides: Partial<AccountingIssue> = {}): AccountingIssue => ({
 });
 
 describe('issue resolution routing', () => {
-  it('routes only an exact known document source reference', () => {
-    expect(resolveIssueAction(issue({ sourceReference: 'source-1' }), [document])).toEqual({ kind: 'SUPPORTED_NAVIGATION', destination: 'document', document });
+  it('routes only an exact known source reference for a SOURCE issue', () => {
+    expect(resolveIssueAction(issue({ code: 'SOURCE_REVIEW_REQUIRED', sourceReference: 'source-1' }), [document])).toEqual({ kind: 'SUPPORTED_NAVIGATION', destination: 'document', document });
+    expect(resolveIssueAction(issue({ code: 'RECONCILIATION_REVIEW', sourceReference: 'source-1' }), [document]).kind).toBe('DISPLAY_ONLY');
     expect(resolveIssueAction(issue({ sourceReference: 'unknown-source' }), [document]).kind).toBe('DISPLAY_ONLY');
     expect(resolveIssueAction(issue({ sourceReference: null }), [document]).kind).toBe('DISPLAY_ONLY');
   });

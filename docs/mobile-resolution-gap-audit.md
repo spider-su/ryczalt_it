@@ -10,14 +10,17 @@ Audited against the current mobile DTO/domain contract and the deployed-backend 
 | `MATCH` | Backend match/candidate choice | No command executor or persistence UI | `BACKEND_COMMAND_NOT_EXPOSED` | No local reconciliation or matching logic added. |
 | unknown | Contract value not known to mobile | Issue details only | `UNKNOWN` | No command or navigation is guessed. |
 
-## Supported navigation
+## Source-reference contract classification
 
-An issue can open existing Document Details when its non-empty `sourceReference` exactly matches an existing document's `source` value in the loaded accounting month. This is the only demonstrated source relationship used by mobile.
+The general relationship `Issue.sourceReference -> AccountingLine.source` is classified as `AMBIGUOUS_CONTRACT`. Backend evidence shows that `SOURCE_*` issues are created from `AccountingSourceEvidenceService.SourceOutcome.reference`, which is the source evidence `external_reference`; canonical `DocumentView.sourceReference` is populated from that same source evidence reference. Other issue kinds are not safe to route this way: examples include invoice references for calculation issues, bank transaction references for reconciliation issues, and null account-level references.
+
+Therefore mobile supports only this fail-closed subset: for a `SOURCE_*` issue, a non-empty reference must exactly equal one loaded document's source. No fuzzy matching, invoice-reference matching, or heuristic fallback is used. A matching reference on any other issue code remains display-only.
 
 ## Known gaps
 
 - `SETUP` currently targets a web accounting workspace; mobile has no equivalent accounting settings destination.
 - `CHOICE` and `MATCH` require backend command execution and authoritative refresh support that mobile does not currently expose.
+- The backend does not currently declare a universal issue-reference namespace or an explicit issue-to-document identifier field. Non-`SOURCE_*` issue references remain a contract gap.
 - No mobile action executes an accounting-affecting backend command in this stage.
 
 ## Production V1 blockers

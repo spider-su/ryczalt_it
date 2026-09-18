@@ -8,7 +8,10 @@ export type IssueAction =
 
 export function resolveIssueAction(issue: AccountingIssue, documents: AccountingLine[] = []): IssueAction {
   const sourceReference = issue.sourceReference?.trim();
-  if (sourceReference) {
+  // Backend evidence proves the namespace only for SOURCE_* issues: their reference
+  // comes from accounting_source_evidence.external_reference, which documents expose
+  // as sourceReference. Other issue references are invoice/bank references or absent.
+  if (sourceReference && issue.code.trim().toUpperCase().startsWith('SOURCE_')) {
     const document = documents.find((item) => item.source?.trim() === sourceReference);
     if (document) return { kind: 'SUPPORTED_NAVIGATION', destination: 'document', document };
   }
