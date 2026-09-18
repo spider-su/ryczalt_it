@@ -24,16 +24,18 @@ type HttpClientOptions = {
   baseUrl: string;
   timeoutMs?: number;
   fetchImpl?: typeof fetch;
-  token?: string | null;
+  token?: string | null | (() => string | null);
+  onUnauthorized?: () => void;
 };
 
 export class HttpClient {
   private readonly baseUrl: string;
   private readonly timeoutMs: number;
   private readonly fetchImpl: typeof fetch;
-  private readonly token: string | null;
+  private readonly token: string | null | (() => string | null);
+  private readonly onUnauthorized?: () => void;
 
-  constructor({ baseUrl, timeoutMs = 10_000, fetchImpl = fetch, token }: HttpClientOptions) {
+  constructor({ baseUrl, timeoutMs = 10_000, fetchImpl = fetch, token, onUnauthorized }: HttpClientOptions) {
     if (!baseUrl || !/^https?:\/\//.test(baseUrl)) {
       throw new ConfigurationError('Investory API URL is not configured correctly');
     }
@@ -42,6 +44,7 @@ export class HttpClient {
     // Keep the browser Window receiver required by native window.fetch.
     this.fetchImpl = fetchImpl.bind(globalThis);
     this.token = token ?? null;
+    this.onUnauthorized = onUnauthorized;
   }
 
   async get<T>(path: string, init: RequestInit = {}): Promise<T> {
@@ -74,6 +77,7 @@ export class HttpClient {
 
     try {
       const url = `${this.baseUrl}${path}`;
+      const currentToken = typeof this.token === 'function' ? this.token() : this.token;
       const response = await this.fetchImpl(url, {
         ...init,
         method: init.method ?? 'GET',
@@ -81,7 +85,7 @@ export class HttpClient {
         credentials: 'include',
         headers: {
           Accept: 'application/json',
-          ...(this.token ? { Authorization: `Bearer ${this.token}` } : {}),
+          ...(currentToken ? { Authorization: `Bearer ${currentToken}` } : {}),
           ...init.headers,
         },
         signal: controller.signal
@@ -89,6 +93,7 @@ export class HttpClient {
 
       if (!response.ok) {
         if (response.status === 401 || response.status === 403) {
+          if (response.status === 401) this.onUnauthorized?.();
           throw new ApiError(
             response.status === 401
               ? 'Investory authentication is required'

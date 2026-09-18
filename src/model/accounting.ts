@@ -1,5 +1,6 @@
 export type Money = {
-  amount: number;
+  /** Decimal string from the API. Mobile does not perform financial arithmetic. */
+  amount: string | null;
   currency?: string;
 };
 
@@ -34,6 +35,8 @@ export type PaymentLine = {
   period?: string;
 };
 
+export type PaymentHistoryLine = PaymentLine & { paymentDate?: string | null };
+
 export type AccountingIssue = {
   id: string;
   code: string;
@@ -54,7 +57,6 @@ export type AccountingIssue = {
 
 export type AccountingMonth = {
   id: string;
-  label: string;
   dueLabel: string;
   lifecycle?: string;
   lifecycleLabel?: string;

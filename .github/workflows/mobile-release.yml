@@ -16,7 +16,6 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
-    environment: mobile-${{ inputs.profile }}
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-node@v6
@@ -27,7 +26,15 @@ jobs:
       - run: npm ci
       - run: npm run ci
       - run: npx expo-doctor
-      - uses: expo/expo-github-action@v8
+      - name: Verify EAS credentials
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+        run: |
+          if [ -z "$EXPO_TOKEN" ]; then
+            echo "::error title=CI configuration missing::EXPO_TOKEN is required for the manual EAS release. Add it as a repository secret."
+            exit 1
+          fi
+      - uses: expo/expo-github-action@v9
         with:
           eas-version: latest
           token: ${{ secrets.EXPO_TOKEN }}

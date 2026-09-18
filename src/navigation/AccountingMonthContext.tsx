@@ -7,12 +7,15 @@ type AccountingMonthContextValue = {
   previousMonth: () => void;
   nextMonth: () => void;
   canGoNext: boolean;
+  refreshVersion: number;
+  refreshAccounting: () => void;
 };
 
 const AccountingMonthContext = createContext<AccountingMonthContextValue | null>(null);
 
 export function AccountingMonthProvider({ children }: PropsWithChildren) {
   const [month, setMonth] = useState(DEFAULT_ACCOUNTING_MONTH);
+  const [refreshVersion, setRefreshVersion] = useState(0);
   const latest = new Date();
   const latestId = latest.toISOString().slice(0, 7);
   const shift = (value: string, offset: number) => {
@@ -25,7 +28,9 @@ export function AccountingMonthProvider({ children }: PropsWithChildren) {
     setMonth,
     previousMonth: () => setMonth((value) => shift(value, -1)),
     nextMonth: () => setMonth((value) => shift(value, 1)),
-    canGoNext: month < latestId
+    canGoNext: month < latestId,
+    refreshVersion,
+    refreshAccounting: () => setRefreshVersion((value) => value + 1)
   }}>{children}</AccountingMonthContext.Provider>;
 }
 

@@ -1,9 +1,19 @@
-import { AccountingDocumentDto, AccountingIssueDto, AccountingMonthOverviewDto } from '../dto/accounting';
-import { AccountingIssue, AccountingLine, AccountingMonth, Money } from '../../model/accounting';
+import { AccountingDocumentDto, AccountingIssueDto, AccountingMonthOverviewDto, Decimal, PaymentHistoryDto } from '../dto/accounting';
+import { AccountingIssue, AccountingLine, AccountingMonth, Money, PaymentHistoryLine } from '../../model/accounting';
 
-function requiredMoney(amount: number, currency?: string | null): Money {
-  if (!Number.isFinite(amount)) throw new Error('Accounting response contains an invalid amount');
-  return { amount, ...(currency ? { currency } : {}) };
+export const POLISH_OBLIGATION_CURRENCY = 'PLN';
+
+function decimalString(amount: Decimal): string {
+  const value = typeof amount === 'number' ? String(amount) : amount.trim();
+  if (!value || !/^-?(?:0|[1-9]\d*)(?:\.\d+)?$/.test(value)) {
+    throw new Error('Accounting response contains an invalid decimal amount');
+  }
+  return value;
+}
+
+function requiredMoney(amount: Decimal | null | undefined, currency?: string | null): Money {
+  if (amount == null) return { amount: null, ...(currency ? { currency } : {}) };
+  return { amount: decimalString(amount), ...(currency ? { currency } : {}) };
 }
 
 function mapIssue(issue: AccountingIssueDto): AccountingIssue {
@@ -12,14 +22,14 @@ function mapIssue(issue: AccountingIssueDto): AccountingIssue {
 
 function formatDate(date: string | null): string | undefined { return date ? date.slice(0, 10) : undefined; }
 
-export function mapDirection(type: string): AccountingLine['direction'] {
-  const normalized = type.toUpperCase();
+export function mapDirection(type: string | null | undefined): AccountingLine['direction'] {
+  const normalized = type?.toUpperCase() ?? '';
   if (['SALE', 'SALES', 'INCOME'].includes(normalized)) return 'SALE';
   if (['PURCHASE', 'PURCHASES', 'COST', 'COSTS'].includes(normalized)) return 'PURCHASE';
   return 'UNKNOWN';
 }
 
-function mapDocument(document: AccountingDocumentDto): AccountingLine {
+export function mapDocument(document: AccountingDocumentDto): AccountingLine {
   const subtitle = [
     document.documentNumber,
     formatDate(document.issueDate ?? document.saleDate),
@@ -31,7 +41,7 @@ function mapDocument(document: AccountingDocumentDto): AccountingLine {
 
   return {
     id: String(document.id),
-    title: document.counterparty ?? document.documentNumber ?? 'Document',
+    title: document.counterparty ?? document.documentNumber ?? '',
     ...(subtitle ? { subtitle } : {}),
     amount: requiredMoney(document.amount, document.currency),
     state:
@@ -53,6 +63,24 @@ function mapDocument(document: AccountingDocumentDto): AccountingLine {
   };
 }
 
+export function mapDocuments(documents: AccountingDocumentDto[]): AccountingLine[] {
+  return documents.map(mapDocument);
+}
+
+export function mapPaymentHistory(payments: PaymentHistoryDto[]): PaymentHistoryLine[] {
+  return payments.map((payment, index) => ({
+    id: `${payment.type}-${payment.period}-${index}`,
+    title: payment.type,
+    dueDate: payment.dueDate ?? '',
+    amount: requiredMoney(payment.amount, POLISH_OBLIGATION_CURRENCY),
+    paidAmount: requiredMoney(payment.paidAmount, POLISH_OBLIGATION_CURRENCY),
+    outstandingAmount: requiredMoney(payment.outstandingAmount, POLISH_OBLIGATION_CURRENCY),
+    status: payment.status ?? 'UNKNOWN',
+    period: payment.period,
+    paymentDate: payment.paymentDate
+  }));
+}
+
 export function mapAccountingMonth(
   overview: AccountingMonthOverviewDto,
   documents: AccountingDocumentDto[]
@@ -67,35 +95,28 @@ export function mapAccountingMonth(
 
   return {
     id: overview.month,
-    label: new Intl.DateTimeFormat('en-US', { month: 'long', year: 'numeric' }).format(
-      new Date(`${overview.month}-01T00:00:00`)
-    ),
     dueLabel: '',
     lifecycle: overview.lifecycle,
     lifecycleLabel: overview.lifecycleLabel,
     nextAction: overview.nextAction,
     nextActionLabel: overview.nextActionLabel,
-    totalToPay: requiredMoney(paymentAmount, 'PLN'),
+    totalToPay: requiredMoney(paymentAmount, POLISH_OBLIGATION_CURRENCY),
     matchStatus: hasAttention ? 'WARNING' : 'MATCH',
     taxes: {
-      ryczalt: requiredMoney(overview.summary.ryczalt, 'PLN'),
-      vat: requiredMoney(overview.summary.vat, 'PLN'),
-      zus: requiredMoney(overview.summary.zus, 'PLN')
+      ryczalt: requiredMoney(overview.summary.ryczalt, POLISH_OBLIGATION_CURRENCY),
+      vat: requiredMoney(overview.summary.vat, POLISH_OBLIGATION_CURRENCY),
+      zus: requiredMoney(overview.summary.zus, POLISH_OBLIGATION_CURRENCY)
     },
-    summary: { revenue: requiredMoney(overview.summary.revenue, 'PLN') },
-    income: documents
-      .filter((document) => mapDirection(document.type) === 'SALE')
-      .map(mapDocument),
-    costs: documents
-      .filter((document) => mapDirection(document.type) === 'PURCHASE')
-      .map(mapDocument),
+    summary: { revenue: requiredMoney(overview.summary.revenue, POLISH_OBLIGATION_CURRENCY) },
+    income: mapDocuments(documents.filter((document) => mapDirection(document.type) === 'SALE')),
+    costs: mapDocuments(documents.filter((document) => mapDirection(document.type) === 'PURCHASE')),
     payments: overview.paymentSummary.payments.map((payment) => ({
       id: payment.obligationType,
       title: payment.obligationType,
       dueDate: payment.dueDate,
-      amount: requiredMoney(payment.amount, 'PLN'),
-      paidAmount: requiredMoney(payment.paidAmount, 'PLN'),
-      outstandingAmount: requiredMoney(payment.outstandingAmount, 'PLN'),
+      amount: requiredMoney(payment.amount, POLISH_OBLIGATION_CURRENCY),
+      paidAmount: requiredMoney(payment.paidAmount, POLISH_OBLIGATION_CURRENCY),
+      outstandingAmount: requiredMoney(payment.outstandingAmount, POLISH_OBLIGATION_CURRENCY),
       status: payment.status,
       period: overview.month
     })),

@@ -1,3 +1,6 @@
+/** Decimal values are strings on the API; number remains accepted during rollout for old fixtures. */
+export type Decimal = string | number;
+
 export type AccountingMonthOverviewDto = {
   month: string;
   lifecycle: string;
@@ -5,13 +8,13 @@ export type AccountingMonthOverviewDto = {
   nextAction: string;
   nextActionLabel: string;
   summary: {
-    revenue: number;
-    vat: number;
-    ryczalt: number;
-    zus: number;
+    revenue: Decimal;
+    vat: Decimal;
+    ryczalt: Decimal;
+    zus: Decimal;
     documents: number;
     bankTransactions: number;
-    totalObligations: number;
+    totalObligations: Decimal;
   };
   issues: AccountingIssueDto[];
   sources: { evidenceCount: number; imported: number; reviewRequired: number; failed: number };
@@ -27,12 +30,12 @@ export type AccountingMonthOverviewDto = {
   paymentSummary: {
     expectedCount: number;
     outstandingCount: number;
-    totalOutstanding: number;
+    totalOutstanding: Decimal;
     payments: {
       obligationType: string;
-      amount: number;
-      paidAmount: number;
-      outstandingAmount: number;
+      amount: Decimal;
+      paidAmount: Decimal;
+      outstandingAmount: Decimal;
       dueDate: string;
       status: string;
     }[];
@@ -84,7 +87,7 @@ export type AccountingDocumentDto = {
   saleDate: string | null;
   category: string | null;
   source: string | null;
-  amount: number;
+  amount: Decimal;
   currency: string | null;
   status: string | null;
   sourceType: string | null;
@@ -93,6 +96,17 @@ export type AccountingDocumentDto = {
   importStatus: string | null;
   reviewStatus: string | null;
   paymentStatus: string | null;
+};
+
+export type PaymentHistoryDto = {
+  type: string;
+  period: string;
+  amount: Decimal | null;
+  paidAmount: Decimal | null;
+  outstandingAmount: Decimal | null;
+  dueDate: string | null;
+  paymentDate: string | null;
+  status: string | null;
 };
 
 export type CounterpartyDto = {
@@ -117,11 +131,37 @@ export type CandidateDto = {
   buyerNip: string | null;
   category: string | null;
   currency: string | null;
-  netAmount: number | null;
-  vatAmount: number | null;
-  grossAmount: number | null;
+  netAmount: Decimal | null;
+  vatAmount: Decimal | null;
+  grossAmount: Decimal | null;
   note: string | null;
   status: string;
+  vatTreatment?: string | null;
+  vatRate?: Decimal | null;
+  vatTreatmentOptions?: { value: string; label: string; recommended: boolean }[];
+  requiredInputs?: RequiredInputDto[];
+  duplicate?: boolean;
+  existingDocumentId?: number | null;
+};
+
+export type RequiredInputDto = {
+  field: string;
+  inputType: string;
+  label: string;
+  required: boolean;
+  options: { value: string; label: string; recommended: boolean }[];
+  dependsOn: string | null;
+  dependsOnValues: string[];
+};
+
+export type DocumentMutationDto = {
+  documentId: number | null;
+  reference: string | null;
+  status: string;
+  ksefStatus: string | null;
+  duplicate: boolean;
+  existingDocumentId: number | null;
+  message: string | null;
 };
 
 export type ReviewedDocumentDto = {
@@ -136,13 +176,13 @@ export type ReviewedDocumentDto = {
   counterpartyCountry: string | null;
   category: string | null;
   currency: string | null;
-  netAmount: number | null;
-  vatAmount: number | null;
-  grossAmount: number | null;
+  netAmount: Decimal | null;
+  vatAmount: Decimal | null;
+  grossAmount: Decimal | null;
   vatDeductionRatio: number | null;
   vatTreatment: string | null;
   note: string | null;
-  taxPeriod: string;
-  vatRate: number | null;
+  taxPeriod: string | null;
+  vatRate: Decimal | null;
   correctsDocumentReference?: string | null;
 };

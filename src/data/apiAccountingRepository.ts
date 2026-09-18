@@ -1,7 +1,7 @@
 import { AccountingApi } from '../api/accountingApi';
-import { mapAccountingMonth } from '../api/mappers/accountingMapper';
+import { mapAccountingMonth, mapDocuments, mapPaymentHistory } from '../api/mappers/accountingMapper';
 import { AccountingRepository } from './accountingRepository';
-import { AccountingLine, AccountingMonth } from '../model/accounting';
+import { AccountingLine, AccountingMonth, PaymentHistoryLine } from '../model/accounting';
 
 export class ApiAccountingRepository implements AccountingRepository {
   constructor(private readonly api: AccountingApi, private readonly profileId: number) {}
@@ -20,8 +20,12 @@ export class ApiAccountingRepository implements AccountingRepository {
 
   async getDocumentsForRange(month: string, months: number): Promise<AccountingLine[]> {
     const ids = Array.from({ length: Math.max(1, months) }, (_, index) => shiftMonth(month, -index));
-    const values = await Promise.all(ids.map((id) => this.getMonth(id)));
-    return values.flatMap((value) => [...value.income, ...value.costs]);
+    const values = await Promise.all(ids.map((id) => this.api.getDocuments(this.profileId, id)));
+    return values.flatMap(mapDocuments);
+  }
+
+  async getPaymentHistory(month: string, type?: string): Promise<PaymentHistoryLine[]> {
+    return mapPaymentHistory(await this.api.getPaymentHistory(this.profileId, month, month, type));
   }
 }
 

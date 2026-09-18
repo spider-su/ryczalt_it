@@ -18,6 +18,12 @@
     "plugins": [
       "expo-font",
       "expo-secure-store"
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "ac59413e-32fb-4344-9aa3-e578acbbdaf6"
+      }
+    },
+    "owner": "spider-su"
   }
 }
