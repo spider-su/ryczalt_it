@@ -13,6 +13,14 @@ export type AccountingLine = {
   categoryLabel?: string | null;
   reviewStatus?: string | null;
   source?: string | null;
+  direction?: 'SALE' | 'PURCHASE';
+  counterparty?: string | null;
+  documentNumber?: string | null;
+  issueDate?: string | null;
+  nip?: string | null;
+  currency?: string | null;
+  paymentStatus?: string | null;
+  ksefStatus?: string | null;
 };
 
 export type PaymentLine = {
@@ -23,6 +31,7 @@ export type PaymentLine = {
   paidAmount: Money;
   outstandingAmount: Money;
   status: string;
+  period?: string;
 };
 
 export type AccountingIssue = {
@@ -58,6 +67,7 @@ export type AccountingMonth = {
     vat: Money;
     zus: Money;
   };
+  summary: { revenue: Money; costs?: Money; income?: Money };
   income: AccountingLine[];
   costs: AccountingLine[];
   payments: PaymentLine[];

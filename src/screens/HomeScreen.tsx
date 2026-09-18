@@ -1,306 +1,34 @@
 import { useEffect, useMemo, useState } from 'react';
-import {
-  ActivityIndicator,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View
-} from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-
-import { AccountingMonth } from '../model/accounting';
+import { AccountingMonth, PaymentLine } from '../model/accounting';
 import { createAccountingRepository } from '../api/config';
-import { SummaryCard } from '../components/SummaryCard';
-import { AccountingListCard } from '../components/AccountingListCard';
-import { PaymentCard } from '../components/PaymentCard';
-import { SectionHeader } from '../components/SectionHeader';
+import { formatDate, formatMonth, paymentLabel, paymentStatusLabel, t } from '../i18n';
+import { formatMoney } from '../utils/money';
 import { theme } from '../theme/theme';
-import { ApiError, ConfigurationError } from '../api/client';
-import { useNavigation } from '@react-navigation/native';
-import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
-import type { AppTabParamList } from '../navigation/AppNavigator';
+import { statusForPayment } from '../presentation/accounting';
 import { useAccountingMonth } from '../navigation/AccountingMonthContext';
 
-function accountingErrorMessage(error: unknown): string {
-  if (error instanceof ConfigurationError) return 'Accounting API configuration is invalid';
-  if (error instanceof ApiError) return error.message;
-  return 'Accounting data could not be processed';
-}
-
 export function HomeScreen() {
-  const navigation = useNavigation<BottomTabNavigationProp<AppTabParamList>>();
-  const { month: selectedMonth, setMonth: setSelectedMonth } = useAccountingMonth();
   const [month, setMonth] = useState<AccountingMonth | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [monthPickerVisible, setMonthPickerVisible] = useState(false);
+  const [error, setError] = useState(false);
+  const [retry, setRetry] = useState(0);
   const repository = useMemo(() => createAccountingRepository(), []);
-
-  useEffect(() => {
-    let active = true;
-    setMonth(null);
-    setError(null);
-    repository
-      .getMonth(selectedMonth)
-      .then((value) => {
-        if (active) setMonth(value);
-      })
-      .catch((reason: unknown) => {
-        console.error('[accounting] load failed', reason);
-        if (active) setError(accountingErrorMessage(reason));
-      });
-    return () => {
-      active = false;
-    };
-  }, [repository, selectedMonth]);
-
-  if (error) {
-    return (
-      <SafeAreaView style={styles.loading}>
-        <Ionicons name="cloud-offline-outline" size={36} color={theme.colors.warning} />
-        <Text style={styles.errorTitle}>Accounting data unavailable</Text>
-        <Text style={styles.errorText}>{error}</Text>
-        <Pressable
-          style={styles.retryButton}
-          onPress={() => {
-            setError(null);
-            setMonth(null);
-            repository.getMonth(selectedMonth).then(setMonth).catch((reason: unknown) => {
-              console.error('[accounting] load failed', reason);
-              setError(accountingErrorMessage(reason));
-            });
-          }}
-        >
-          <Text style={styles.retryText}>Retry</Text>
-        </Pressable>
-      </SafeAreaView>
-    );
-  }
-
-  if (!month) {
-    return (
-      <SafeAreaView style={styles.loading}>
-        <ActivityIndicator size="large" color={theme.colors.primary} />
-      </SafeAreaView>
-    );
-  }
-
-  return (
-    <SafeAreaView style={styles.safe}>
-      <ScrollView
-        contentContainerStyle={styles.content}
-        showsVerticalScrollIndicator={false}
-      >
-        <View style={styles.header}>
-          <Text style={styles.title}>Accounting</Text>
-
-          <Pressable
-            style={styles.monthButton}
-            onPress={() => setMonthPickerVisible((visible) => !visible)}
-            accessibilityRole="button"
-            accessibilityLabel="Change accounting month"
-          >
-            <Ionicons name="calendar-outline" size={18} color={theme.colors.text} />
-            <Text style={styles.monthText}>{month.label}</Text>
-            <Ionicons name="chevron-down" size={17} color={theme.colors.textMuted} />
-          </Pressable>
-        </View>
-
-        {monthPickerVisible ? (
-          <View style={styles.monthPicker}>
-            <Pressable
-              style={styles.monthStep}
-              onPress={() => setSelectedMonth((value) => shiftMonth(value, -1))}
-              accessibilityLabel="Previous accounting month"
-            >
-              <Ionicons name="chevron-back" size={18} color={theme.colors.text} />
-            </Pressable>
-            <Text style={styles.monthPickerText}>{selectedMonth}</Text>
-            <Pressable
-              style={styles.monthStep}
-              onPress={() => setSelectedMonth((value) => shiftMonth(value, 1))}
-              accessibilityLabel="Next accounting month"
-            >
-              <Ionicons name="chevron-forward" size={18} color={theme.colors.text} />
-            </Pressable>
-          </View>
-        ) : null}
-
-        <Text style={styles.due}>{month.dueLabel}</Text>
-
-        <SummaryCard month={month} />
-
-        <View style={styles.section}>
-          <SectionHeader title="Income" meta={`${month.income.length} invoices`} onPress={() => navigation.navigate('Documents', { kind: 'INCOME' })} />
-          <AccountingListCard items={month.income} kind="income" onItemPress={() => navigation.navigate('Documents', { kind: 'INCOME' })} />
-        </View>
-
-        <View style={styles.section}>
-          <SectionHeader title="Costs" meta={`${month.costs.length} documents`} onPress={() => navigation.navigate('Documents', { kind: 'COSTS' })} />
-          <AccountingListCard items={month.costs} kind="cost" onItemPress={() => navigation.navigate('Documents', { kind: 'COSTS' })} />
-        </View>
-
-        <View style={styles.section}>
-          <SectionHeader title="To pay" onPress={() => navigation.navigate('Payments')} />
-          <PaymentCard items={month.payments} onItemPress={() => navigation.navigate('Payments')} />
-        </View>
-
-        <Pressable style={styles.attentionCard} onPress={() => navigation.navigate('Tasks', { attentionOnly: true })} accessibilityRole="button" accessibilityLabel="Open tasks needing attention">
-          <View style={styles.attentionIcon}>
-            <Ionicons name="alert-circle-outline" size={22} color={theme.colors.warning} />
-          </View>
-          <View style={styles.attentionCopy}>
-            <Text style={styles.attentionTitle}>Needs attention</Text>
-            <Text style={styles.attentionText}>
-              {month.attentionCount} accounting item requires review
-            </Text>
-          </View>
-          <Ionicons name="chevron-forward" size={20} color={theme.colors.textMuted} />
-        </Pressable>
-      </ScrollView>
-    </SafeAreaView>
-  );
+  const { month: monthId } = useAccountingMonth();
+  useEffect(() => { let active = true; repository.getMonth(monthId).then((value) => active && setMonth(value)).catch(() => active && setError(true)); return () => { active = false; }; }, [repository, monthId, retry]);
+  if (error) return <State title={t('common.unavailable')} action={t('common.retry')} onPress={() => { setError(false); setMonth(null); setRetry((value) => value + 1); }} />;
+  if (!month) return <SafeAreaView style={styles.loading}><ActivityIndicator size="large" color={theme.colors.primary} /></SafeAreaView>;
+  const needsAttention = month.attentionCount > 0 || month.payments.some((payment) => statusForPayment(payment) === 'error');
+  return <SafeAreaView style={styles.safe}><ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+    <Text style={styles.greeting}>{t('home.greeting')}</Text><Text style={styles.title}>Investory</Text>
+    <View style={[styles.statusCard, needsAttention ? styles.attention : styles.healthy]}><Ionicons name={needsAttention ? 'alert-circle-outline' : 'checkmark-circle-outline'} size={26} color={needsAttention ? theme.colors.warning : theme.colors.success} /><View style={styles.statusCopy}><Text style={styles.statusTitle}>{needsAttention ? t('home.attentionTitle') : t('home.healthyTitle')}</Text><Text style={styles.statusBody}>{needsAttention ? t('home.attentionBody') : t('home.healthyBody')}</Text></View></View>
+    <Text style={styles.sectionTitle}>{t('home.period')}</Text><Text style={styles.period}>{formatMonth(month.id)}</Text>
+    <View style={styles.summary}><Summary label={t('home.revenue')} value={formatMoney(month.summary.revenue)} /><Summary label={t('home.costs')} value={month.summary.costs ? formatMoney(month.summary.costs) : t('common.unknown')} muted={!month.summary.costs} /><Summary label={t('home.income')} value={month.summary.income ? formatMoney(month.summary.income) : t('common.unknown')} muted={!month.summary.income} /></View>
+    <Text style={styles.sectionTitle}>{t('home.payments')}</Text>{month.payments.length ? <View style={styles.card}>{month.payments.map((payment, index) => <PaymentRow key={`${payment.id}-${index}`} payment={payment} />)}</View> : <Text style={styles.empty}>{t('home.noPayments')}</Text>}
+  </ScrollView></SafeAreaView>;
 }
-
-const styles = StyleSheet.create({
-  safe: {
-    flex: 1,
-    backgroundColor: theme.colors.background
-  },
-  loading: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: theme.colors.background
-  },
-  content: {
-    paddingHorizontal: theme.spacing.lg,
-    paddingBottom: 32
-  },
-  header: {
-    marginTop: 10,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: theme.spacing.md
-  },
-  title: {
-    color: theme.colors.text,
-    fontSize: theme.typography.title,
-    fontWeight: '900',
-    letterSpacing: -0.8
-  },
-  monthButton: {
-    minHeight: 44,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 7,
-    borderRadius: 999,
-    backgroundColor: theme.colors.surface,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-    paddingHorizontal: 12
-  },
-  monthText: {
-    color: theme.colors.text,
-    fontSize: 15,
-    fontWeight: '700'
-  },
-  monthPicker: {
-    alignSelf: 'flex-end',
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    marginTop: 8,
-    padding: 4,
-    borderRadius: 999,
-    backgroundColor: theme.colors.surface,
-    borderWidth: 1,
-    borderColor: theme.colors.border
-  },
-  monthStep: {
-    width: 32,
-    height: 32,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: 16,
-    backgroundColor: theme.colors.surfaceMuted
-  },
-  monthPickerText: {
-    color: theme.colors.text,
-    fontSize: 14,
-    fontWeight: '700'
-  },
-  due: {
-    alignSelf: 'flex-end',
-    color: theme.colors.textMuted,
-    fontSize: 14,
-    marginTop: 8,
-    marginBottom: 14
-  },
-  section: {
-    marginTop: theme.spacing.xl,
-    gap: 8
-  },
-  attentionCard: {
-    marginTop: theme.spacing.xl,
-    minHeight: 72,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: theme.spacing.md,
-    borderRadius: theme.radius.md,
-    padding: theme.spacing.md,
-    backgroundColor: theme.colors.warningSoft
-  },
-  attentionIcon: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
-    backgroundColor: '#FFFFFFAA',
-    alignItems: 'center',
-    justifyContent: 'center'
-  },
-  attentionCopy: {
-    flex: 1
-  },
-  attentionTitle: {
-    color: theme.colors.text,
-    fontSize: 15,
-    fontWeight: '800'
-  },
-  attentionText: {
-    color: theme.colors.textMuted,
-    fontSize: 13,
-    marginTop: 2
-  },
-  errorTitle: {
-    color: theme.colors.text,
-    fontSize: 17,
-    fontWeight: '800',
-    marginTop: 12
-  },
-  errorText: {
-    color: theme.colors.textMuted,
-    textAlign: 'center',
-    marginTop: 6,
-    maxWidth: 320
-  },
-  retryButton: {
-    marginTop: 16,
-    borderRadius: 999,
-    backgroundColor: theme.colors.primary,
-    paddingHorizontal: 22,
-    paddingVertical: 11
-  },
-  retryText: {
-    color: '#FFFFFF',
-    fontWeight: '800'
-  }
-});
-
-function shiftMonth(month: string, offset: number): string {
-  const date = new Date(`${month}-01T00:00:00Z`);
-  date.setUTCMonth(date.getUTCMonth() + offset);
-  return date.toISOString().slice(0, 7);
-}
+function Summary({ label, value, muted }: { label: string; value: string; muted?: boolean }) { return <View style={styles.summaryRow}><Text style={styles.summaryLabel}>{label}</Text><Text style={[styles.summaryValue, muted && styles.muted]}>{value}</Text></View>; }
+function PaymentRow({ payment }: { payment: PaymentLine }) { const state = statusForPayment(payment); return <View style={styles.paymentRow}><View style={[styles.paymentIcon, state === 'error' && styles.errorIcon]}><Ionicons name="calendar-outline" size={19} color={state === 'error' ? theme.colors.danger : theme.colors.primary} /></View><View style={styles.paymentCopy}><Text style={styles.paymentTitle}>{paymentLabel(payment.title)}</Text><Text style={styles.paymentDate}>{formatDate(payment.dueDate)}</Text></View><View style={styles.paymentAmount}><Text style={styles.amount}>{formatMoney(payment.outstandingAmount)}</Text><Text style={[styles.paymentStatus, state === 'resolved' && styles.resolved, state === 'error' && styles.overdue]}>{paymentStatusLabel(payment.status)}</Text></View></View>; }
+function State({ title, action, onPress }: { title: string; action: string; onPress: () => void }) { return <SafeAreaView style={styles.loading}><Ionicons name="cloud-offline-outline" size={34} color={theme.colors.warning} /><Text style={styles.stateTitle}>{title}</Text><Pressable style={styles.retry} onPress={onPress}><Text style={styles.retryText}>{action}</Text></Pressable></SafeAreaView>; }
+const styles = StyleSheet.create({ safe: { flex: 1, backgroundColor: theme.colors.background }, loading: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12, backgroundColor: theme.colors.background }, content: { padding: 20, paddingBottom: 36 }, greeting: { color: theme.colors.textMuted, fontSize: 15, marginTop: 8 }, title: { color: theme.colors.text, fontSize: 32, fontWeight: '900', marginTop: 2, marginBottom: 22 }, statusCard: { flexDirection: 'row', gap: 12, alignItems: 'center', borderRadius: theme.radius.lg, padding: 18 }, healthy: { backgroundColor: theme.colors.successSoft }, attention: { backgroundColor: theme.colors.warningSoft }, statusCopy: { flex: 1 }, statusTitle: { color: theme.colors.text, fontSize: 18, fontWeight: '900' }, statusBody: { color: theme.colors.textMuted, marginTop: 4 }, sectionTitle: { color: theme.colors.text, fontSize: 19, fontWeight: '900', marginTop: 26 }, period: { color: theme.colors.textMuted, marginTop: 4, textTransform: 'capitalize' }, summary: { backgroundColor: theme.colors.surface, borderRadius: theme.radius.md, padding: 16, marginTop: 10, borderWidth: 1, borderColor: theme.colors.border }, summaryRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 8 }, summaryLabel: { color: theme.colors.textMuted, fontSize: 15 }, summaryValue: { color: theme.colors.text, fontWeight: '800', fontSize: 15 }, muted: { color: theme.colors.textMuted }, card: { backgroundColor: theme.colors.surface, borderRadius: theme.radius.md, borderWidth: 1, borderColor: theme.colors.border, overflow: 'hidden', marginTop: 10 }, paymentRow: { flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 76, paddingHorizontal: 14, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: theme.colors.border }, paymentIcon: { width: 38, height: 38, borderRadius: 19, backgroundColor: theme.colors.primarySoft, alignItems: 'center', justifyContent: 'center' }, errorIcon: { backgroundColor: theme.colors.dangerSoft }, paymentCopy: { flex: 1 }, paymentTitle: { color: theme.colors.text, fontWeight: '800' }, paymentDate: { color: theme.colors.textMuted, marginTop: 4 }, paymentAmount: { alignItems: 'flex-end' }, amount: { color: theme.colors.text, fontWeight: '800' }, paymentStatus: { color: theme.colors.warning, fontSize: 11, fontWeight: '800', marginTop: 4 }, resolved: { color: theme.colors.success }, overdue: { color: theme.colors.danger }, empty: { color: theme.colors.textMuted, marginTop: 12 }, stateTitle: { color: theme.colors.text, fontSize: 17, fontWeight: '800' }, retry: { backgroundColor: theme.colors.primary, borderRadius: 999, paddingHorizontal: 20, paddingVertical: 12 }, retryText: { color: '#fff', fontWeight: '800' } });

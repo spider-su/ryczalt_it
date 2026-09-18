@@ -10,9 +10,7 @@ function mapIssue(issue: AccountingIssueDto): AccountingIssue {
   return { ...issue, resolution: { ...issue.resolution, options: [...issue.resolution.options] } };
 }
 
-function formatDate(date: string | null): string | undefined {
-  return date ? date.slice(0, 10) : undefined;
-}
+function formatDate(date: string | null): string | undefined { return date ? date.slice(0, 10) : undefined; }
 
 function isSale(type: string): boolean {
   return ['SALE', 'SALES', 'INCOME'].includes(type.toUpperCase());
@@ -45,7 +43,14 @@ function mapDocument(document: AccountingDocumentDto): AccountingLine {
     sourceLabel: document.sourceTypeLabel,
     categoryLabel: document.categoryLabel,
     reviewStatus: document.reviewStatus,
-    source: document.source
+    source: document.source,
+    direction: isSale(document.type) ? 'SALE' : 'PURCHASE',
+    counterparty: document.counterparty,
+    documentNumber: document.documentNumber,
+    issueDate: formatDate(document.issueDate ?? document.saleDate) ?? null,
+    currency: document.currency,
+    paymentStatus: document.paymentStatus,
+    ksefStatus: document.importStatus
   };
 }
 
@@ -78,6 +83,7 @@ export function mapAccountingMonth(
       vat: requiredMoney(overview.summary.vat, 'PLN'),
       zus: requiredMoney(overview.summary.zus, 'PLN')
     },
+    summary: { revenue: requiredMoney(overview.summary.revenue, 'PLN') },
     income: documents
       .filter((document) => isSale(document.type))
       .map(mapDocument),
@@ -91,7 +97,8 @@ export function mapAccountingMonth(
       amount: requiredMoney(payment.amount, 'PLN'),
       paidAmount: requiredMoney(payment.paidAmount, 'PLN'),
       outstandingAmount: requiredMoney(payment.outstandingAmount, 'PLN'),
-      status: payment.status
+      status: payment.status,
+      period: overview.month
     })),
     attentionCount,
     issues

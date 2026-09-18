@@ -11,6 +11,7 @@ export const july2026: AccountingMonth = {
     vat: { amount: 3557, currency: 'PLN' },
     zus: { amount: 1495, currency: 'PLN' }
   },
+  summary: { revenue: { amount: 49159, currency: 'PLN' } },
   income: [
     {
       id: 'income-1',
