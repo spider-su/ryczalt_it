@@ -1,0 +1,29 @@
+{
+  "expo": {
+    "name": "Investory Accounting",
+    "slug": "investory-accounting",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "pl.investory.accounting"
+    },
+    "android": {
+      "package": "pl.investory.accounting"
+    },
+    "plugins": [
+      "expo-font",
+      "expo-secure-store"
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "ac59413e-32fb-4344-9aa3-e578acbbdaf6"
+      }
+    },
+    "owner": "spider-su"
+  }
+}

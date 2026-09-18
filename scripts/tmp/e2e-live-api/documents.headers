@@ -1,0 +1,17 @@
+HTTP/2 200 
+vary: Origin
+vary: Access-Control-Request-Method
+vary: Access-Control-Request-Headers
+x-content-type-options: nosniff
+x-xss-protection: 0
+cache-control: no-cache, no-store, max-age=0, must-revalidate
+pragma: no-cache
+expires: 0
+x-frame-options: DENY
+content-type: application/json
+x-cloud-trace-context: 123fd122312a22f6f307cb65641d85a7;o=1
+date: Fri, 18 Sep 2026 14:53:46 GMT
+server: Google Frontend
+content-length: 2
+alt-svc: h3=":443"; ma=2592000,h3-29=":443"; ma=2592000
+
