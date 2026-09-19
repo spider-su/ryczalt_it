@@ -1,4 +1,4 @@
-import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Platform, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import type { ReactNode } from 'react';
 import { Ionicons } from '@expo/vector-icons';
 import { theme } from '../theme/theme';
@@ -68,6 +68,18 @@ export function PrimaryButton({ label, onPress, disabled = false }: { label: str
   return <Pressable onPress={onPress} disabled={disabled} accessibilityRole="button" style={({ pressed }) => [styles.primaryButton, disabled && styles.disabled, pressed && !disabled && styles.primaryPressed]}><Text style={styles.primaryLabel}>{label}</Text></Pressable>;
 }
 
+export function SupportingText({ children }: { children: ReactNode }) { return <Text style={styles.supportingText}>{children}</Text>; }
+
+export function FormField({ label, hint, error, children }: { label: string; hint?: string; error?: string; children: ReactNode }) {
+  return <View style={styles.formField}><Text style={styles.formLabel}>{label}</Text>{children}{hint ? <SupportingText>{hint}</SupportingText> : null}{error ? <Text style={styles.formError}>{error}</Text> : null}</View>;
+}
+
+export function SettingsRow({ title, description, children, last = false }: { title: string; description?: string; children: ReactNode; last?: boolean }) {
+  return <View style={[styles.settingsRow, !last && styles.listDivider]}><View style={styles.settingsCopy}><Text style={styles.rowTitle}>{title}</Text>{description ? <SupportingText>{description}</SupportingText> : null}</View>{children}</View>;
+}
+
+export function SettingsGroup({ children }: { children: ReactNode }) { return <ListGroup style={styles.settingsGroup}>{children}</ListGroup>; }
+
 const bannerColors = { success: theme.colors.success, info: theme.colors.info, warning: theme.colors.warning, error: theme.colors.danger, unknown: theme.colors.textSecondary } as const;
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: theme.colors.background },
@@ -100,7 +112,7 @@ const styles = StyleSheet.create({
   state_success: { color: theme.colors.success }, state_attention: { color: theme.colors.warning }, state_pending: { color: theme.colors.textSecondary }, state_error: { color: theme.colors.danger }, state_unknown: { color: theme.colors.textMuted },
   segmented: { flexDirection: 'row', gap: theme.spacing.xs, padding: theme.spacing.xs, backgroundColor: theme.colors.surfaceSecondary, borderRadius: theme.radius.control },
   segment: { flex: 1, minHeight: 44, alignItems: 'center', justifyContent: 'center', paddingHorizontal: theme.spacing.sm, borderRadius: theme.radius.sm },
-  segmentSelected: { backgroundColor: theme.colors.surface, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 3, shadowOffset: { width: 0, height: 1 }, elevation: 1 },
+  segmentSelected: { backgroundColor: theme.colors.surface, ...Platform.select({ web: { boxShadow: '0px 1px 3px rgba(0, 0, 0, 0.05)' }, default: { shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 3, shadowOffset: { width: 0, height: 1 }, elevation: 1 } }) },
   segmentLabel: { color: theme.colors.textSecondary, fontSize: theme.typography.supporting, fontWeight: '600', textAlign: 'center' },
   segmentLabelSelected: { color: theme.colors.accent, fontWeight: '700' },
   searchField: { minHeight: 52, flexDirection: 'row', alignItems: 'center', gap: theme.spacing.sm, backgroundColor: theme.colors.surface, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: theme.colors.divider, paddingHorizontal: theme.spacing.sm },
@@ -113,5 +125,5 @@ const styles = StyleSheet.create({
   banner: { flexDirection: 'row', alignItems: 'flex-start', gap: theme.spacing.md, borderRadius: theme.radius.card, padding: theme.spacing.lg, marginTop: theme.spacing.md },
   banner_success: { backgroundColor: theme.colors.successSoft }, banner_info: { backgroundColor: theme.colors.infoSoft }, banner_warning: { backgroundColor: theme.colors.warningSoft }, banner_error: { backgroundColor: theme.colors.dangerSoft }, banner_unknown: { backgroundColor: theme.colors.surfaceSecondary },
   bannerCopy: { flex: 1 }, bannerTitle: { color: theme.colors.textPrimary, fontSize: 17, lineHeight: 22, fontWeight: '800' }, bannerBody: { color: theme.colors.textSecondary, lineHeight: 20, marginTop: 4 },
-  empty: { alignItems: 'center', justifyContent: 'center', paddingVertical: theme.spacing.xxxl, paddingHorizontal: theme.spacing.xl }, emptyIcon: { width: 48, height: 48, borderRadius: 24, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.colors.surfaceSecondary, marginBottom: theme.spacing.md }, errorIcon: { width: 48, height: 48, borderRadius: 24, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.colors.dangerSoft, marginBottom: theme.spacing.md }, emptyTitle: { color: theme.colors.textPrimary, fontSize: 17, fontWeight: '700', textAlign: 'center' }, emptyBody: { color: theme.colors.textSecondary, lineHeight: 20, textAlign: 'center', marginTop: 6 }, textButton: { minHeight: 44, justifyContent: 'center', paddingHorizontal: theme.spacing.md, marginTop: theme.spacing.sm }, textButtonLabel: { color: theme.colors.accent, fontWeight: '700' }, loading: { alignItems: 'center', justifyContent: 'center', gap: theme.spacing.md, paddingVertical: theme.spacing.xxxl }, loadingText: { color: theme.colors.textSecondary }, primaryButton: { minHeight: 52, alignItems: 'center', justifyContent: 'center', borderRadius: theme.radius.control, backgroundColor: theme.colors.accent, paddingHorizontal: theme.spacing.xl, marginTop: theme.spacing.lg }, primaryPressed: { backgroundColor: theme.colors.accentPressed }, primaryLabel: { color: theme.colors.onAccent, fontSize: theme.typography.button, fontWeight: '700' }, disabled: { opacity: 0.5 }
+  empty: { alignItems: 'center', justifyContent: 'center', paddingVertical: theme.spacing.xxxl, paddingHorizontal: theme.spacing.xl }, emptyIcon: { width: 48, height: 48, borderRadius: 24, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.colors.surfaceSecondary, marginBottom: theme.spacing.md }, errorIcon: { width: 48, height: 48, borderRadius: 24, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.colors.dangerSoft, marginBottom: theme.spacing.md }, emptyTitle: { color: theme.colors.textPrimary, fontSize: 17, fontWeight: '700', textAlign: 'center' }, emptyBody: { color: theme.colors.textSecondary, lineHeight: 20, textAlign: 'center', marginTop: 6 }, textButton: { minHeight: 44, justifyContent: 'center', paddingHorizontal: theme.spacing.md, marginTop: theme.spacing.sm }, textButtonLabel: { color: theme.colors.accent, fontWeight: '700' }, loading: { alignItems: 'center', justifyContent: 'center', gap: theme.spacing.md, paddingVertical: theme.spacing.xxxl }, loadingText: { color: theme.colors.textSecondary }, primaryButton: { minHeight: 52, alignItems: 'center', justifyContent: 'center', borderRadius: theme.radius.control, backgroundColor: theme.colors.accent, paddingHorizontal: theme.spacing.xl, marginTop: theme.spacing.lg }, primaryPressed: { backgroundColor: theme.colors.accentPressed }, primaryLabel: { color: theme.colors.onAccent, fontSize: theme.typography.button, fontWeight: '700' }, disabled: { opacity: 0.5 }, supportingText: { color: theme.colors.textSecondary, fontSize: theme.typography.supporting, lineHeight: 19, marginTop: theme.spacing.xs }, formField: { marginTop: theme.spacing.lg }, formLabel: { color: theme.colors.textPrimary, fontSize: theme.typography.rowTitle, fontWeight: '600', marginBottom: theme.spacing.sm }, formError: { color: theme.colors.danger, lineHeight: 20, marginTop: theme.spacing.sm }, settingsGroup: { marginTop: theme.spacing.md }, settingsRow: { minHeight: 64, flexDirection: 'row', alignItems: 'center', gap: theme.spacing.md, paddingVertical: theme.spacing.md }, settingsCopy: { flex: 1, minWidth: 0 }
 });

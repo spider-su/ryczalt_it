@@ -110,10 +110,18 @@ export function paymentMatches(line: AccountingLine, filter: 'ALL' | 'PAID' | 'U
   return ['NOT_PAID', 'DUE', 'PARTIAL'].includes(status ?? '');
 }
 
-export function dateMatches(line: AccountingLine, filter: 'ALL' | 'THIS_MONTH' | 'PREVIOUS_MONTH' | 'LAST_3_MONTHS', month: string): boolean {
-  if (filter === 'ALL' || !line.issueDate) return true;
-  const date = new Date(`${line.issueDate.slice(0, 10)}T00:00:00Z`);
-  const current = new Date(`${month}-01T00:00:00Z`);
-  const difference = (current.getUTCFullYear() - date.getUTCFullYear()) * 12 + current.getUTCMonth() - date.getUTCMonth();
-  return filter === 'THIS_MONTH' ? difference === 0 : filter === 'PREVIOUS_MONTH' ? difference === 1 : difference >= 0 && difference < 3;
+export type DocumentDateRange = 'SELECTED_MONTH' | 'PREVIOUS_MONTH' | 'LAST_3_MONTHS';
+
+function calendarMonth(value: string): { year: number; month: number } | null {
+  const match = /^(\d{4})-(0[1-9]|1[0-2])/.exec(value.trim());
+  return match ? { year: Number(match[1]), month: Number(match[2]) } : null;
+}
+
+export function dateMatches(line: AccountingLine, filter: DocumentDateRange, month: string): boolean {
+  if (!line.issueDate) return false;
+  const date = calendarMonth(line.issueDate);
+  const current = calendarMonth(month);
+  if (!date || !current) return false;
+  const difference = (current.year - date.year) * 12 + current.month - date.month;
+  return filter === 'SELECTED_MONTH' ? difference === 0 : filter === 'PREVIOUS_MONTH' ? difference === 1 : difference >= 0 && difference < 3;
 }

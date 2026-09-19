@@ -65,6 +65,13 @@ describe('accounting response mappers', () => {
     expect(() => mapAccountingMonth(overview({ month: '2026-13' }), [])).toThrow('invalid month');
   });
 
+  it('keeps tax summary values separate from outstanding payment value', () => {
+    const mapped = mapAccountingMonth(overview({ summary: { ...overview().summary, ryczalt: '7340', vat: '6612', zus: '1495.04' }, paymentSummary: { ...overview().paymentSummary, totalOutstanding: '0.00', payments: [] } }), []);
+    expect(mapped.taxes).toMatchObject({ ryczalt: { amount: '7340' }, vat: { amount: '6612' }, zus: { amount: '1495.04' } });
+    expect(mapped.totalToPay).toEqual({ amount: '0.00', currency: 'PLN' });
+    expect(mapped.payments).toEqual([]);
+  });
+
   it('preserves unknown issue state for the attention layer', () => {
     const unknownIssue = {
       id: 'issue-1', code: 'NEW', severity: 'NEW_SEVERITY', kind: 'NEW_KIND', title: 'Unknown', message: 'Unknown',

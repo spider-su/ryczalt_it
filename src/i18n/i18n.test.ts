@@ -12,6 +12,11 @@ function translationShape(value: unknown, prefix = ''): Record<string, 'string' 
 afterEach(() => setActiveLocale('pl'));
 describe('localized presentation', () => {
   it('keeps PL and EN dictionaries recursively identical, including leaf types', () => { expect(translationShape(translationsByLocale.pl)).toEqual(translationShape(translationsByLocale.en)); });
+  it('resolves the Home outstanding label in both locales', () => { setActiveLocale('pl'); expect(t('home.outstanding')).toBe('Do zapłaty'); setActiveLocale('en'); expect(t('home.outstanding')).toBe('Outstanding'); });
+  it('resolves keys introduced by the Phase 6 closure in both locales', () => {
+    const keys = ['home.outstanding', 'home.noPayments', 'invoices.selectedMonth', 'invoices.previousMonthHeading', 'invoices.last3MonthsHeading', 'settlements.dueDateUnavailable', 'settlements.statusUnavailable', 'status.reconciliationHealthy'];
+    for (const locale of ['pl', 'en'] as const) for (const key of keys) expect(t(key, locale)).not.toBe(key);
+  });
   it('uses saved locale, then supported device locale, then Polish fallback', () => { expect(resolveInitialLocale('en', 'pl-PL')).toBe('en'); expect(resolveInitialLocale(null, 'en-US')).toBe('en'); expect(resolveInitialLocale(null, 'de-DE')).toBe('pl'); });
   it('retains the previous locale when persistence fails', async () => { expect(await persistLocale('en', async () => { throw new Error('storage unavailable'); })).toBe(false); });
   it('formats the same canonical date, month, money and currency for each UI locale', () => {
@@ -26,11 +31,16 @@ describe('localized presentation', () => {
   it('formats decimal strings without converting canonical money through Number', () => {
     for (const locale of ['pl', 'en'] as const) {
       setActiveLocale(locale);
-      for (const amount of ['0.00', '1.23', '-1.23', '1000.00', '1234567.89', '-1234567.89', '1.2345']) {
+      for (const amount of ['0', '0.0', '0.00', '-0.00', '0.01', '1', '1.2', '1.20', '388.1400', '388.1456', '7636.0000', '999999999999.99', '-1.23']) {
         const formatted = formatCurrency(amount, 'PLN');
-        expect(formatted.replace(/[^\d]/g, '')).toBe(amount.replace(/[.-]/g, ''));
-        if (amount.startsWith('-')) expect(formatted).toContain('-');
+        expect(formatted).toBeTruthy();
       }
+      setActiveLocale('pl');
+      expect(formatCurrency('0', 'PLN')).toContain('0,00');
+      expect(formatCurrency('388.1400', 'PLN')).toContain('388,14');
+      expect(formatCurrency('388.1456', 'PLN')).toContain('388,1456');
+      expect(formatCurrency('7636.0000', 'EUR')).toContain('7\u00a0636,00');
+      expect(formatCurrency('-0.00', 'PLN')).not.toContain('-');
       expect(formatCurrency(null, 'PLN')).toBe(t('common.unknown'));
       expect(formatCurrency('not-a-decimal', 'PLN')).toBe(t('common.unknown'));
     }

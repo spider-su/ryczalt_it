@@ -6,6 +6,7 @@ import { isRequiredInputActive, mapCostError, mapCostMutation, mapRecognizedCost
 import { ApiError } from '../api/client';
 import type { CandidateDto } from '../api/dto/accounting';
 import type { AccountingIssue, AccountingLine, PaymentLine } from '../model/accounting';
+import { isExactDecimalZero } from '../utils/decimal';
 
 const line = (overrides: Partial<AccountingLine> = {}): AccountingLine => ({ id: '1', title: 'Adobe', amount: { amount: '249', currency: 'PLN' }, issueDate: '2026-09-16', documentNumber: 'FV/1', direction: 'PURCHASE', ...overrides });
 const payment = (status: string): PaymentLine => ({ id: status, title: 'VAT', dueDate: '2026-09-25', amount: { amount: '100', currency: 'PLN' }, paidAmount: { amount: status === 'PAID' ? '100' : '0', currency: 'PLN' }, outstandingAmount: { amount: status === 'PAID' ? '0' : '100', currency: 'PLN' }, status });
@@ -33,7 +34,22 @@ describe('accounting presentation', () => {
     expect(issuePresentation(issue('WARNING', 'NEEDS_ANSWER'))).not.toHaveProperty('actionLabel');
   });
   it('maps documented payment states and keeps unknown states neutral', () => { expect(statusForPayment(payment('PAID'))).toBe('resolved'); expect(statusForPayment(payment('SETTLED'))).toBe('resolved'); expect(statusForPayment(payment('MATCHED'))).toBe('resolved'); expect(statusForPayment(payment('OVERDUE'))).toBe('error'); expect(statusForPayment(payment('NOT_PAID'))).toBe('requires_action'); expect(statusForPayment(payment('NOT_DUE'))).toBe('informational'); expect(statusForPayment(payment('UNKNOWN'))).toBe('unknown'); expect(paymentMatches(line({ paymentStatus: 'OVERDUE' }), 'OVERDUE')).toBe(true); expect(paymentMatches(line({ paymentStatus: 'UNKNOWN' }), 'UNPAID')).toBe(false); });
-  it('supports multi-month date filtering and locale-neutral invoice search', () => { expect(dateMatches(line({ issueDate: '2026-08-16' }), 'PREVIOUS_MONTH', '2026-09')).toBe(true); expect(dateMatches(line({ issueDate: '2026-07-16' }), 'LAST_3_MONTHS', '2026-09')).toBe(true); expect(matchesInvoice(line({ nip: '1234567890' }), '1234567890')).toBe(true); expect(matchesInvoice(line({ counterparty: 'Łódź Usługi' }), 'łódź')).toBe(true); });
+  it('uses deterministic selected, previous, and three-month calendar ranges', () => {
+    expect(dateMatches(line({ issueDate: '2026-05-16' }), 'SELECTED_MONTH', '2026-05')).toBe(true);
+    expect(dateMatches(line({ issueDate: '2026-04-03' }), 'SELECTED_MONTH', '2026-05')).toBe(false);
+    expect(dateMatches(line({ issueDate: '2026-04-03' }), 'PREVIOUS_MONTH', '2026-05')).toBe(true);
+    expect(dateMatches(line({ issueDate: '2026-03-31' }), 'LAST_3_MONTHS', '2026-05')).toBe(true);
+    expect(dateMatches(line({ issueDate: '2025-12-31' }), 'PREVIOUS_MONTH', '2026-01')).toBe(true);
+    expect(dateMatches(line({ issueDate: '2025-11-30' }), 'LAST_3_MONTHS', '2026-01')).toBe(true);
+    expect(dateMatches(line({ issueDate: null }), 'SELECTED_MONTH', '2026-05')).toBe(false);
+    expect(matchesInvoice(line({ nip: '1234567890' }), '1234567890')).toBe(true); expect(matchesInvoice(line({ counterparty: 'Łódź Usługi' }), 'łódź')).toBe(true);
+  });
+  it('recognizes exact decimal zero without floating-point conversion', () => {
+    expect(['0', '0.0', '0.00', '-0.000'].every(isExactDecimalZero)).toBe(true);
+    expect(isExactDecimalZero('0.01')).toBe(false);
+    expect(isExactDecimalZero('-1')).toBe(false);
+    expect(isExactDecimalZero(null)).toBe(false);
+  });
   it('keeps cost accounting decisions backend-owned', () => { const review = mapRecognizedCost(candidate({ requiredInputs: [{ field: 'vatTreatment', inputType: 'choice', label: 'Sposób rozliczenia VAT', required: true, options: [{ value: 'DOMESTIC_PURCHASE', label: 'Zakup krajowy', recommended: false }], dependsOn: null, dependsOnValues: [] }, { field: 'vatRate', inputType: 'decimal', label: 'Stawka VAT', required: false, options: [], dependsOn: 'vatTreatment', dependsOnValues: ['DOMESTIC_PURCHASE'] }] })); expect(review.state).toBe('requires_input'); expect(review.requiresVatDecision).toBe(true); expect(review.options.map((option) => option.value)).toEqual(['DOMESTIC_PURCHASE']); expect(mapRecognizedCost(candidate({ documentType: 'SALES_INVOICE' })).state).toBe('unsupported'); expect(mapRecognizedCost(candidate({ duplicate: true })).state).toBe('duplicate'); });
   it('preserves backend required-input semantics, including dependencies and unknown fields', () => {
     const inputs = [

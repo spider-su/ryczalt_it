@@ -60,23 +60,30 @@ export function PaymentsScreen() {
     <Section title={t('settlements.upcoming')}>
       {total ? <Text style={styles.total}>{formatMoney(total)}</Text> : null}
       <SegmentedControl options={filterOptions} selected={filter} onSelect={setFilter} />
-      {obligationsLoading ? <LoadingState /> : obligationsError ? <ErrorState title={t('common.unavailable')} onRetry={() => setObligationsRetry((value) => value + 1)} /> : visible.length === 0 ? <Text style={styles.empty}>{t('settlements.noPayments')}</Text> : <ListGroup>{visible.map((payment, index) => <PaymentRow key={`${payment.id}-${index}`} payment={payment} last={index === visible.length - 1} onPress={() => setSelected(payment)} />)}</ListGroup>}
+      {obligationsLoading ? <LoadingState /> : obligationsError ? <ErrorState title={t('common.unavailable')} onRetry={() => setObligationsRetry((value) => value + 1)} /> : visible.length === 0 ? <Text style={styles.empty}>{t('settlements.noPayments')}</Text> : <ListGroup>{visible.map((payment, index) => <PaymentRow key={`${payment.id}-${index}`} payment={payment} last={index === visible.length - 1} amountKind="outstanding" onPress={() => setSelected(payment)} />)}</ListGroup>}
     </Section>
     <AccountingStatusSection status={accountingStatus} />
     <Section title={t('settlements.history')}>
-      {historyLoading ? <LoadingState /> : historyError ? <ErrorState title={t('settlements.historyError')} onRetry={() => setHistoryRetry((value) => value + 1)} /> : history.length === 0 ? <Text style={styles.note}>{t('settlements.noHistory')}</Text> : <ListGroup>{history.map((payment, index) => <PaymentRow key={`${payment.id}-${index}`} payment={payment} last={index === history.length - 1} onPress={() => setSelected(payment)} />)}</ListGroup>}
+      {historyLoading ? <LoadingState /> : historyError ? <ErrorState title={t('settlements.historyError')} onRetry={() => setHistoryRetry((value) => value + 1)} /> : history.length === 0 ? <Text style={styles.note}>{t('settlements.noHistory')}</Text> : <ListGroup>{history.map((payment, index) => <PaymentRow key={`${payment.id}-${index}`} payment={payment} last={index === history.length - 1} amountKind="total" onPress={() => setSelected(payment)} />)}</ListGroup>}
     </Section>
   </ScrollView><PaymentDetails payment={selected} onClose={() => setSelected(null)} /></SafeAreaView>;
 }
 
-function PaymentRow({ payment, last, onPress }: { payment: PaymentLine; last: boolean; onPress: () => void }) {
+function PaymentRow({ payment, last, amountKind, onPress }: { payment: PaymentLine; last: boolean; amountKind: 'outstanding' | 'total'; onPress: () => void }) {
   const state = statusForPayment(payment);
-  return <Pressable onPress={onPress} style={({ pressed }) => [styles.row, !last && styles.divider, pressed && styles.pressed]} accessibilityRole="button" accessibilityLabel={`${paymentLabel(payment.title)}, ${paymentStatusLabel(payment.status)}`}><View style={styles.copy}><Text style={styles.rowTitle}>{paymentLabel(payment.title)}</Text><Text style={styles.subtitle}>{t('settlements.period')}: {formatMonth(payment.period ?? '')}</Text><Text style={styles.subtitle}>{t('settlements.dueDate')}: {formatDate(payment.dueDate)}</Text></View><View style={styles.amount}><Text style={styles.amountText}>{formatMoney(payment.outstandingAmount)}</Text><Text style={[styles.status, state === 'resolved' && styles.paid, state === 'error' && styles.overdue]}>{paymentStatusLabel(payment.status)}</Text></View></Pressable>;
+  const displayAmount = amountKind === 'total' ? payment.amount : payment.outstandingAmount;
+  const dueDate = payment.dueDate ? formatDate(payment.dueDate) : t('settlements.dueDateUnavailable');
+  return <Pressable onPress={onPress} style={({ pressed }) => [styles.row, !last && styles.divider, pressed && styles.pressed]} accessibilityRole="button" accessibilityLabel={`${paymentLabel(payment.title)}, ${paymentStatusText(payment.status)}`}><View style={styles.copy}><Text style={styles.rowTitle}>{paymentLabel(payment.title)}</Text><Text style={styles.subtitle}>{t('settlements.period')}: {formatMonth(payment.period ?? '')}</Text><Text style={styles.subtitle}>{t('settlements.dueDate')}: {dueDate}</Text></View><View style={styles.amount}><Text style={styles.amountText}>{formatMoney(displayAmount)}</Text><Text style={[styles.status, state === 'resolved' && styles.paid, state === 'error' && styles.overdue]}>{paymentStatusText(payment.status)}</Text></View></Pressable>;
+}
+
+function paymentStatusText(status: string | null | undefined): string {
+  const normalized = status?.trim().toUpperCase();
+  return !normalized || normalized === 'UNKNOWN' ? t('settlements.statusUnavailable') : paymentStatusLabel(normalized);
 }
 
 function PaymentDetails({ payment, onClose }: { payment: PaymentLine | null; onClose: () => void }) {
   if (!payment) return null;
-  return <Modal visible transparent animationType="slide" onRequestClose={onClose}><View style={styles.overlay}><View style={styles.sheet}><SheetHeader title={paymentLabel(payment.title)} onClose={onClose} /><KeyValueRow label={t('settlements.period')} value={formatMonth(payment.period ?? '')} /><KeyValueRow label={t('settlements.amount')} value={formatMoney(payment.amount)} /><KeyValueRow label={t('settlements.paidAmount')} value={formatMoney(payment.paidAmount)} /><KeyValueRow label={t('settlements.remaining')} value={formatMoney(payment.outstandingAmount)} /><KeyValueRow label={t('settlements.dueDate')} value={formatDate(payment.dueDate)} /><KeyValueRow label={t('settlements.status')} value={paymentStatusLabel(payment.status)} /></View></View></Modal>;
+  return <Modal visible transparent animationType="slide" onRequestClose={onClose}><View style={styles.overlay}><View style={styles.sheet}><SheetHeader title={paymentLabel(payment.title)} onClose={onClose} /><KeyValueRow label={t('settlements.period')} value={formatMonth(payment.period ?? '')} /><KeyValueRow label={t('settlements.amount')} value={formatMoney(payment.amount)} /><KeyValueRow label={t('settlements.paidAmount')} value={formatMoney(payment.paidAmount)} /><KeyValueRow label={t('settlements.remaining')} value={formatMoney(payment.outstandingAmount)} /><KeyValueRow label={t('settlements.dueDate')} value={payment.dueDate ? formatDate(payment.dueDate) : t('settlements.dueDateUnavailable')} /><KeyValueRow label={t('settlements.status')} value={paymentStatusText(payment.status)} /></View></View></Modal>;
 }
 
 const styles = StyleSheet.create({

@@ -28,6 +28,10 @@ describe('accounting status presentation', () => {
     expect(reconciliationStatusView({ rowCount: null, settledCount: null, mismatchCount: null, missingEvidenceCount: null, state: 'unknown' }).state).toBe('unknown');
   });
 
+  it('keeps healthy reconciliation scoped to data reconciliation', () => {
+    expect(reconciliationStatusView({ rowCount: 2, settledCount: 2, mismatchCount: 0, missingEvidenceCount: 0, state: 'healthy' })).toEqual({ state: 'success', labelKey: 'status.reconciliationHealthy' });
+  });
+
   it('keeps document processing and review dimensions independent', () => {
     expect(documentProcessingView('IMPORTED').state).toBe('success');
     expect(documentProcessingView('FAILED').state).toBe('error');

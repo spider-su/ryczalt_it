@@ -5,7 +5,7 @@ import { createAccountingRepository } from '../api/config';
 import { AccountingLine } from '../model/accounting';
 import { formatDate, formatMonth, paymentStatusLabel, t } from '../i18n';
 import { formatMoney } from '../utils/money';
-import { dateMatches, matchesInvoice, paymentMatches } from '../presentation/accounting';
+import { dateMatches, matchesInvoice, paymentMatches, type DocumentDateRange } from '../presentation/accounting';
 import { theme } from '../theme/theme';
 import { useAccountingMonth } from '../navigation/AccountingMonthContext';
 import { MonthSelector } from '../components/MonthSelector';
@@ -13,8 +13,8 @@ import { useLocale } from '../i18n/LocaleContext';
 import { EmptyState, ErrorState, ListGroup, LoadingState, PageHeader, SearchField, Section, SegmentedControl, SheetHeader } from '../components/ui';
 import { DocumentDetailsModal } from '../components/DocumentDetailsModal';
 
-type Filters = { direction: 'ALL' | 'SALE' | 'PURCHASE'; currency: string; payment: 'ALL' | 'PAID' | 'UNPAID' | 'OVERDUE'; date: 'ALL' | 'THIS_MONTH' | 'PREVIOUS_MONTH' | 'LAST_3_MONTHS' };
-const initialFilters: Filters = { direction: 'ALL', currency: 'ALL', payment: 'ALL', date: 'ALL' };
+type Filters = { direction: 'ALL' | 'SALE' | 'PURCHASE'; currency: string; payment: 'ALL' | 'PAID' | 'UNPAID' | 'OVERDUE'; date: DocumentDateRange };
+const initialFilters: Filters = { direction: 'ALL', currency: 'ALL', payment: 'ALL', date: 'SELECTED_MONTH' };
 
 export function DocumentsScreen() {
   useLocale();
@@ -47,7 +47,7 @@ export function DocumentsScreen() {
     <MonthSelector loading={loading} />
     <View style={styles.searchWrap}><SearchField value={query} onChangeText={setQuery} placeholder={t('invoices.search')} onFilter={() => setSheet(true)} filterActive={hasFilters} /></View>
     <View style={styles.direction}><SegmentedControl options={directionOptions} selected={filters.direction} onSelect={(direction) => setFilters({ ...filters, direction })} /></View>
-    {loading ? <LoadingState /> : error ? <ErrorState /> : filtered.length === 0 ? <Empty filtered={hasFilters} onClear={clear} /> : <Section title={formatMonth(month)}><ListGroup>{filtered.map((item, index) => <DocumentRow key={`${item.id}-${index}`} item={item} last={index === filtered.length - 1} onPress={() => setSelected(item)} />)}</ListGroup></Section>}
+    {loading ? <LoadingState /> : error ? <ErrorState /> : filtered.length === 0 ? <Empty filtered={hasFilters} onClear={clear} /> : <Section title={filters.date === 'LAST_3_MONTHS' ? t('invoices.last3MonthsHeading') : filters.date === 'PREVIOUS_MONTH' ? t('invoices.previousMonthHeading') : formatMonth(month)}><ListGroup>{filtered.map((item, index) => <DocumentRow key={`${item.id}-${index}`} item={item} last={index === filtered.length - 1} onPress={() => setSelected(item)} />)}</ListGroup></Section>}
   </ScrollView><FilterSheet visible={sheet} filters={filters} currencies={currencies} onChange={setFilters} onClose={() => setSheet(false)} /><DocumentDetailsModal item={selected} onClose={() => setSelected(null)} /></SafeAreaView>;
 }
 
@@ -61,7 +61,7 @@ function Empty({ filtered, onClear }: { filtered: boolean; onClear: () => void }
 
 function FilterSheet({ visible, filters, currencies, onChange, onClose }: { visible: boolean; filters: Filters; currencies: string[]; onChange: (value: Filters) => void; onClose: () => void }) {
   const set = (value: Partial<Filters>) => onChange({ ...filters, ...value });
-  const dateOptions = [{ value: 'ALL' as const, label: t('invoices.allInSelectedMonth') }, { value: 'THIS_MONTH' as const, label: t('common.thisMonth') }, { value: 'PREVIOUS_MONTH' as const, label: t('common.previousMonth') }, { value: 'LAST_3_MONTHS' as const, label: t('common.last3Months') }];
+  const dateOptions = [{ value: 'SELECTED_MONTH' as const, label: t('invoices.selectedMonth') }, { value: 'PREVIOUS_MONTH' as const, label: t('common.previousMonth') }, { value: 'LAST_3_MONTHS' as const, label: t('common.last3Months') }];
   const paymentOptions = [{ value: 'ALL' as const, label: t('common.all') }, { value: 'PAID' as const, label: t('common.paid') }, { value: 'UNPAID' as const, label: t('common.unpaid') }, { value: 'OVERDUE' as const, label: t('common.overdue') }];
   const currencyOptions = ['ALL', ...currencies].map((value) => ({ value, label: value === 'ALL' ? t('common.all') : value }));
   return <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}><View style={styles.overlay}><View style={styles.sheet}><SheetHeader title={t('common.filters')} onClose={onClose} /><Text style={styles.filterTitle}>{t('invoices.issueDate')}</Text><SegmentedControl options={dateOptions} selected={filters.date} onSelect={(date) => set({ date })} /><Text style={styles.filterTitle}>{t('invoices.currency')}</Text><SegmentedControl options={currencyOptions} selected={filters.currency} onSelect={(currency) => set({ currency })} /><Text style={styles.filterTitle}>{t('invoices.status')}</Text><SegmentedControl options={paymentOptions} selected={filters.payment} onSelect={(payment) => set({ payment })} /><Pressable style={styles.apply} onPress={onClose} accessibilityRole="button"><Text style={styles.applyText}>{t('common.close')}</Text></Pressable></View></View></Modal>;

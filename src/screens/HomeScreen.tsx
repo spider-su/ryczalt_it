@@ -14,6 +14,7 @@ import { ErrorState, KeyValueRow, ListGroup, LoadingState, PageHeader, Section, 
 import { IssueDetailsModal } from '../components/IssueDetailsModal';
 import { DocumentDetailsModal } from '../components/DocumentDetailsModal';
 import { resolveIssueAction } from '../presentation/issueResolution';
+import { isExactDecimalZero } from '../utils/decimal';
 
 export function HomeScreen() {
   useLocale();
@@ -56,7 +57,7 @@ export function HomeScreen() {
     </Section>
 
     <Section title={t('home.outstanding')}>
-      {month.totalToPay.amount == null ? <Text style={styles.unavailable}>{t('home.amountUnavailable')}</Text> : <View style={styles.outstanding}><Text style={month.totalToPay.amount === '0' ? styles.zeroAmount : styles.total}>{formatMoney(month.totalToPay)}</Text>{month.totalToPay.amount === '0' && month.payments.length === 0 ? <Text style={styles.supporting}>{t('home.noPayments')}</Text> : null}</View>}
+      {month.totalToPay.amount == null ? <Text style={styles.unavailable}>{t('home.amountUnavailable')}</Text> : <View style={styles.outstanding}><Text style={isExactDecimalZero(month.totalToPay.amount) ? styles.zeroAmount : styles.total}>{formatMoney(month.totalToPay)}</Text>{isExactDecimalZero(month.totalToPay.amount) && month.payments.length === 0 ? <Text style={styles.supporting}>{t('home.noPayments')}</Text> : null}</View>}
     </Section>
 
     {month.payments.length ? <Section title={t('home.payments')}><ListGroup>{month.payments.map((payment, index) => <PaymentRow key={`${payment.id}-${index}`} payment={payment} last={index === month.payments.length - 1} />)}</ListGroup></Section> : null}
