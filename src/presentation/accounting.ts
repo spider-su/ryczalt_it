@@ -87,7 +87,7 @@ export function issuePresentation(issue: AccountingIssue): {
 }
 
 export function statusForPayment(payment: PaymentLine): PresentationStatus {
-  const status = payment.status.toUpperCase();
+  const status = String(payment.status ?? '').trim().toUpperCase();
   if (status === 'PAID' || status === 'SETTLED' || status === 'MATCHED') return 'resolved';
   if (status === 'OVERDUE') return 'error';
   if (status === 'NOT_DUE') return 'informational';

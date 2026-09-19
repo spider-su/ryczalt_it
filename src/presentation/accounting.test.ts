@@ -34,6 +34,7 @@ describe('accounting presentation', () => {
     expect(issuePresentation(issue('WARNING', 'NEEDS_ANSWER'))).not.toHaveProperty('actionLabel');
   });
   it('maps documented payment states and keeps unknown states neutral', () => { expect(statusForPayment(payment('PAID'))).toBe('resolved'); expect(statusForPayment(payment('SETTLED'))).toBe('resolved'); expect(statusForPayment(payment('MATCHED'))).toBe('resolved'); expect(statusForPayment(payment('OVERDUE'))).toBe('error'); expect(statusForPayment(payment('NOT_PAID'))).toBe('requires_action'); expect(statusForPayment(payment('NOT_DUE'))).toBe('informational'); expect(statusForPayment(payment('UNKNOWN'))).toBe('unknown'); expect(paymentMatches(line({ paymentStatus: 'OVERDUE' }), 'OVERDUE')).toBe(true); expect(paymentMatches(line({ paymentStatus: 'UNKNOWN' }), 'UNPAID')).toBe(false); });
+  it('keeps malformed payment statuses neutral without throwing', () => { expect(statusForPayment(payment(null as never))).toBe('unknown'); expect(statusForPayment(payment(''))).toBe('unknown'); expect(statusForPayment(payment('   '))).toBe('unknown'); expect(statusForPayment(payment('NEW_BACKEND_STATE'))).toBe('unknown'); });
   it('uses deterministic selected, previous, and three-month calendar ranges', () => {
     expect(dateMatches(line({ issueDate: '2026-05-16' }), 'SELECTED_MONTH', '2026-05')).toBe(true);
     expect(dateMatches(line({ issueDate: '2026-04-03' }), 'SELECTED_MONTH', '2026-05')).toBe(false);

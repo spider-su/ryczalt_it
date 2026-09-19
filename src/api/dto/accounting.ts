@@ -37,7 +37,7 @@ export type AccountingMonthOverviewDto = {
       paidAmount: Decimal;
       outstandingAmount: Decimal;
       dueDate: string | null;
-      status: string;
+      status: string | null;
     }[];
   };
   filingSummary: {

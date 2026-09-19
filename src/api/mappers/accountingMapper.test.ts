@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { mapAccountingMonth, mapBankSummary, mapDocument, mapPaymentHistory, mapReconciliationSummary } from './accountingMapper';
+import { mapAccountingMonth, mapBankSummary, mapDocument, mapPaymentHistory, mapReconciliationSummary, normalizePaymentStatus } from './accountingMapper';
 import type { AccountingDocumentDto, AccountingMonthOverviewDto, PaymentHistoryDto } from '../dto/accounting';
 
 const overview = (overrides: Partial<AccountingMonthOverviewDto> = {}): AccountingMonthOverviewDto => ({
@@ -36,6 +36,16 @@ describe('accounting response mappers', () => {
     expect(mapDocument(document({ status: 'NEW_BACKEND_STATE' })).state).toBe('unknown');
     const payment: PaymentHistoryDto = { type: 'VAT', period: '2026-09', amount: null, paidAmount: null, outstandingAmount: null, dueDate: null, paymentDate: null, status: 'NEW_BACKEND_STATE' };
     expect(mapPaymentHistory([payment])[0]).toMatchObject({ status: 'NEW_BACKEND_STATE', amount: { amount: null, currency: 'PLN' }, dueDate: null });
+  });
+
+  it('normalizes missing current-payment status at the mapper boundary', () => {
+    expect(normalizePaymentStatus(null)).toBe('UNKNOWN');
+    expect(normalizePaymentStatus('')).toBe('UNKNOWN');
+    expect(normalizePaymentStatus('   ')).toBe('UNKNOWN');
+    expect(normalizePaymentStatus('UNKNOWN')).toBe('UNKNOWN');
+    expect(normalizePaymentStatus('NEW_BACKEND_STATE')).toBe('NEW_BACKEND_STATE');
+    const mapped = mapAccountingMonth(overview({ paymentSummary: { ...overview().paymentSummary, payments: [{ obligationType: 'VAT', amount: '100', paidAmount: '0', outstandingAmount: '100', dueDate: null, status: null }] } }), []);
+    expect(mapped.payments[0]?.status).toBe('UNKNOWN');
   });
 
   it('keeps document processing dimensions separate and preserves corrections', () => {

@@ -10,7 +10,7 @@ import { theme } from '../theme/theme';
 import { useAccountingMonth } from '../navigation/AccountingMonthContext';
 import { MonthSelector } from '../components/MonthSelector';
 import { useLocale } from '../i18n/LocaleContext';
-import { EmptyState, ErrorState, ListGroup, LoadingState, PageHeader, SearchField, Section, SegmentedControl, SheetHeader } from '../components/ui';
+import { EmptyState, ErrorState, ListGroup, LoadingState, PageHeader, SearchField, Section, SegmentedControl, SelectionList, SheetHeader } from '../components/ui';
 import { DocumentDetailsModal } from '../components/DocumentDetailsModal';
 
 type Filters = { direction: 'ALL' | 'SALE' | 'PURCHASE'; currency: string; payment: 'ALL' | 'PAID' | 'UNPAID' | 'OVERDUE'; date: DocumentDateRange };
@@ -64,7 +64,7 @@ function FilterSheet({ visible, filters, currencies, onChange, onClose }: { visi
   const dateOptions = [{ value: 'SELECTED_MONTH' as const, label: t('invoices.selectedMonth') }, { value: 'PREVIOUS_MONTH' as const, label: t('common.previousMonth') }, { value: 'LAST_3_MONTHS' as const, label: t('common.last3Months') }];
   const paymentOptions = [{ value: 'ALL' as const, label: t('common.all') }, { value: 'PAID' as const, label: t('common.paid') }, { value: 'UNPAID' as const, label: t('common.unpaid') }, { value: 'OVERDUE' as const, label: t('common.overdue') }];
   const currencyOptions = ['ALL', ...currencies].map((value) => ({ value, label: value === 'ALL' ? t('common.all') : value }));
-  return <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}><View style={styles.overlay}><View style={styles.sheet}><SheetHeader title={t('common.filters')} onClose={onClose} /><Text style={styles.filterTitle}>{t('invoices.issueDate')}</Text><SegmentedControl options={dateOptions} selected={filters.date} onSelect={(date) => set({ date })} /><Text style={styles.filterTitle}>{t('invoices.currency')}</Text><SegmentedControl options={currencyOptions} selected={filters.currency} onSelect={(currency) => set({ currency })} /><Text style={styles.filterTitle}>{t('invoices.status')}</Text><SegmentedControl options={paymentOptions} selected={filters.payment} onSelect={(payment) => set({ payment })} /><Pressable style={styles.apply} onPress={onClose} accessibilityRole="button"><Text style={styles.applyText}>{t('common.close')}</Text></Pressable></View></View></Modal>;
+  return <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}><View style={styles.overlay}><View style={styles.sheet}><SheetHeader title={t('common.filters')} onClose={onClose} /><Text style={styles.filterTitle}>{t('invoices.issueDate')}</Text><SegmentedControl options={dateOptions} selected={filters.date} onSelect={(date) => set({ date })} /><Text style={styles.filterTitle}>{t('invoices.currency')}</Text><SelectionList options={currencyOptions} selected={filters.currency} onSelect={(currency) => set({ currency })} /><Text style={styles.filterTitle}>{t('invoices.status')}</Text><SegmentedControl options={paymentOptions} selected={filters.payment} onSelect={(payment) => set({ payment })} /><Pressable style={styles.apply} onPress={onClose} accessibilityRole="button"><Text style={styles.applyText}>{t('common.close')}</Text></Pressable></View></View></Modal>;
 }
 
 const styles = StyleSheet.create({

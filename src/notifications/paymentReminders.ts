@@ -9,7 +9,8 @@ const PENDING_STATUSES = new Set(['NOT_PAID', 'DUE', 'PARTIAL', 'OVERDUE']);
 const KNOWN_TYPES = new Set(['RYCZALT', 'VAT', 'ZUS']);
 
 export function isPaymentReminderEligible(payment: PaymentLine): boolean {
-  return Boolean(parseLocalDate(payment.dueDate)) && KNOWN_TYPES.has(payment.title.toUpperCase()) && PENDING_STATUSES.has(payment.status.toUpperCase()) && !RESOLVED_STATUSES.has(payment.status.toUpperCase());
+  const status = String(payment.status ?? '').trim().toUpperCase();
+  return Boolean(parseLocalDate(payment.dueDate)) && KNOWN_TYPES.has(payment.title.toUpperCase()) && PENDING_STATUSES.has(status) && !RESOLVED_STATUSES.has(status);
 }
 
 /** Parse an accounting calendar date as local time; never use Date.parse on YYYY-MM-DD. */

@@ -25,15 +25,11 @@ export async function requestPermission(): Promise<boolean> {
 }
 
 export async function getNotificationPreferences(profileId: number): Promise<NotificationPreferences> {
-  try {
-    const raw = await AsyncStorage.getItem(preferenceKey(profileId));
-    if (!raw) return DEFAULT_NOTIFICATION_PREFERENCES;
-    const parsed = JSON.parse(raw) as Partial<NotificationPreferences>;
-    const leadDays = parsed.leadDays === 1 || parsed.leadDays === 3 || parsed.leadDays === 7 ? parsed.leadDays : DEFAULT_NOTIFICATION_PREFERENCES.leadDays;
-    return { enabled: parsed.enabled === true, leadDays };
-  } catch {
-    return DEFAULT_NOTIFICATION_PREFERENCES;
-  }
+  const raw = await AsyncStorage.getItem(preferenceKey(profileId));
+  if (!raw) return DEFAULT_NOTIFICATION_PREFERENCES;
+  const parsed = JSON.parse(raw) as Partial<NotificationPreferences>;
+  const leadDays = parsed.leadDays === 1 || parsed.leadDays === 3 || parsed.leadDays === 7 ? parsed.leadDays : DEFAULT_NOTIFICATION_PREFERENCES.leadDays;
+  return { enabled: parsed.enabled === true, leadDays };
 }
 
 export async function saveNotificationPreferences(profileId: number, preferences: NotificationPreferences): Promise<void> {

@@ -11,6 +11,9 @@ describe('payment reminder policy', () => {
     expect(isPaymentReminderEligible(payment({ status: 'NEW_BACKEND_STATUS' }))).toBe(false);
     expect(isPaymentReminderEligible(payment({ dueDate: null }))).toBe(false);
     expect(isPaymentReminderEligible(payment({ title: 'UNKNOWN' }))).toBe(false);
+    expect(isPaymentReminderEligible(payment({ status: null as never }))).toBe(false);
+    expect(isPaymentReminderEligible(payment({ status: '' }))).toBe(false);
+    expect(isPaymentReminderEligible(payment({ status: '   ' }))).toBe(false);
   });
 
   it('parses calendar dates in local time and rejects invalid dates', () => {

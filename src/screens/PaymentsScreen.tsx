@@ -10,12 +10,13 @@ import { theme } from '../theme/theme';
 import { useAccountingMonth } from '../navigation/AccountingMonthContext';
 import { MonthSelector } from '../components/MonthSelector';
 import { useLocale } from '../i18n/LocaleContext';
-import { ErrorState, KeyValueRow, ListGroup, LoadingState, PageHeader, Section, SegmentedControl, SheetHeader } from '../components/ui';
+import { ErrorState, FilterButton, KeyValueRow, ListGroup, LoadingState, PageHeader, Section, SegmentedControl, SheetHeader } from '../components/ui';
 import { AccountingStatusSection } from '../components/AccountingStatusSection';
 import { useAuth } from '../auth/AuthContext';
 import { getNotificationPreferences, reconcilePaymentReminders } from '../notifications/notificationService';
 
 type Filter = 'ALL' | 'RYCZALT' | 'VAT' | 'ZUS';
+type StatusFilter = 'ALL' | 'PAID' | 'UNPAID' | 'OVERDUE';
 
 export function PaymentsScreen() {
   const { locale } = useLocale();
@@ -25,6 +26,8 @@ export function PaymentsScreen() {
   const [history, setHistory] = useState<PaymentHistoryLine[]>([]);
   const [total, setTotal] = useState<PaymentLine['amount'] | null>(null);
   const [filter, setFilter] = useState<Filter>('ALL');
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('ALL');
+  const [filterSheet, setFilterSheet] = useState(false);
   const [obligationsLoading, setObligationsLoading] = useState(true);
   const [obligationsError, setObligationsError] = useState(false);
   const [historyLoading, setHistoryLoading] = useState(true);
@@ -53,20 +56,34 @@ export function PaymentsScreen() {
     return () => { active = false; };
   }, [repository, month, filter, refreshVersion, historyRetry]);
 
-  const visible = payments.filter((item) => filter === 'ALL' || item.title.toUpperCase() === filter);
+  const visible = payments.filter((item) => (filter === 'ALL' || item.title.toUpperCase() === filter) && matchesStatusFilter(item.status, statusFilter));
+  const visibleHistory = history.filter((item) => matchesStatusFilter(item.status, statusFilter));
   const filterOptions = [{ value: 'ALL' as const, label: t('common.all') }, { value: 'RYCZALT' as const, label: paymentLabel('RYCZALT') }, { value: 'VAT' as const, label: paymentLabel('VAT') }, { value: 'ZUS' as const, label: paymentLabel('ZUS') }];
 
   return <SafeAreaView style={styles.safe}><ScrollView contentContainerStyle={styles.content}><PageHeader title={t('settlements.title')} /><MonthSelector loading={obligationsLoading || historyLoading} />
     <Section title={t('settlements.upcoming')}>
       {total ? <Text style={styles.total}>{formatMoney(total)}</Text> : null}
-      <SegmentedControl options={filterOptions} selected={filter} onSelect={setFilter} />
+      <SegmentedControl options={filterOptions} selected={filter} onSelect={setFilter} /><View style={styles.filterButtonRow}><FilterButton onPress={() => setFilterSheet(true)} active={statusFilter !== 'ALL'} /></View>
       {obligationsLoading ? <LoadingState /> : obligationsError ? <ErrorState title={t('common.unavailable')} onRetry={() => setObligationsRetry((value) => value + 1)} /> : visible.length === 0 ? <Text style={styles.empty}>{t('settlements.noPayments')}</Text> : <ListGroup>{visible.map((payment, index) => <PaymentRow key={`${payment.id}-${index}`} payment={payment} last={index === visible.length - 1} amountKind="outstanding" onPress={() => setSelected(payment)} />)}</ListGroup>}
     </Section>
     <AccountingStatusSection status={accountingStatus} />
     <Section title={t('settlements.history')}>
-      {historyLoading ? <LoadingState /> : historyError ? <ErrorState title={t('settlements.historyError')} onRetry={() => setHistoryRetry((value) => value + 1)} /> : history.length === 0 ? <Text style={styles.note}>{t('settlements.noHistory')}</Text> : <ListGroup>{history.map((payment, index) => <PaymentRow key={`${payment.id}-${index}`} payment={payment} last={index === history.length - 1} amountKind="total" onPress={() => setSelected(payment)} />)}</ListGroup>}
+      {historyLoading ? <LoadingState /> : historyError ? <ErrorState title={t('settlements.historyError')} onRetry={() => setHistoryRetry((value) => value + 1)} /> : visibleHistory.length === 0 ? <Text style={styles.note}>{t('settlements.noHistory')}</Text> : <ListGroup>{visibleHistory.map((payment, index) => <PaymentRow key={`${payment.id}-${index}`} payment={payment} last={index === visibleHistory.length - 1} amountKind="total" onPress={() => setSelected(payment)} />)}</ListGroup>}
     </Section>
-  </ScrollView><PaymentDetails payment={selected} onClose={() => setSelected(null)} /></SafeAreaView>;
+  </ScrollView><PaymentFilterSheet visible={filterSheet} selected={statusFilter} onSelect={setStatusFilter} onClose={() => setFilterSheet(false)} /><PaymentDetails payment={selected} onClose={() => setSelected(null)} /></SafeAreaView>;
+}
+
+function matchesStatusFilter(status: string, filter: StatusFilter): boolean {
+  if (filter === 'ALL') return true;
+  const normalized = status.trim().toUpperCase();
+  if (filter === 'PAID') return ['PAID', 'SETTLED', 'MATCHED'].includes(normalized);
+  if (filter === 'OVERDUE') return normalized === 'OVERDUE';
+  return ['NOT_PAID', 'DUE', 'PARTIAL'].includes(normalized);
+}
+
+function PaymentFilterSheet({ visible, selected, onSelect, onClose }: { visible: boolean; selected: StatusFilter; onSelect: (value: StatusFilter) => void; onClose: () => void }) {
+  const options = [{ value: 'ALL' as const, label: t('common.all') }, { value: 'PAID' as const, label: t('common.paid') }, { value: 'UNPAID' as const, label: t('common.unpaid') }, { value: 'OVERDUE' as const, label: t('common.overdue') }];
+  return <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}><View style={styles.overlay}><View style={styles.sheet}><SheetHeader title={t('common.filters')} onClose={onClose} /><Text style={styles.filterTitle}>{t('settlements.status')}</Text><SegmentedControl options={options} selected={selected} onSelect={onSelect} /><Pressable style={styles.apply} onPress={onClose} accessibilityRole="button"><Text style={styles.applyText}>{t('common.close')}</Text></Pressable></View></View></Modal>;
 }
 
 function PaymentRow({ payment, last, amountKind, onPress }: { payment: PaymentLine; last: boolean; amountKind: 'outstanding' | 'total'; onPress: () => void }) {
@@ -92,6 +109,8 @@ const styles = StyleSheet.create({
   total: { color: theme.colors.textPrimary, fontSize: theme.typography.amount, lineHeight: 34, fontWeight: '700', marginBottom: theme.spacing.lg },
   empty: { color: theme.colors.textSecondary, lineHeight: 20, paddingVertical: theme.spacing.lg },
   note: { color: theme.colors.textSecondary, lineHeight: 20 },
+  filterButtonRow: { alignItems: 'flex-end', marginTop: theme.spacing.sm },
+  filterTitle: { color: theme.colors.textPrimary, fontWeight: '600', marginTop: theme.spacing.sm, marginBottom: theme.spacing.sm },
   row: { minHeight: 88, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: theme.spacing.md, paddingVertical: theme.spacing.md },
   divider: { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: theme.colors.divider },
   pressed: { backgroundColor: theme.colors.surfaceSecondary },
@@ -104,5 +123,7 @@ const styles = StyleSheet.create({
   paid: { color: theme.colors.success },
   overdue: { color: theme.colors.danger },
   overlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: theme.colors.overlay },
-  sheet: { backgroundColor: theme.colors.surface, borderTopLeftRadius: theme.radius.large, borderTopRightRadius: theme.radius.large, padding: theme.spacing.xl, paddingBottom: theme.spacing.xxxl }
+  sheet: { backgroundColor: theme.colors.surface, borderTopLeftRadius: theme.radius.large, borderTopRightRadius: theme.radius.large, padding: theme.spacing.xl, paddingBottom: theme.spacing.xxxl, gap: theme.spacing.md },
+  apply: { minHeight: 48, alignItems: 'center', justifyContent: 'center', borderRadius: theme.radius.control, backgroundColor: theme.colors.accent, marginTop: theme.spacing.md },
+  applyText: { color: theme.colors.onAccent, fontSize: theme.typography.button, fontWeight: '700' }
 });

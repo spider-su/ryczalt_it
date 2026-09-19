@@ -41,8 +41,16 @@ export function SegmentedControl<T extends string>({ options, selected, onSelect
   return <View style={styles.segmented} accessibilityRole="radiogroup">{options.map((option) => <Pressable key={option.value} onPress={() => onSelect(option.value)} accessibilityRole="radio" accessibilityState={{ selected: selected === option.value }} style={[styles.segment, selected === option.value && styles.segmentSelected]}><Text style={[styles.segmentLabel, selected === option.value && styles.segmentLabelSelected]}>{option.label}</Text></Pressable>)}</View>;
 }
 
+export function SelectionList<T extends string>({ options, selected, onSelect }: { options: { value: T; label: string }[]; selected: T; onSelect: (value: T) => void }) {
+  return <View accessibilityRole="radiogroup" style={styles.selectionList}>{options.map((option, index) => <Pressable key={option.value} onPress={() => onSelect(option.value)} accessibilityRole="radio" accessibilityState={{ selected: selected === option.value }} style={[styles.selectionOption, index < options.length - 1 && styles.listDivider]}><Text style={[styles.selectionLabel, selected === option.value && styles.segmentLabelSelected]}>{option.label}</Text><Ionicons name={selected === option.value ? 'radio-button-on' : 'radio-button-off'} size={20} color={selected === option.value ? theme.colors.accent : theme.colors.textMuted} /></Pressable>)}</View>;
+}
+
 export function SearchField({ value, onChangeText, placeholder, onFilter, filterActive = false }: { value: string; onChangeText: (value: string) => void; placeholder: string; onFilter: () => void; filterActive?: boolean }) {
   return <View style={styles.searchField}><Ionicons name="search-outline" size={19} color={theme.colors.textMuted} /><TextInput value={value} onChangeText={onChangeText} placeholder={placeholder} placeholderTextColor={theme.colors.textMuted} style={styles.searchInput} accessibilityLabel={placeholder} /><Pressable onPress={onFilter} accessibilityRole="button" accessibilityLabel={t('common.filters')} style={[styles.searchAction, filterActive && styles.searchActionActive]}><Ionicons name="options-outline" size={20} color={filterActive ? theme.colors.accent : theme.colors.textSecondary} /></Pressable></View>;
+}
+
+export function FilterButton({ onPress, active = false }: { onPress: () => void; active?: boolean }) {
+  return <Pressable onPress={onPress} accessibilityRole="button" accessibilityLabel={t('common.filters')} style={[styles.filterButton, active && styles.searchActionActive]}><Ionicons name="options-outline" size={20} color={active ? theme.colors.accent : theme.colors.textSecondary} /></Pressable>;
 }
 
 export function SheetHeader({ title, onClose, back = false }: { title: string; onClose: () => void; back?: boolean }) {
@@ -115,10 +123,14 @@ const styles = StyleSheet.create({
   segmentSelected: { backgroundColor: theme.colors.surface, ...Platform.select({ web: { boxShadow: '0px 1px 3px rgba(0, 0, 0, 0.05)' }, default: { shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 3, shadowOffset: { width: 0, height: 1 }, elevation: 1 } }) },
   segmentLabel: { color: theme.colors.textSecondary, fontSize: theme.typography.supporting, fontWeight: '600', textAlign: 'center' },
   segmentLabelSelected: { color: theme.colors.accent, fontWeight: '700' },
+  selectionList: { backgroundColor: theme.colors.surface, borderTopWidth: StyleSheet.hairlineWidth, borderBottomWidth: StyleSheet.hairlineWidth, borderColor: theme.colors.divider },
+  selectionOption: { minHeight: 48, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: theme.spacing.md, paddingVertical: theme.spacing.sm },
+  selectionLabel: { flex: 1, color: theme.colors.textPrimary, fontSize: theme.typography.supporting },
   searchField: { minHeight: 52, flexDirection: 'row', alignItems: 'center', gap: theme.spacing.sm, backgroundColor: theme.colors.surface, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: theme.colors.divider, paddingHorizontal: theme.spacing.sm },
   searchInput: { flex: 1, minHeight: 48, color: theme.colors.textPrimary, fontSize: theme.typography.body },
   searchAction: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center', borderRadius: theme.radius.sm },
   searchActionActive: { backgroundColor: theme.colors.accentSoft },
+  filterButton: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center', borderRadius: theme.radius.sm, backgroundColor: theme.colors.surfaceSecondary },
   sheetHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingBottom: theme.spacing.lg },
   sheetTitle: { color: theme.colors.textPrimary, fontSize: theme.typography.section, lineHeight: 24, fontWeight: '800' },
   closeButton: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center', marginRight: -theme.spacing.sm },

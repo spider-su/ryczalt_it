@@ -3,6 +3,11 @@ import { AccountingIssue, AccountingLine, AccountingMonth, AccountingStatus, Ban
 
 export const POLISH_OBLIGATION_CURRENCY = 'PLN';
 
+export function normalizePaymentStatus(status: string | null | undefined): string {
+  const normalized = status?.trim();
+  return normalized || 'UNKNOWN';
+}
+
 function decimalString(amount: Decimal): string {
   const value = typeof amount === 'number' ? String(amount) : amount.trim();
   if (!value || !/^-?(?:0|[1-9]\d*)(?:\.\d+)?$/.test(value)) {
@@ -193,7 +198,7 @@ export function mapPaymentHistory(payments: PaymentHistoryDto[]): PaymentHistory
     amount: requiredMoney(payment.amount, POLISH_OBLIGATION_CURRENCY),
     paidAmount: requiredMoney(payment.paidAmount, POLISH_OBLIGATION_CURRENCY),
     outstandingAmount: requiredMoney(payment.outstandingAmount, POLISH_OBLIGATION_CURRENCY),
-    status: payment.status ?? 'UNKNOWN',
+    status: normalizePaymentStatus(payment.status),
     period: payment.period,
     paymentDate: payment.paymentDate
   }));
@@ -236,7 +241,7 @@ export function mapAccountingMonth(
       amount: requiredMoney(payment.amount, POLISH_OBLIGATION_CURRENCY),
       paidAmount: requiredMoney(payment.paidAmount, POLISH_OBLIGATION_CURRENCY),
       outstandingAmount: requiredMoney(payment.outstandingAmount, POLISH_OBLIGATION_CURRENCY),
-      status: payment.status,
+      status: normalizePaymentStatus(payment.status),
       period: overview.month
     })),
     attentionCount,
