@@ -61,7 +61,7 @@ function LanguageRow({ label, selected, onPress, last = false }: { label: string
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: theme.colors.canvas },
-  content: { paddingHorizontal: theme.spacing.xl, paddingTop: theme.spacing.lg, paddingBottom: theme.spacing.xxxl },
+  content: { width: '100%', maxWidth: 640, alignSelf: 'center', paddingHorizontal: theme.spacing.xl, paddingTop: theme.spacing.lg, paddingBottom: theme.spacing.xxxl },
   signOut: { minHeight: 52, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: theme.spacing.sm, marginTop: theme.spacing.xxxl, borderRadius: theme.radius.control, backgroundColor: theme.colors.dangerSoft },
   signOutText: { color: theme.colors.danger, fontSize: theme.typography.button, fontWeight: '700' },
   overlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: theme.colors.overlay },

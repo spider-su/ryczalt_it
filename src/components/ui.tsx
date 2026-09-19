@@ -21,8 +21,8 @@ export function PageHeader({ title, subtitle }: { title: string; subtitle?: stri
   return <View style={styles.pageHeader}><Text style={styles.pageTitle}>{title}</Text>{subtitle ? <Text style={styles.pageSubtitle}>{subtitle}</Text> : null}</View>;
 }
 
-export function Section({ title, children, description }: { title: string; children: ReactNode; description?: string }) {
-  return <View style={styles.section}><Text style={styles.sectionTitle}>{title}</Text>{description ? <Text style={styles.sectionDescription}>{description}</Text> : null}{children}</View>;
+export function Section({ title, children, description, tone = 'primary' }: { title: string; children: ReactNode; description?: string; tone?: 'primary' | 'secondary' }) {
+  return <View style={styles.section}><Text style={[styles.sectionTitle, tone === 'secondary' && styles.sectionTitleSecondary]}>{title}</Text>{description ? <Text style={styles.sectionDescription}>{description}</Text> : null}{children}</View>;
 }
 
 export function ListGroup({ children, style }: { children: ReactNode; style?: object }) { return <View style={[styles.listGroup, style]}>{children}</View>; }
@@ -97,6 +97,7 @@ const styles = StyleSheet.create({
   pageSubtitle: { color: theme.colors.textSecondary, fontSize: theme.typography.supporting, lineHeight: 19, marginTop: theme.spacing.xs },
   section: { marginTop: theme.spacing.xxl },
   sectionTitle: { color: theme.colors.textPrimary, fontSize: theme.typography.section, lineHeight: 24, fontWeight: '800', marginBottom: theme.spacing.sm },
+  sectionTitleSecondary: { color: theme.colors.textSecondary, fontSize: theme.typography.body, fontWeight: '700' },
   sectionDescription: { color: theme.colors.textSecondary, lineHeight: 20, marginBottom: theme.spacing.md },
   header: { minHeight: 64, flexDirection: 'row', alignItems: 'center', marginBottom: theme.spacing.lg },
   back: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center', marginLeft: -10, marginRight: 4 },
@@ -104,7 +105,7 @@ const styles = StyleSheet.create({
   eyebrow: { color: theme.colors.textSecondary, fontSize: theme.typography.small, fontWeight: '700', marginBottom: 3 },
   headerTitle: { color: theme.colors.textPrimary, fontSize: theme.typography.title, lineHeight: 36, fontWeight: '800', letterSpacing: -0.5 },
   card: { backgroundColor: theme.colors.surfaceElevated, borderRadius: theme.radius.card, borderWidth: 1, borderColor: theme.colors.borderSubtle, padding: theme.spacing.lg },
-  listGroup: { backgroundColor: theme.colors.surface, borderTopWidth: StyleSheet.hairlineWidth, borderBottomWidth: StyleSheet.hairlineWidth, borderColor: theme.colors.divider },
+  listGroup: { borderTopWidth: StyleSheet.hairlineWidth, borderBottomWidth: StyleSheet.hairlineWidth, borderColor: theme.colors.divider },
   listRow: { minHeight: 64, flexDirection: 'row', alignItems: 'center', gap: theme.spacing.md, paddingVertical: theme.spacing.md },
   listDivider: { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: theme.colors.divider },
   rowPressed: { backgroundColor: theme.colors.surfaceSecondary },

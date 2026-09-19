@@ -44,8 +44,9 @@ export function AppNavigator() {
         tabBarActiveTintColor: theme.colors.accent,
         tabBarInactiveTintColor: theme.colors.textMuted,
         tabBarLabelStyle: {
-          fontSize: 12,
-          fontWeight: '700'
+          fontSize: 10,
+          fontWeight: '600',
+          letterSpacing: -0.15
         },
         tabBarStyle: {
           ...tabBarLayout,
