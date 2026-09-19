@@ -3,6 +3,7 @@
 ## Current run
 
 - Starting SHA for final pre-E2E hardening: `428ae1d008195d30e4cc579382998359ef301f9d`.
+- Current SHA after final pre-E2E hardening: `8e5cf2fa39bca05e20de9492331a4a6e077e843a`.
 - Branch: `develop`, synchronized with `origin/develop` before changes.
 - Final native/device verification: not performed in this environment.
 - Authenticated API credentials: unavailable in this environment.
