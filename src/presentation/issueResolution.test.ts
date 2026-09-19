@@ -26,4 +26,8 @@ describe('issue resolution routing', () => {
     expect(resolveIssueAction(issue({ resolution: { type: 'MATCH', command: null, options: [], settingsPath: null, actionLabel: null, reason: null } })).kind).toBe('UNKNOWN');
     expect(resolveIssueAction(issue({ resolution: { type: 'NEW_TYPE', command: 'newCommand', options: [], settingsPath: null, actionLabel: null, reason: null } })).kind).toBe('UNKNOWN');
   });
+
+  it('fails closed when a malformed issue has no resolution object', () => {
+    expect(resolveIssueAction(issue({ resolution: undefined as never }))).toEqual({ kind: 'UNKNOWN' });
+  });
 });

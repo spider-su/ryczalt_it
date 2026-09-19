@@ -19,4 +19,4 @@ export function MonthSelector({ loading = false }: { loading?: boolean }) {
   </View>;
 }
 
-const styles = StyleSheet.create({ row: { minHeight: 52, flexDirection: 'row', alignItems: 'center', borderRadius: theme.radius.control, backgroundColor: theme.colors.surface, borderWidth: 1, borderColor: theme.colors.borderSubtle }, button: { width: 52, minHeight: 52, alignItems: 'center', justifyContent: 'center' }, disabled: { opacity: 0.45 }, center: { flex: 1, alignItems: 'center' }, label: { color: theme.colors.textPrimary, fontSize: 16, fontWeight: '800', textTransform: 'capitalize' } });
+const styles = StyleSheet.create({ row: { minHeight: 52, flexDirection: 'row', alignItems: 'center', borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: theme.colors.divider }, button: { width: 52, minHeight: 52, alignItems: 'center', justifyContent: 'center' }, disabled: { opacity: 0.45 }, center: { flex: 1, alignItems: 'center' }, label: { color: theme.colors.textPrimary, fontSize: theme.typography.body, fontWeight: '700', textTransform: 'capitalize' } });

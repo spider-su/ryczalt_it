@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
 import { createAccountingRepository } from '../api/config';
 import { AccountingLine } from '../model/accounting';
 import { formatDate, formatMonth, paymentStatusLabel, t } from '../i18n';
@@ -11,7 +10,7 @@ import { theme } from '../theme/theme';
 import { useAccountingMonth } from '../navigation/AccountingMonthContext';
 import { MonthSelector } from '../components/MonthSelector';
 import { useLocale } from '../i18n/LocaleContext';
-import { EmptyState, ErrorState, LoadingState } from '../components/ui';
+import { EmptyState, ErrorState, ListGroup, LoadingState, PageHeader, SearchField, Section, SegmentedControl, SheetHeader } from '../components/ui';
 import { DocumentDetailsModal } from '../components/DocumentDetailsModal';
 
 type Filters = { direction: 'ALL' | 'SALE' | 'PURCHASE'; currency: string; payment: 'ALL' | 'PAID' | 'UNPAID' | 'OVERDUE'; date: 'ALL' | 'THIS_MONTH' | 'PREVIOUS_MONTH' | 'LAST_3_MONTHS' };
@@ -19,14 +18,74 @@ const initialFilters: Filters = { direction: 'ALL', currency: 'ALL', payment: 'A
 
 export function DocumentsScreen() {
   useLocale();
-  const repository = useMemo(() => createAccountingRepository(), []); const { month, refreshVersion } = useAccountingMonth();
-  const [items, setItems] = useState<AccountingLine[]>([]); const [filters, setFilters] = useState(initialFilters); const [query, setQuery] = useState(''); const [loading, setLoading] = useState(true); const [error, setError] = useState(false); const [sheet, setSheet] = useState(false); const [selected, setSelected] = useState<AccountingLine | null>(null);
-  useEffect(() => { let active = true; setLoading(true); setError(false); setItems([]); const count = filters.date === 'LAST_3_MONTHS' ? 3 : filters.date === 'PREVIOUS_MONTH' ? 2 : 1; repository.getDocumentsForRange(month, count).then((value) => active && setItems(value)).catch(() => active && setError(true)).finally(() => active && setLoading(false)); return () => { active = false; }; }, [repository, month, filters.date, refreshVersion]);
-  const currencies = [...new Set(items.map((item) => item.currency).filter(Boolean) as string[])]; const filtered = items.filter((item) => filters.direction === 'ALL' || item.direction === filters.direction).filter((item) => filters.currency === 'ALL' || item.currency === filters.currency).filter((item) => matchesInvoice(item, query)).filter((item) => paymentMatches(item, filters.payment)).filter((item) => dateMatches(item, filters.date, month)); const hasFilters = query.trim().length > 0 || JSON.stringify(filters) !== JSON.stringify(initialFilters);
+  const repository = useMemo(() => createAccountingRepository(), []);
+  const { month, refreshVersion } = useAccountingMonth();
+  const [items, setItems] = useState<AccountingLine[]>([]);
+  const [filters, setFilters] = useState(initialFilters);
+  const [query, setQuery] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
+  const [sheet, setSheet] = useState(false);
+  const [selected, setSelected] = useState<AccountingLine | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    setLoading(true); setError(false); setItems([]);
+    const count = filters.date === 'LAST_3_MONTHS' ? 3 : filters.date === 'PREVIOUS_MONTH' ? 2 : 1;
+    repository.getDocumentsForRange(month, count).then((value) => active && setItems(value)).catch(() => active && setError(true)).finally(() => active && setLoading(false));
+    return () => { active = false; };
+  }, [repository, month, filters.date, refreshVersion]);
+
+  const currencies = [...new Set(items.map((item) => item.currency).filter(Boolean) as string[])];
+  const filtered = items.filter((item) => filters.direction === 'ALL' || item.direction === filters.direction).filter((item) => filters.currency === 'ALL' || item.currency === filters.currency).filter((item) => matchesInvoice(item, query)).filter((item) => paymentMatches(item, filters.payment)).filter((item) => dateMatches(item, filters.date, month));
+  const hasFilters = query.trim().length > 0 || JSON.stringify(filters) !== JSON.stringify(initialFilters);
   const clear = () => { setQuery(''); setFilters(initialFilters); };
-  return <SafeAreaView style={styles.safe}><ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled"><Text style={styles.title}>{t('invoices.title')}</Text><MonthSelector loading={loading} /><View style={styles.search}><Ionicons name="search-outline" size={19} color={theme.colors.textMuted} /><TextInput value={query} onChangeText={setQuery} placeholder={t('invoices.search')} placeholderTextColor={theme.colors.textMuted} style={styles.input} accessibilityLabel={t('invoices.search')} /><Pressable onPress={() => setSheet(true)} accessibilityLabel={t('common.filters')} style={styles.filterButton}><Ionicons name="options-outline" size={21} color={theme.colors.primary} /></Pressable></View><View style={styles.chips}>{(['ALL', 'SALE', 'PURCHASE'] as const).map((value) => <Chip key={value} label={value === 'ALL' ? t('common.all') : value === 'SALE' ? t('common.sales') : t('common.purchases')} active={filters.direction === value} onPress={() => setFilters({ ...filters, direction: value })} />)}<Chip label={t('common.filters')} active={hasFilters} onPress={() => setSheet(true)} /></View>{loading ? <LoadingState /> : error ? <ErrorState /> : filtered.length === 0 ? <Empty filtered={hasFilters} onClear={clear} /> : <View><Text style={styles.month}>{formatMonth(month)}</Text><View style={styles.card}>{filtered.map((item, index) => <Pressable key={`${item.id}-${index}`} style={({ pressed }) => [styles.row, index < filtered.length - 1 && styles.divider, pressed && styles.pressed]} onPress={() => setSelected(item)} accessibilityRole="button" accessibilityLabel={`${item.counterparty ?? item.title}, ${formatMoney(item.amount)}`}><View style={styles.copy}><Text style={styles.rowTitle} numberOfLines={1}>{item.counterparty ?? item.title}</Text><Text style={styles.meta} numberOfLines={1}>{item.documentNumber ?? t('common.unknown')} · {formatDate(item.issueDate)}</Text></View><View style={styles.right}><Text style={styles.amount}>{formatMoney(item.amount)}</Text><Text style={styles.meta}>{item.paymentStatus ? paymentStatusLabel(item.paymentStatus) : t('common.unknown')}</Text></View></Pressable>)}</View></View>}</ScrollView><FilterSheet visible={sheet} filters={filters} currencies={currencies} onChange={setFilters} onClose={() => setSheet(false)} /><DocumentDetailsModal item={selected} onClose={() => setSelected(null)} /></SafeAreaView>;
+  const directionOptions = [{ value: 'ALL' as const, label: t('common.all') }, { value: 'SALE' as const, label: t('common.sales') }, { value: 'PURCHASE' as const, label: t('common.purchases') }];
+
+  return <SafeAreaView style={styles.safe}><ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+    <PageHeader title={t('invoices.title')} />
+    <MonthSelector loading={loading} />
+    <View style={styles.searchWrap}><SearchField value={query} onChangeText={setQuery} placeholder={t('invoices.search')} onFilter={() => setSheet(true)} filterActive={hasFilters} /></View>
+    <View style={styles.direction}><SegmentedControl options={directionOptions} selected={filters.direction} onSelect={(direction) => setFilters({ ...filters, direction })} /></View>
+    {loading ? <LoadingState /> : error ? <ErrorState /> : filtered.length === 0 ? <Empty filtered={hasFilters} onClear={clear} /> : <Section title={formatMonth(month)}><ListGroup>{filtered.map((item, index) => <DocumentRow key={`${item.id}-${index}`} item={item} last={index === filtered.length - 1} onPress={() => setSelected(item)} />)}</ListGroup></Section>}
+  </ScrollView><FilterSheet visible={sheet} filters={filters} currencies={currencies} onChange={setFilters} onClose={() => setSheet(false)} /><DocumentDetailsModal item={selected} onClose={() => setSelected(null)} /></SafeAreaView>;
 }
-function Chip({ label, active, onPress }: { label: string; active: boolean; onPress: () => void }) { return <Pressable onPress={onPress} style={[styles.chip, active && styles.active]} accessibilityRole="button"><Text style={[styles.chipText, active && styles.activeText]}>{label}</Text></Pressable>; }
-function Empty({ filtered, onClear }: { filtered: boolean; onClear: () => void }) { return <View style={styles.empty}><EmptyState icon="documents-outline" title={filtered ? t('invoices.filteredTitle') : t('invoices.emptyTitle')} body={filtered ? t('invoices.filteredBody') : t('invoices.emptyBody')} />{filtered && <Pressable onPress={onClear} style={styles.clearButton}><Text style={styles.link}>{t('invoices.clearFilters')}</Text></Pressable>}</View>; }
-function FilterSheet({ visible, filters, currencies, onChange, onClose }: { visible: boolean; filters: Filters; currencies: string[]; onChange: (value: Filters) => void; onClose: () => void }) { const set = (value: Partial<Filters>) => onChange({ ...filters, ...value }); return <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}><View style={styles.overlay}><View style={styles.sheet}><View style={styles.header}><Text style={styles.sheetTitle}>{t('common.filters')}</Text><Pressable onPress={onClose} accessibilityLabel={t('common.close')}><Ionicons name="close" size={24} color={theme.colors.text} /></Pressable></View><Text style={styles.filterTitle}>{t('invoices.issueDate')}</Text><View style={styles.wrap}>{([['ALL', t('invoices.allInSelectedMonth')], ['THIS_MONTH', t('common.thisMonth')], ['PREVIOUS_MONTH', t('common.previousMonth')], ['LAST_3_MONTHS', t('common.last3Months')]] as const).map(([value, label]) => <Chip key={value} label={label} active={filters.date === value} onPress={() => set({ date: value })} />)}</View><Text style={styles.filterTitle}>{t('invoices.currency')}</Text><View style={styles.wrap}>{['ALL', ...currencies].map((value) => <Chip key={value} label={value === 'ALL' ? t('common.all') : value} active={filters.currency === value} onPress={() => set({ currency: value })} />)}</View><Text style={styles.filterTitle}>{t('invoices.status')}</Text><View style={styles.wrap}>{(['ALL', 'PAID', 'UNPAID', 'OVERDUE'] as const).map((value) => <Chip key={value} label={value === 'ALL' ? t('common.all') : paymentStatusLabel(value)} active={filters.payment === value} onPress={() => set({ payment: value })} />)}</View><Pressable style={styles.apply} onPress={onClose}><Text style={styles.applyText}>{t('common.close')}</Text></Pressable></View></View></Modal>; }
-const styles = StyleSheet.create({ safe: { flex: 1, backgroundColor: theme.colors.background }, content: { paddingHorizontal: theme.spacing.xl, paddingTop: theme.spacing.lg, paddingBottom: theme.spacing.xxxl }, title: { color: theme.colors.textPrimary, fontSize: theme.typography.title, lineHeight: 36, fontWeight: '800', letterSpacing: -0.5, marginTop: theme.spacing.sm, marginBottom: theme.spacing.sm }, search: { minHeight: 54, flexDirection: 'row', alignItems: 'center', gap: theme.spacing.sm, backgroundColor: theme.colors.surface, borderRadius: theme.radius.control, borderWidth: 1, borderColor: theme.colors.borderSubtle, paddingHorizontal: theme.spacing.md, marginTop: theme.spacing.lg }, filterButton: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' }, input: { flex: 1, color: theme.colors.textPrimary, fontSize: 15 }, chips: { flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.sm, marginTop: theme.spacing.md }, chip: { minHeight: 38, borderWidth: 1, borderColor: theme.colors.borderSubtle, borderRadius: 999, paddingHorizontal: theme.spacing.md, paddingVertical: 8, backgroundColor: theme.colors.surface }, active: { backgroundColor: theme.colors.accent, borderColor: theme.colors.accent }, chipText: { color: theme.colors.textSecondary, fontSize: 13, fontWeight: '700' }, activeText: { color: theme.colors.onAccent }, month: { color: theme.colors.textSecondary, fontWeight: '800', marginTop: theme.spacing.xxl, marginBottom: theme.spacing.sm, textTransform: 'capitalize' }, card: { backgroundColor: theme.colors.surface, borderRadius: theme.radius.card, borderWidth: 1, borderColor: theme.colors.borderSubtle, overflow: 'hidden' }, row: { minHeight: 80, flexDirection: 'row', alignItems: 'center', gap: theme.spacing.md, paddingHorizontal: theme.spacing.lg }, divider: { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: theme.colors.borderSubtle }, pressed: { backgroundColor: theme.colors.surfaceSecondary }, copy: { flex: 1, minWidth: 0 }, rowTitle: { color: theme.colors.textPrimary, fontWeight: '800', fontSize: 15 }, meta: { color: theme.colors.textSecondary, fontSize: 12, marginTop: 5 }, right: { alignItems: 'flex-end', maxWidth: '42%' }, amount: { color: theme.colors.textPrimary, fontWeight: '800', fontSize: 15 }, empty: { marginTop: theme.spacing.xxl }, clearButton: { alignItems: 'center', marginTop: -theme.spacing.lg }, emptyTitle: { color: theme.colors.textPrimary, fontSize: 18, fontWeight: '800' }, link: { color: theme.colors.accent, fontWeight: '800' }, overlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: theme.colors.overlay }, sheet: { backgroundColor: theme.colors.surface, borderTopLeftRadius: theme.radius.large, borderTopRightRadius: theme.radius.large, padding: theme.spacing.xl, paddingBottom: theme.spacing.xxxl, gap: theme.spacing.md }, header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }, sheetTitle: { color: theme.colors.textPrimary, fontSize: 20, fontWeight: '800' }, filterTitle: { color: theme.colors.textPrimary, fontWeight: '800', marginTop: theme.spacing.sm }, wrap: { flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.sm }, apply: { backgroundColor: theme.colors.accent, alignItems: 'center', borderRadius: theme.radius.control, paddingVertical: theme.spacing.md }, applyText: { color: theme.colors.onAccent, fontWeight: '800' }, detailTitle: { color: theme.colors.textPrimary, fontSize: 24, fontWeight: '800', marginBottom: theme.spacing.sm }, detailAmount: { flexDirection: 'row', alignItems: 'baseline', gap: theme.spacing.sm, paddingVertical: theme.spacing.md, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: theme.colors.borderSubtle, marginBottom: theme.spacing.sm }, detailAmountValue: { color: theme.colors.textPrimary, fontSize: 30, fontWeight: '800' } });
+
+function DocumentRow({ item, last, onPress }: { item: AccountingLine; last: boolean; onPress: () => void }) {
+  return <Pressable onPress={onPress} accessibilityRole="button" accessibilityLabel={`${item.counterparty ?? item.title}, ${formatMoney(item.amount)}`} style={({ pressed }) => [styles.row, !last && styles.divider, pressed && styles.pressed]}><View style={styles.copy}><Text style={styles.rowTitle} numberOfLines={1}>{item.counterparty ?? item.title}</Text><Text style={styles.meta} numberOfLines={1}>{item.documentNumber ?? t('common.unknown')} · {formatDate(item.issueDate)}</Text></View><View style={styles.right}><Text style={styles.amount}>{formatMoney(item.amount)}</Text>{item.paymentStatus ? <Text style={styles.meta}>{paymentStatusLabel(item.paymentStatus)}</Text> : null}</View></Pressable>;
+}
+
+function Empty({ filtered, onClear }: { filtered: boolean; onClear: () => void }) {
+  return <View style={styles.empty}><EmptyState icon="documents-outline" title={filtered ? t('invoices.filteredTitle') : t('invoices.emptyTitle')} body={filtered ? t('invoices.filteredBody') : t('invoices.emptyBody')} />{filtered ? <Pressable onPress={onClear} style={styles.clearButton} accessibilityRole="button"><Text style={styles.link}>{t('invoices.clearFilters')}</Text></Pressable> : null}</View>;
+}
+
+function FilterSheet({ visible, filters, currencies, onChange, onClose }: { visible: boolean; filters: Filters; currencies: string[]; onChange: (value: Filters) => void; onClose: () => void }) {
+  const set = (value: Partial<Filters>) => onChange({ ...filters, ...value });
+  const dateOptions = [{ value: 'ALL' as const, label: t('invoices.allInSelectedMonth') }, { value: 'THIS_MONTH' as const, label: t('common.thisMonth') }, { value: 'PREVIOUS_MONTH' as const, label: t('common.previousMonth') }, { value: 'LAST_3_MONTHS' as const, label: t('common.last3Months') }];
+  const paymentOptions = [{ value: 'ALL' as const, label: t('common.all') }, { value: 'PAID' as const, label: t('common.paid') }, { value: 'UNPAID' as const, label: t('common.unpaid') }, { value: 'OVERDUE' as const, label: t('common.overdue') }];
+  const currencyOptions = ['ALL', ...currencies].map((value) => ({ value, label: value === 'ALL' ? t('common.all') : value }));
+  return <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}><View style={styles.overlay}><View style={styles.sheet}><SheetHeader title={t('common.filters')} onClose={onClose} /><Text style={styles.filterTitle}>{t('invoices.issueDate')}</Text><SegmentedControl options={dateOptions} selected={filters.date} onSelect={(date) => set({ date })} /><Text style={styles.filterTitle}>{t('invoices.currency')}</Text><SegmentedControl options={currencyOptions} selected={filters.currency} onSelect={(currency) => set({ currency })} /><Text style={styles.filterTitle}>{t('invoices.status')}</Text><SegmentedControl options={paymentOptions} selected={filters.payment} onSelect={(payment) => set({ payment })} /><Pressable style={styles.apply} onPress={onClose} accessibilityRole="button"><Text style={styles.applyText}>{t('common.close')}</Text></Pressable></View></View></Modal>;
+}
+
+const styles = StyleSheet.create({
+  safe: { flex: 1, backgroundColor: theme.colors.canvas },
+  content: { paddingHorizontal: theme.spacing.xl, paddingTop: theme.spacing.lg, paddingBottom: theme.spacing.xxxl },
+  searchWrap: { marginTop: theme.spacing.xl },
+  direction: { marginTop: theme.spacing.md },
+  row: { minHeight: 76, flexDirection: 'row', alignItems: 'center', gap: theme.spacing.md, paddingVertical: theme.spacing.md },
+  divider: { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: theme.colors.divider },
+  pressed: { backgroundColor: theme.colors.surfaceSecondary },
+  copy: { flex: 1, minWidth: 0 },
+  rowTitle: { color: theme.colors.textPrimary, fontSize: theme.typography.rowTitle, fontWeight: '600' },
+  meta: { color: theme.colors.textSecondary, fontSize: theme.typography.supporting, marginTop: theme.spacing.xs },
+  right: { alignItems: 'flex-end', maxWidth: '42%' },
+  amount: { color: theme.colors.textPrimary, fontSize: theme.typography.body, fontWeight: '700' },
+  empty: { marginTop: theme.spacing.xxl },
+  clearButton: { alignItems: 'center', marginTop: -theme.spacing.lg, minHeight: 44, justifyContent: 'center' },
+  link: { color: theme.colors.accent, fontWeight: '700' },
+  overlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: theme.colors.overlay },
+  sheet: { backgroundColor: theme.colors.surface, borderTopLeftRadius: theme.radius.large, borderTopRightRadius: theme.radius.large, padding: theme.spacing.xl, paddingBottom: theme.spacing.xxxl, gap: theme.spacing.md },
+  filterTitle: { color: theme.colors.textPrimary, fontWeight: '700', marginTop: theme.spacing.sm },
+  apply: { minHeight: 48, alignItems: 'center', justifyContent: 'center', borderRadius: theme.radius.control, backgroundColor: theme.colors.accent, marginTop: theme.spacing.md },
+  applyText: { color: theme.colors.onAccent, fontSize: theme.typography.button, fontWeight: '700' }
+});

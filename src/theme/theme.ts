@@ -1,5 +1,6 @@
 export const theme = {
   colors: {
+    canvas: '#F6F8FB',
     background: '#F6F8FB',
     surface: '#FFFFFF',
     surfaceSecondary: '#F0F4F8',
@@ -9,6 +10,8 @@ export const theme = {
     textSecondary: '#516176',
     textMuted: '#718096',
     borderSubtle: '#DCE4ED',
+    divider: '#E7EDF3',
+    interactive: '#1769E0',
     accent: '#1769E0',
     accentPressed: '#0F56BD',
     accentSoft: '#EAF2FF',
@@ -30,8 +33,8 @@ export const theme = {
   },
   radius: {
     control: 12,
-    card: 20,
-    large: 28,
+    card: 16,
+    large: 24,
     sm: 12,
     md: 20,
     lg: 28
@@ -46,12 +49,17 @@ export const theme = {
     xxxl: 40
   },
   typography: {
-    display: 34,
-    title: 30,
-    section: 20,
+    display: 32,
+    title: 28,
+    section: 18,
     body: 16,
-    small: 13,
+    small: 14,
     caption: 12,
-    amount: 30
+    amount: 28,
+    pageTitle: 28,
+    rowTitle: 16,
+    supporting: 13,
+    button: 15,
+    status: 13
   }
 } as const;
