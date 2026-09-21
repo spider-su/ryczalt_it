@@ -1,13 +1,13 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { AccountingLine } from '../model/accounting';
+import { Invoice } from '../model/accounting';
 import { formatMoney } from '../utils/money';
 import { theme } from '../theme/theme';
 
 type Props = {
-  items: AccountingLine[];
+  items: Invoice[];
   kind: 'income' | 'cost';
-  onItemPress?: (item: AccountingLine) => void;
+  onItemPress?: (item: Invoice) => void;
 };
 
 export function AccountingListCard({ items, kind, onItemPress }: Props) {

@@ -12,9 +12,9 @@ Audited against the current mobile DTO/domain contract and the deployed-backend 
 
 ## Source-reference contract classification
 
-The general relationship `Issue.sourceReference -> AccountingLine.source` is classified as `AMBIGUOUS_CONTRACT`. Backend evidence shows that `SOURCE_*` issues are created from `AccountingSourceEvidenceService.SourceOutcome.reference`, which is the source evidence `external_reference`; canonical `DocumentView.sourceReference` is populated from that same source evidence reference. Other issue kinds are not safe to route this way: examples include invoice references for calculation issues, bank transaction references for reconciliation issues, and null account-level references.
+The general relationship `Issue.sourceReference -> Invoice.source` is classified as `AMBIGUOUS_CONTRACT`. Backend evidence shows that `SOURCE_*` issues are created from source evidence references. Other issue kinds are not safe to route this way: examples include invoice references for calculation issues, bank transaction references for reconciliation issues, and null account-level references.
 
-Therefore mobile supports only this fail-closed subset: for a `SOURCE_*` issue, a non-empty reference must exactly equal one loaded document's source. No fuzzy matching, invoice-reference matching, or heuristic fallback is used. A matching reference on any other issue code remains display-only.
+Therefore mobile supports only this fail-closed subset: for a `SOURCE_*` issue, a non-empty reference must exactly equal one loaded invoice's source. No fuzzy matching, invoice-reference matching, or heuristic fallback is used. A matching reference on any other issue code remains display-only.
 
 ## Known gaps
 

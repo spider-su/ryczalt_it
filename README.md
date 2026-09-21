@@ -15,19 +15,19 @@ Implemented mobile surface:
 - cost preview
 - payment preview
 - "needs attention" card
-- Documents filtered by income/cost/review status
+- Invoices filtered by sales/purchases, approval and payment state
 - shared month selection across Home, Faktury and Rozliczenia
 - backend-driven month status and actionable issue summaries
 - authoritative PPE, VAT, ZUS and total outstanding values
 - settlement detail sheets with paid, unpaid and overdue states
-- genuine multi-month invoice filtering (repository fetches documents only for each requested month)
-- Add Cost document recognition and backend-confirmed staging submission using backend-provided treatment options
+- genuine multi-month invoice filtering (repository fetches invoices only for each requested month)
+- Add Cost native invoice recognition and save flow using backend-provided required inputs
 - typed mutation/duplicate/error mapping and refresh invalidation after confirmed mutations
-- local auto-approval policy settings with an explicit backend-write guardrail
+- counterparty list/detail foundation with alias and rule-count presentation
 - Polish and English UI with persisted language selection under More → Settings
 - replaceable repository boundary with REST and explicit mock modes
 
-The mobile client does not calculate tax, obligations or lifecycle state. It does not initiate payments. Settlement history is read from the backend payment-history endpoint in API mode. Add Cost renders backend-provided VAT-treatment options, sends selected facts to the backend staging workflow, and leaves tax-period selection to the backend. The mobile client does not infer a VAT rate or use a client-side tax-period fallback.
+The mobile client does not calculate tax, obligations, classification, payment matching or approval state. It does not initiate payments. It renders canonical period, settlement, reconciliation and completeness facts. Add Cost renders backend-defined required inputs and sends selected facts to the native invoice workflow.
 
 ## Design direction
 
@@ -132,33 +132,37 @@ variables when the development server starts, so restart Expo after changing one
 
 `EXPO_PUBLIC_ACCOUNTING_MONTH` selects the `YYYY-MM` month used by Home. The default data source is `api`; use `EXPO_PUBLIC_ACCOUNTING_DATA_SOURCE=mock` for the bundled July 2026 fixture.
 
-The API calls are:
+The canonical accounting API calls are:
 
-- `GET /api/v1/profiles/1/accounting/months/{month}`
-- `GET /api/v1/profiles/1/accounting/months/{month}/documents`
-- `GET /api/v1/profiles/1/accounting/payments/history?from={month}&to={month}&type={type}`
-- `GET /api/profiles/1/accounting/counterparties`
+- `GET /api/profiles/{profileId}/accounting/periods`
+- `GET /api/profiles/{profileId}/accounting/periods/{month}`
+- `GET /api/profiles/{profileId}/accounting/periods/{month}/invoices`
+- `GET /api/profiles/{profileId}/accounting/periods/{month}/transactions`
+- `GET /api/profiles/{profileId}/accounting/periods/{month}/obligations`
+- `GET /api/profiles/{profileId}/accounting/periods/{month}/issues`
+- `GET /api/profiles/{profileId}/accounting/payments?from={month}&to={month}&type={type}`
+- `GET /api/profiles/{profileId}/accounting/counterparties`
 
-Invoice range filters request only documents for each explicitly selected month. `Wszystkie` in the date filter means all documents in the selected month; there is no unbounded global invoice-history endpoint or pagination contract.
+Invoice range filters request only invoices for each explicitly selected month. There is no unbounded global invoice-history endpoint or pagination contract.
 
 Add Cost uses:
 
-- `POST /api/profiles/1/accounting/documents/recognize`
-- `POST /api/profiles/1/accounting/documents`
+- `POST /api/profiles/{profileId}/accounting/invoices/recognize`
+- `POST /api/profiles/{profileId}/accounting/invoices`
 
-The save response is authoritative and may report a deterministic duplicate document. Recognition returns backend-supported VAT-treatment options and conditional `requiredInputs` metadata for fields such as VAT rate and counterparty country; mobile renders those requirements without encoding tax rules. Tax-period selection remains backend-owned. If recognition does not provide the metadata needed for a document requiring an accounting decision, mobile stops and directs the user to the web panel.
+Recognition may return `requiredInputs: []`; this is a valid fully-resolved candidate, not a malformed response. Recognition and save transport are isolated behind the API/repository boundary until the native backend contract is finalized.
 
-The backend must allow the Expo Web origin (`http://localhost:8081`) through its `/api/v1/**` CORS configuration. The mobile app does not add a browser CORS workaround.
+The backend must allow the Expo Web origin (`http://localhost:8081`) through its canonical `/api/**` CORS configuration. The mobile app does not add a browser CORS workaround.
 
 ### Text ownership and localization boundary
 
-Known product state follows `backend code → mobile semantic presentation state → UI translation`. Backend human-readable fields remain optional detail and are not machine-translated. Current issue titles/messages, lifecycle/next-action labels, document source/category labels, resolution labels/reasons/options, and recognition input/option labels are backend display copy; their stable codes are retained where available. A future English UI must either localize states from those codes or keep backend copy explicitly marked as server-provided until the backend exposes a complete semantic contract.
+Known product state follows `backend code → mobile semantic presentation state → UI translation`. Backend human-readable fields remain optional detail and are not machine-translated. Canonical issue kinds and approval/payment enums are retained as codes; unknown values remain visible as unknown/attention states.
 
-The UI keeps canonical accounting calculations on Investory. `paymentSummary.totalOutstanding` and PPE/VAT/ZUS values are displayed as authoritative backend values. The Polish accounting-obligation contract has no currency field and is PLN-scoped, so PLN is attached once in the accounting mapper rather than reconstructed in screens. Document currencies remain backend-provided. Accounting API monetary responses use decimal strings; the mobile mapper accepts legacy numeric fixtures only during rollout and stores domain money as strings. Mobile formats amounts but does not perform accounting arithmetic.
+The UI keeps canonical accounting calculations on Investory. `settlement.totalOutstanding` and summary values are displayed as authoritative backend values; the mobile app never adds tax components to derive settlement totals. Accounting API monetary responses must be decimal strings; the mapper rejects numeric, scientific, malformed, `NaN`, and `Infinity` values. Currency is preserved from the canonical response and is not injected globally.
 
 The UI supports exactly `pl` and `en`. English uses `en-GB` formatting for a European financial presentation; tax jurisdiction remains Poland. Saved locale preference takes precedence over supported device English, with Polish as fallback. Locale changes affect presentation strings and formatting only: accounting month IDs, backend enums, tax periods, amounts, currencies, profile and mutation payload semantics remain unchanged. Backend human-readable display fields are not machine-translated; stable backend codes are required for complete future localization.
 
-Authentication uses the current token at request time. A confirmed HTTP 401 invalidates the central session and returns the app to sign-in. The accounting profile is currently fixed to `ACCOUNTING_PROFILE_ID = 1`; authenticated profile selection is not yet available and remains a pre-production blocker.
+Authentication uses the current token at request time. A confirmed HTTP 401 invalidates the central session and returns the app to sign-in. The accounting profile is resolved from the authenticated `/api/v1/auth/me` response; multi-profile switching is not yet available and remains a pre-production limitation.
 
 The repository remains replaceable:
 
@@ -184,5 +188,6 @@ EAS workflows use the same repository-level `EXPO_TOKEN` secret: `mobile-preview
 
 ## Suggested next increment
 
-1. Connect auto-approval settings to authenticated backend write actions.
-2. Validate Android/iOS builds and the EAS release flow.
+1. Run the web POC journey in Chrome device emulation against a safe test account.
+2. Validate the current native Android/iOS builds and the EAS release flow.
+3. Add backend device registration and server-push support when the user-facing contract exists.

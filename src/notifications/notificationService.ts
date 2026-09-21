@@ -1,6 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Notifications from 'expo-notifications';
-import type { PaymentLine } from '../model/accounting';
+import type { Obligation } from '../model/accounting';
 import type { UiLocale } from '../i18n';
 import { isPaymentReminderEligible, reminderCopy, reminderDate, reminderKey, type ReminderLeadDays } from './paymentReminders';
 
@@ -50,13 +50,21 @@ export async function cancelAllProfileReminders(profileId: number): Promise<void
 }
 
 /** Reconciles only the supplied accounting period; it never cancels reminders for unseen months. */
-export async function reconcilePaymentReminders(profileId: number, period: string, payments: PaymentLine[], leadDays: ReminderLeadDays, locale: UiLocale, now = new Date()): Promise<void> {
+export async function reconcilePaymentReminders(profileId: number, period: string, payments: Obligation[], leadDays: ReminderLeadDays, locale: UiLocale, now = new Date()): Promise<void> {
   if ((await permissionStatus()) !== Notifications.PermissionStatus.GRANTED) return;
   await Notifications.setNotificationChannelAsync(CHANNEL_ID, { name: 'Payment reminders', importance: Notifications.AndroidImportance.DEFAULT });
   const records = await readRecords(profileId);
-  const scheduledIds = new Set((await Notifications.getAllScheduledNotificationsAsync()).map((item) => item.identifier));
+  let scheduled: Notifications.NotificationRequest[];
+  try {
+    scheduled = await Notifications.getAllScheduledNotificationsAsync();
+  } catch {
+    // Do not reconcile blindly when the OS cannot tell us what is scheduled:
+    // that could create duplicates or cancel the wrong reminder set.
+    throw new Error('Unable to inspect scheduled payment reminders');
+  }
+  const scheduledIds = new Set(scheduled.map((item) => item.identifier));
   const current = records.filter((record) => record.period === period);
-  const desired = new Map<string, PaymentLine>();
+  const desired = new Map<string, Obligation>();
   for (const payment of payments) {
     const key = reminderKey(profileId, payment, leadDays, locale);
     if (key && reminderDate(payment, leadDays, now)) desired.set(key, payment);

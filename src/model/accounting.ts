@@ -1,126 +1,18 @@
-export type Money = {
-  /** Decimal string from the API. Mobile does not perform financial arithmetic. */
-  amount: string | null;
-  currency?: string;
+export type Money = { amount: string | null; currency?: string | null };
+export type Invoice = {
+  id: string; title: string; subtitle?: string; amount: Money; direction: 'SALE' | 'PURCHASE' | 'UNKNOWN'; counterparty: string | null; legalName: string | null; alias: string | null; taxIdentifier: string | null;
+  documentNumber: string | null; issueDate: string | null; currency: string | null; importStatus: string | null; approvalStatus: string | null; approvalSource: string | null;
+  paymentVerificationPolicy: string | null; paymentStatus: string | null; source: string | null; category: string | null; sourceType: string | null; documentKind?: string | null; correctsInvoiceId?: string | null; correctsInvoiceReference?: string | null;
 };
-
-export type AccountingLine = {
-  id: string;
-  title: string;
-  subtitle?: string;
-  amount: Money;
-  state?: 'ok' | 'attention' | 'unknown';
-  sourceLabel?: string | null;
-  categoryLabel?: string | null;
-  reviewStatus?: string | null;
-  source?: string | null;
-  direction?: 'SALE' | 'PURCHASE' | 'UNKNOWN';
-  counterparty?: string | null;
-  documentNumber?: string | null;
-  issueDate?: string | null;
-  nip?: string | null;
-  currency?: string | null;
-  paymentStatus?: string | null;
-  ksefStatus?: string | null;
-  importStatus?: string | null;
-  sourceType?: string | null;
-  sourceTypeLabel?: string | null;
-  documentKind?: string | null;
-  correctsDocumentId?: string | null;
-  correctsDocumentReference?: string | null;
+export type Transaction = { id: string; date: string | null; description: string | null; amount: Money; status: string | null };
+export type Obligation = { id: string; title: string; period: string; dueDate: string | null; amount: Money; paidAmount: Money; outstandingAmount: Money; status: string };
+export type PaymentHistoryLine = Obligation & { paymentDate: string | null };
+export type AccountingIssue = { id: string; code: string; severity: string; kind: string; title: string | null; message: string | null; sourceReference: string | null };
+export type AccountingPeriod = {
+  id: string; status: string; summary: { revenue: Money; ryczalt: Money; vat: Money; zus: Money }; documents: { invoiceCount: number; transactionCount: number };
+  settlement: { expectedCount: number; paidCount: number; outstandingCount: number; totalExpected: Money; totalPaid: Money; totalOutstanding: Money; fullySettled: boolean };
+  reconciliation: { rowCount: number; settledCount: number; mismatchCount: number; missingEvidenceCount: number; state: 'healthy' | 'mismatch' | 'missing_evidence' | 'unknown' };
+  completeness: { status: string; blockingIssueCount: number }; allowedActions: string[]; invoices: Invoice[]; transactions: Transaction[]; obligations: Obligation[]; issues: AccountingIssue[];
 };
-
-export type ReconciliationSummary = {
-  rowCount: number | null;
-  settledCount: number | null;
-  mismatchCount: number | null;
-  missingEvidenceCount: number | null;
-  state: 'healthy' | 'mismatch' | 'missing_evidence' | 'unknown';
-};
-
-export type BankSummary = {
-  transactionCount: number | null;
-  unmatchedCount: number | null;
-  importStatus: string | null;
-  state: 'matched' | 'unmatched' | 'pending' | 'failed' | 'unavailable' | 'unknown';
-};
-
-export type FilingSummary = {
-  lifecycle: string | null;
-  lifecycleLabel: string | null;
-  ready: boolean | null;
-  issues: string[];
-  jpkStatus: string | null;
-  jpkGeneratedAt: string | null;
-  upoStatus: string | null;
-  upoReference: string | null;
-  upoReceivedAt: string | null;
-};
-
-export type AccountingStatus = {
-  lifecycle: string | null;
-  lifecycleLabel: string | null;
-  nextAction: string | null;
-  nextActionLabel: string | null;
-  sources: { evidenceCount: number | null; imported: number | null; reviewRequired: number | null; failed: number | null };
-  ksefStatus: string | null;
-  documentSummary: { salesCount: number | null; purchaseCount: number | null; totalCount: number | null; reviewRequired: number | null; failed: number | null };
-  bankSummary: BankSummary;
-  filingSummary: FilingSummary;
-  reconciliationSummary: ReconciliationSummary;
-  allowedActions: string[];
-};
-
-export type PaymentLine = {
-  id: string;
-  title: string;
-  dueDate: string | null;
-  amount: Money;
-  paidAmount: Money;
-  outstandingAmount: Money;
-  status: string;
-  period?: string;
-};
-
-export type PaymentHistoryLine = PaymentLine & { paymentDate?: string | null };
-
-export type AccountingIssue = {
-  id: string;
-  code: string;
-  severity: string;
-  kind: string;
-  title: string | null;
-  message: string | null;
-  sourceReference?: string | null;
-  resolution: {
-    type: string;
-    command?: string | null;
-    options: { value: string; label: string; recommended: boolean }[];
-    settingsPath?: string | null;
-    actionLabel?: string | null;
-    reason?: string | null;
-  };
-};
-
-export type AccountingMonth = {
-  id: string;
-  dueLabel: string;
-  lifecycle?: string;
-  lifecycleLabel?: string;
-  nextAction?: string;
-  nextActionLabel?: string;
-  totalToPay: Money;
-  matchStatus: 'MATCH' | 'WARNING';
-  taxes: {
-    ryczalt: Money;
-    vat: Money;
-    zus: Money;
-  };
-  summary: { revenue: Money; costs?: Money; income?: Money };
-  income: AccountingLine[];
-  costs: AccountingLine[];
-  payments: PaymentLine[];
-  attentionCount: number;
-  issues: AccountingIssue[];
-  status: AccountingStatus;
-};
+export type Counterparty = { id: string; legalName: string; alias: string | null; displayName: string; taxIdentifier: string | null; country: string | null; ruleCount: number; invoiceCount: number };
+export type CounterpartyRule = { id: string; name: string; sourceType: string | null; documentType: string | null; serviceKey: string | null; classification: string | null; vatTreatment: string | null; vatDeductionRatio: string | null; ryczaltRate: string | null; autoApprove: boolean; paymentVerificationPolicy: string };

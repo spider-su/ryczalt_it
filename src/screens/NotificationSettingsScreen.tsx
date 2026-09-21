@@ -37,12 +37,15 @@ export function NotificationSettingsScreen({ visible, onClose }: { visible: bool
     setSaving(true); setSaveError(false);
     try {
       if (draft.enabled && !(await requestPermission())) { setPermissionRevoked(true); setSaveError(true); return; }
-      await saveNotificationPreferences(profileId, draft); setPermissionRevoked(false);
       if (!draft.enabled) await cancelAllProfileReminders(profileId);
       else {
         const monthData = await repository.getMonth(month);
-        await reconcilePaymentReminders(profileId, month, monthData.payments, draft.leadDays, locale);
+        await reconcilePaymentReminders(profileId, month, monthData.obligations, draft.leadDays, locale);
       }
+      // Persist only after the requested OS-side change has completed. This
+      // prevents a failed fetch/schedule operation from looking saved on the
+      // next visit.
+      await saveNotificationPreferences(profileId, draft); setPermissionRevoked(false);
       onClose();
     } catch { setSaveError(true); } finally { setSaving(false); }
   }

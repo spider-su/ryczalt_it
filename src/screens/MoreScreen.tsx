@@ -7,10 +7,9 @@ import { t } from '../i18n';
 import { useLocale } from '../i18n/LocaleContext';
 import { theme } from '../theme/theme';
 import { createAccountingRepository } from '../api/config';
-import { AccountingStatus } from '../model/accounting';
-import { bankStatusView, ksefStatusView } from '../presentation/accountingStatus';
+import { AccountingPeriod } from '../model/accounting';
 import { useAccountingMonth } from '../navigation/AccountingMonthContext';
-import { AutomationSettingsScreen } from './AutomationSettingsScreen';
+import { CounterpartiesScreen } from './CounterpartiesScreen';
 import { NotificationSettingsScreen } from './NotificationSettingsScreen';
 import { KeyValueRow, ListGroup, ListRow, PageHeader, Section, SheetHeader } from '../components/ui';
 
@@ -18,9 +17,9 @@ export function MoreScreen() {
   const { signOut } = useAuth();
   const { locale, setLocale } = useLocale();
   const [settingsOpen, setSettingsOpen] = React.useState(false);
-  const [automationOpen, setAutomationOpen] = React.useState(false);
+  const [counterpartiesOpen, setCounterpartiesOpen] = React.useState(false);
   const [notificationsOpen, setNotificationsOpen] = React.useState(false);
-  const [status, setStatus] = React.useState<AccountingStatus | null>(null);
+  const [status, setStatus] = React.useState<AccountingPeriod | null>(null);
   const [statusLoading, setStatusLoading] = React.useState(true);
   const repository = React.useMemo(() => createAccountingRepository(), []);
   const { month, refreshVersion } = useAccountingMonth();
@@ -28,27 +27,22 @@ export function MoreScreen() {
   React.useEffect(() => {
     let active = true;
     setStatus(null); setStatusLoading(true);
-    repository.getMonth(month).then((value) => active && setStatus(value.status)).catch(() => active && setStatus(null)).finally(() => active && setStatusLoading(false));
+    repository.getMonth(month).then((value) => active && setStatus(value)).catch(() => active && setStatus(null)).finally(() => active && setStatusLoading(false));
     return () => { active = false; };
   }, [repository, month, refreshVersion]);
 
-  const ksef = ksefStatusView(status?.ksefStatus);
-  const bank = status ? bankStatusView(status.bankSummary) : null;
-  const ksefLabel = statusLoading ? t('common.loading') : t(ksef.labelKey);
-  const bankLabel = statusLoading ? t('common.loading') : t(bank?.labelKey ?? 'status.unknown');
   const rows: [keyof typeof Ionicons.glyphMap, string, (() => void)?][] = [
-    ['business-outline', t('more.company')],
+    ['business-outline', t('more.counterparties'), () => setCounterpartiesOpen(true)],
     ['settings-outline', t('more.settings'), () => setSettingsOpen(true)],
-    ['sparkles-outline', t('more.automation'), () => setAutomationOpen(true)],
     ['notifications-outline', t('more.notifications'), () => setNotificationsOpen(true)],
     ['download-outline', t('more.reports')],
     ['help-circle-outline', t('more.help')]
   ];
 
   return <SafeAreaView style={styles.safe}><ScrollView contentContainerStyle={styles.content}><PageHeader title={t('more.title')} /><ListGroup>{rows.map(([icon, label, onPress], index) => <ListRow key={label} icon={icon} title={label} onPress={onPress} last={index === rows.length - 1} />)}</ListGroup>
-    <Section title={t('more.systems')}><ListGroup><KeyValueRow label={t('more.ksef')} value={ksefLabel} state={statusLoading ? 'pending' : ksef.state} /><KeyValueRow label={t('more.bank')} value={bankLabel} state={statusLoading ? 'pending' : bank?.state ?? 'unknown'} /><KeyValueRow label={t('more.zus')} value={t('more.unknownStatus')} state="unknown" /></ListGroup></Section>
+    <Section title={t('more.systems')}><ListGroup><KeyValueRow label={t('more.periodStatus')} value={statusLoading ? t('common.loading') : status?.status ?? t('common.unknown')} state={statusLoading ? 'pending' : 'unknown'} /><KeyValueRow label={t('more.completeness')} value={statusLoading ? t('common.loading') : status?.completeness.status ?? t('common.unknown')} state={status?.completeness.blockingIssueCount ? 'attention' : 'success'} /><KeyValueRow label={t('more.reconciliation')} value={statusLoading ? t('common.loading') : status?.reconciliation.state ?? t('common.unknown')} state={status?.reconciliation.state === 'healthy' ? 'success' : 'unknown'} /></ListGroup></Section>
     <Pressable style={styles.signOut} onPress={signOut} accessibilityRole="button" accessibilityLabel={t('more.signOut')}><Ionicons name="log-out-outline" size={21} color={theme.colors.danger} /><Text style={styles.signOutText}>{t('more.signOut')}</Text></Pressable>
-  </ScrollView><SettingsModal visible={settingsOpen} locale={locale} onClose={() => setSettingsOpen(false)} onLocale={setLocale} /><AutomationSettingsScreen visible={automationOpen} onClose={() => setAutomationOpen(false)} /><NotificationSettingsScreen visible={notificationsOpen} onClose={() => setNotificationsOpen(false)} /></SafeAreaView>;
+  </ScrollView><SettingsModal visible={settingsOpen} locale={locale} onClose={() => setSettingsOpen(false)} onLocale={setLocale} /><CounterpartiesScreen visible={counterpartiesOpen} onClose={() => setCounterpartiesOpen(false)} /><NotificationSettingsScreen visible={notificationsOpen} onClose={() => setNotificationsOpen(false)} /></SafeAreaView>;
 }
 
 function SettingsModal({ visible, locale, onClose, onLocale }: { visible: boolean; locale: 'pl' | 'en'; onClose: () => void; onLocale: (locale: 'pl' | 'en') => Promise<void> }) {

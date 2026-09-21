@@ -24,6 +24,21 @@ describe('HttpClient authentication lifecycle', () => {
     expect(onUnauthorized).toHaveBeenCalledTimes(1);
   });
 
+  it('keeps a valid session on 403 authorization failures', async () => {
+    const onUnauthorized = vi.fn();
+    const client = new HttpClient({ baseUrl: 'https://example.test', fetchImpl: async () => new Response('{}', { status: 403 }), onUnauthorized });
+    await expect(client.get('/forbidden')).rejects.toMatchObject({ kind: 'authorization', status: 403 } satisfies Partial<ApiError>);
+    expect(onUnauthorized).not.toHaveBeenCalled();
+  });
+
+  it('preserves backend problem messages without invalidating a 403 session', async () => {
+    const onUnauthorized = vi.fn();
+    const fetchImpl = vi.fn(async () => new Response(JSON.stringify({ status: 403, message: 'Profile access denied' }), { status: 403, headers: { 'content-type': 'application/json' } }));
+    const client = new HttpClient({ baseUrl: 'https://example.test', fetchImpl, onUnauthorized });
+    await expect(client.get('/forbidden')).rejects.toMatchObject({ kind: 'authorization', status: 403, message: 'Profile access denied' } satisfies Partial<ApiError>);
+    expect(onUnauthorized).not.toHaveBeenCalled();
+  });
+
   it.each([
     ['HTTP error', async () => new Response('{}', { status: 500 }), 'response'],
     ['network error', async () => { throw new Error('offline'); }, 'unavailable'],

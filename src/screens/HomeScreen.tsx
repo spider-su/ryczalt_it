@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { AccountingMonth, PaymentLine } from '../model/accounting';
+import { AccountingPeriod, Obligation } from '../model/accounting';
 import { createAccountingRepository } from '../api/config';
 import { formatDate, paymentLabel, paymentStatusLabel, t } from '../i18n';
 import { formatMoney } from '../utils/money';
@@ -18,10 +18,11 @@ import { isExactDecimalZero } from '../utils/decimal';
 
 export function HomeScreen() {
   useLocale();
-  const [month, setMonth] = useState<AccountingMonth | null>(null);
-  const [selectedIssue, setSelectedIssue] = useState<AccountingMonth['issues'][number] | null>(null);
-  const [selectedDocument, setSelectedDocument] = useState<AccountingMonth['income'][number] | null>(null);
+  const [month, setMonth] = useState<AccountingPeriod | null>(null);
+  const [selectedIssue, setSelectedIssue] = useState<AccountingPeriod['issues'][number] | null>(null);
+  const [selectedDocument, setSelectedDocument] = useState<AccountingPeriod['invoices'][number] | null>(null);
   const [error, setError] = useState(false);
+  const [actionBusy, setActionBusy] = useState<string | null>(null);
   const [retry, setRetry] = useState(0);
   const repository = useMemo(() => createAccountingRepository(), []);
   const { month: monthId, refreshVersion } = useAccountingMonth();
@@ -39,7 +40,7 @@ export function HomeScreen() {
 
   const monthlyStatus = statusForMonth(month);
   const issues = orderedIssues(month.issues).filter((issue) => ['requires_action', 'setup_required', 'error'].includes(statusForIssue(issue))).slice(0, 3);
-  const documents = [...(month.income ?? []), ...(month.costs ?? [])];
+  const documents = month.invoices;
   const statusCopy = homeStatusCopy(monthlyStatus);
   const bannerKind = monthlyStatus === 'resolved' ? 'success' : monthlyStatus === 'requires_action' ? 'warning' : monthlyStatus === 'error' ? 'error' : monthlyStatus === 'unknown' ? 'unknown' : 'info';
 
@@ -50,23 +51,25 @@ export function HomeScreen() {
 
     <Section title={t('home.obligations')}>
       <ListGroup>
-        <KeyValueRow label={paymentLabel('RYCZALT')} value={formatMoney(month.taxes.ryczalt)} />
-        <KeyValueRow label={paymentLabel('VAT')} value={formatMoney(month.taxes.vat)} />
-        <KeyValueRow label={paymentLabel('ZUS')} value={formatMoney(month.taxes.zus)} />
+        <KeyValueRow label={paymentLabel('RYCZALT')} value={formatMoney(month.summary.ryczalt)} />
+        <KeyValueRow label={paymentLabel('VAT')} value={formatMoney(month.summary.vat)} />
+        <KeyValueRow label={paymentLabel('ZUS')} value={formatMoney(month.summary.zus)} />
       </ListGroup>
     </Section>
 
     <Section title={t('home.outstanding')}>
-      {month.totalToPay.amount == null ? <Text style={styles.unavailable}>{t('home.amountUnavailable')}</Text> : <View style={styles.outstanding}><Text style={isExactDecimalZero(month.totalToPay.amount) ? styles.zeroAmount : styles.total}>{formatMoney(month.totalToPay)}</Text>{isExactDecimalZero(month.totalToPay.amount) && month.payments.length === 0 ? <Text style={styles.supporting}>{t('home.noPayments')}</Text> : null}</View>}
+      {month.settlement.totalOutstanding.amount == null ? <Text style={styles.unavailable}>{t('home.amountUnavailable')}</Text> : <View style={styles.outstanding}><Text style={isExactDecimalZero(month.settlement.totalOutstanding.amount) ? styles.zeroAmount : styles.total}>{formatMoney(month.settlement.totalOutstanding)}</Text>{isExactDecimalZero(month.settlement.totalOutstanding.amount) && month.obligations.length === 0 ? <Text style={styles.supporting}>{t('home.noPayments')}</Text> : null}</View>}
     </Section>
 
-    {month.payments.length ? <Section title={t('home.payments')}><ListGroup>{month.payments.map((payment, index) => <PaymentRow key={`${payment.id}-${index}`} payment={payment} last={index === month.payments.length - 1} />)}</ListGroup></Section> : null}
+    {month.allowedActions.length ? <Section title={t('home.actions')}><View style={styles.actions}>{month.allowedActions.filter((action): action is 'SETTLE' | 'FREEZE' | 'REOPEN' => ['SETTLE', 'FREEZE', 'REOPEN'].includes(action)).map((action) => <Pressable key={action} disabled={actionBusy != null} onPress={() => { setActionBusy(action); void repository.performPeriodAction(month.id, action).then(() => setRetry((value) => value + 1)).catch(() => setError(true)).finally(() => setActionBusy(null)); }} style={[styles.actionButton, actionBusy === action && styles.actionBusy]}><Text style={styles.actionText}>{actionBusy === action ? t('common.loading') : action}</Text></Pressable>)}</View></Section> : null}
+
+    {month.obligations.length ? <Section title={t('home.payments')}><ListGroup>{month.obligations.map((payment, index) => <PaymentRow key={`${payment.id}-${index}`} payment={payment} last={index === month.obligations.length - 1} />)}</ListGroup></Section> : null}
 
     {issues.length ? <Section title={t('home.attention')}><ListGroup>{issues.map((issue, index) => { const presentation = issuePresentation(issue); const action = resolveIssueAction(issue, documents); return <Pressable key={`${issue.id}-${index}`} onPress={() => setSelectedIssue(issue)} style={({ pressed }) => [styles.issue, index < issues.length - 1 && styles.issueDivider, pressed && styles.issuePressed]} accessibilityRole="button" accessibilityLabel={`${presentation.title}. ${t('home.issueDetails')}`}><Text style={styles.issueTitle}>{presentation.title}</Text><Text style={styles.issueBody}>{presentation.body}</Text>{action.kind === 'SUPPORTED_NAVIGATION' ? <Text style={styles.issueAction}>{t('home.checkDocument')}</Text> : null}</Pressable>; })}</ListGroup></Section> : null}
   </ScrollView><IssueDetailsModal issue={selectedIssue} documents={documents} onClose={() => setSelectedIssue(null)} onDocument={(document) => { setSelectedIssue(null); setSelectedDocument(document); }} /><DocumentDetailsModal item={selectedDocument} onClose={() => setSelectedDocument(null)} /></SafeAreaView>;
 }
 
-function PaymentRow({ payment, last }: { payment: PaymentLine; last: boolean }) {
+function PaymentRow({ payment, last }: { payment: Obligation; last: boolean }) {
   return <View style={[styles.paymentRow, !last && styles.divider]}><View style={styles.paymentCopy}><Text style={styles.paymentTitle}>{paymentLabel(payment.title)}</Text><Text style={styles.paymentDate}>{formatDate(payment.dueDate)}</Text></View><View style={styles.paymentAmount}><Text style={styles.amount}>{formatMoney(payment.outstandingAmount)}</Text><Text style={styles.paymentStatus}>{paymentStatusLabel(payment.status)}</Text></View></View>;
 }
 
@@ -92,4 +95,5 @@ const styles = StyleSheet.create({
   issueTitle: { color: theme.colors.textPrimary, fontSize: theme.typography.rowTitle, fontWeight: '700' },
   issueBody: { color: theme.colors.textSecondary, lineHeight: 20, marginTop: theme.spacing.xs },
   issueAction: { color: theme.colors.accent, fontWeight: '700', marginTop: theme.spacing.md }
+  ,actions: { gap: theme.spacing.sm }, actionButton: { minHeight: 50, borderRadius: theme.radius.control, backgroundColor: theme.colors.accent, justifyContent: 'center', alignItems: 'center' }, actionBusy: { opacity: 0.6 }, actionText: { color: theme.colors.onAccent, fontWeight: '800' }
 });

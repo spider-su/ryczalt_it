@@ -1,15 +1,7 @@
+const root = (profileId: number) => `/api/profiles/${profileId}/accounting`;
 export const accountingPaths = {
-  mobileMonth: (profileId: number, month: string) =>
-    `/api/v1/profiles/${profileId}/accounting/months/${month}`,
-  mobileDocuments: (profileId: number, month: string) =>
-    `/api/v1/profiles/${profileId}/accounting/months/${month}/documents`,
-  paymentHistory: (profileId: number) =>
-    `/api/v1/profiles/${profileId}/accounting/payments/history`,
-  autoApproval: (profileId: number) =>
-    `/api/v1/profiles/${profileId}/accounting/auto-approval`,
-  counterparties: (profileId: number) =>
-    `/api/profiles/${profileId}/accounting/counterparties`,
-  recognizeDocument: (profileId: number) =>
-    `/api/profiles/${profileId}/accounting/documents/recognize`,
-  documents: (profileId: number) => `/api/profiles/${profileId}/accounting/documents`
+  periods: (profileId: number) => `${root(profileId)}/periods`, period: (profileId: number, month: string) => `${root(profileId)}/periods/${month}`,
+  invoices: (profileId: number, month: string) => `${root(profileId)}/periods/${month}/invoices`, transactions: (profileId: number, month: string) => `${root(profileId)}/periods/${month}/transactions`, obligations: (profileId: number, month: string) => `${root(profileId)}/periods/${month}/obligations`, issues: (profileId: number, month: string) => `${root(profileId)}/periods/${month}/issues`, payments: (profileId: number) => `${root(profileId)}/payments`,
+  counterparties: (profileId: number) => `${root(profileId)}/counterparties`, counterparty: (profileId: number, id: string | number) => `${root(profileId)}/counterparties/${id}`, counterpartyAlias: (profileId: number, id: string | number) => `${root(profileId)}/counterparties/${id}/alias`, rules: (profileId: number, id: string | number) => `${root(profileId)}/counterparties/${id}/rules`, rule: (profileId: number, id: string | number, ruleId: string | number) => `${root(profileId)}/counterparties/${id}/rules/${ruleId}`,
+  recognizeInvoice: (profileId: number) => `${root(profileId)}/invoices/recognize`, invoicesCreate: (profileId: number) => `${root(profileId)}/invoices`, settle: (profileId: number, month: string) => `${root(profileId)}/periods/${month}/settle`, freeze: (profileId: number, month: string) => `${root(profileId)}/periods/${month}/freeze`, reopen: (profileId: number, month: string) => `${root(profileId)}/periods/${month}/reopen`
 } as const;

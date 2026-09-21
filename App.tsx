@@ -3,7 +3,6 @@ import { StatusBar } from 'expo-status-bar';
 import { ActivityIndicator, Text, View } from 'react-native';
 import { AppNavigator } from './src/navigation/AppNavigator';
 import { AccountingMonthProvider } from './src/navigation/AccountingMonthContext';
-import { AutoApprovalProvider } from './src/settings/AutoApprovalContext';
 import { AuthProvider, useAuth } from './src/auth/AuthContext';
 import { AuthScreen } from './src/screens/AuthScreen';
 import { ACCOUNTING_DATA_SOURCE } from './src/api/config';
@@ -49,5 +48,5 @@ function AppContent() {
   }, [loading, localeReady, profileId, token]);
   if (loading || !localeReady) return <SafeAreaView style={{ flex: 1, backgroundColor: theme.colors.background }}><View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12 }}><ActivityIndicator color={theme.colors.primary} /><Text style={{ color: theme.colors.textSecondary }}>{t('startup.loading')}</Text></View></SafeAreaView>;
   if (ACCOUNTING_DATA_SOURCE === 'api' && (!token || profileId == null)) return <AuthScreen />;
-  return <AutoApprovalProvider><AccountingMonthProvider><NavigationContainer ref={navigationRef} onReady={() => { if (pendingPaymentNavigationProfileId === profileId) { pendingPaymentNavigationProfileId = null; navigationRef.navigate('Payments'); } }}><StatusBar style="dark" /><AppNavigator /></NavigationContainer></AccountingMonthProvider></AutoApprovalProvider>;
+  return <AccountingMonthProvider><NavigationContainer ref={navigationRef} onReady={() => { if (pendingPaymentNavigationProfileId === profileId) { pendingPaymentNavigationProfileId = null; navigationRef.navigate('Payments'); } }}><StatusBar style="dark" /><AppNavigator /></NavigationContainer></AccountingMonthProvider>;
 }

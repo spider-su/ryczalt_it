@@ -197,13 +197,13 @@ jobs:
             fail_check 'Accounting OpenAPI discovery unavailable'
           fi
 
-            request accounting-month GET "/api/v1/profiles/$PROFILE_ID/accounting/months/$MONTH" yes
-            MONTH_STATUS="$(cat "$ARTIFACT_DIR/accounting-month.status")"
-            MONTH_RC="$(cat "$ARTIFACT_DIR/accounting-month.rc")"
+            request accounting-period GET "/api/profiles/$PROFILE_ID/accounting/periods/$MONTH" yes
+            MONTH_STATUS="$(cat "$ARTIFACT_DIR/accounting-period.status")"
+            MONTH_RC="$(cat "$ARTIFACT_DIR/accounting-period.rc")"
             if [[ "$MONTH_RC" == "0" && "$MONTH_STATUS" == "200" ]]; then
               MONTH_RESULT='PASS'
             elif [[ "$MONTH_RC" == "28" ]]; then
-              MONTH_RESULT='FAIL (ACCOUNTING_MONTH_TIMEOUT)'
+              MONTH_RESULT='FAIL (ACCOUNTING_PERIOD_TIMEOUT)'
             elif [[ "$MONTH_RC" != "0" ]]; then
               MONTH_RESULT="FAIL (TRANSPORT_ERROR rc=$MONTH_RC)"
             elif [[ "$MONTH_STATUS" != "200" ]]; then
@@ -211,20 +211,20 @@ jobs:
             fi
             [[ "$MONTH_RESULT" == PASS ]] && pass_check 'Accounting month: PASS' || fail_check "Accounting month: $MONTH_RESULT"
 
-            request documents GET "/api/v1/profiles/$PROFILE_ID/accounting/months/$MONTH/documents" yes
-            DOCUMENTS_STATUS="$(cat "$ARTIFACT_DIR/documents.status")"
-            DOCUMENTS_RC="$(cat "$ARTIFACT_DIR/documents.rc")"
-            if [[ "$DOCUMENTS_RC" == "0" && "$DOCUMENTS_STATUS" == "200" ]]; then
-              DOCUMENTS_RESULT='PASS'
-            elif [[ "$DOCUMENTS_RC" != "0" ]]; then
-              DOCUMENTS_RESULT="FAIL (TRANSPORT_ERROR rc=$DOCUMENTS_RC)"
+            request invoices GET "/api/profiles/$PROFILE_ID/accounting/periods/$MONTH/invoices" yes
+            INVOICES_STATUS="$(cat "$ARTIFACT_DIR/invoices.status")"
+            INVOICES_RC="$(cat "$ARTIFACT_DIR/invoices.rc")"
+            if [[ "$INVOICES_RC" == "0" && "$INVOICES_STATUS" == "200" ]]; then
+              INVOICES_RESULT='PASS'
+            elif [[ "$INVOICES_RC" != "0" ]]; then
+              INVOICES_RESULT="FAIL (TRANSPORT_ERROR rc=$INVOICES_RC)"
             else
-              DOCUMENTS_RESULT="FAIL (HTTP_$DOCUMENTS_STATUS)"
+              INVOICES_RESULT="FAIL (HTTP_$INVOICES_STATUS)"
             fi
-            [[ "$DOCUMENTS_RESULT" == PASS ]] && pass_check 'Documents: PASS' || fail_check "Documents: $DOCUMENTS_RESULT"
-            safe_body_summary documents "$DOCUMENTS_STATUS"
+            [[ "$INVOICES_RESULT" == PASS ]] && pass_check 'Invoices: PASS' || fail_check "Invoices: $INVOICES_RESULT"
+            safe_body_summary invoices "$INVOICES_STATUS"
 
-            request payment-history GET "/api/v1/profiles/$PROFILE_ID/accounting/payments/history?from=$MONTH&to=$MONTH" yes
+            request payment-history GET "/api/profiles/$PROFILE_ID/accounting/payments?from=$MONTH&to=$MONTH" yes
             PAYMENT_STATUS="$(cat "$ARTIFACT_DIR/payment-history.status")"
             PAYMENT_RC="$(cat "$ARTIFACT_DIR/payment-history.rc")"
             if [[ "$PAYMENT_RC" == "0" && "$PAYMENT_STATUS" == "200" ]]; then

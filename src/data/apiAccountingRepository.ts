@@ -1,37 +1,22 @@
 import { AccountingApi } from '../api/accountingApi';
-import { mapAccountingMonth, mapDocuments, mapPaymentHistory } from '../api/mappers/accountingMapper';
-import { AccountingRepository } from './accountingRepository';
-import { AccountingLine, AccountingMonth, PaymentHistoryLine } from '../model/accounting';
+import { mapCounterparty, mapInvoices, mapPaymentHistory, mapPeriod } from '../api/mappers/accountingMapper';
+import type { AccountingRepository } from './accountingRepository';
+import type { AccountingPeriod, Counterparty, Invoice, PaymentHistoryLine } from '../model/accounting';
 import { currentLocalAccountingMonth } from '../utils/calendar';
 
 export class ApiAccountingRepository implements AccountingRepository {
   constructor(private readonly api: AccountingApi, private readonly profileId: number) {}
-
-  async getCurrentMonth(): Promise<AccountingMonth> {
-    return this.getMonth(currentLocalAccountingMonth());
-  }
-
-  async getMonth(month: string): Promise<AccountingMonth> {
-    const [overview, documents] = await Promise.all([
-      this.api.getMonth(this.profileId, month),
-      this.api.getDocuments(this.profileId, month)
+  async getPeriods(): Promise<unknown[]> { return this.api.getPeriods(this.profileId); }
+  async getMonth(month: string): Promise<AccountingPeriod> {
+    const [period, invoices, transactions, obligations, issues] = await Promise.all([
+      this.api.getPeriod(this.profileId, month), this.api.getInvoices(this.profileId, month), this.api.getTransactions(this.profileId, month), this.api.getObligations(this.profileId, month), this.api.getIssues(this.profileId, month)
     ]);
-    return mapAccountingMonth(overview, documents);
+    return mapPeriod(period, invoices, transactions, obligations, issues);
   }
-
-  async getDocumentsForRange(month: string, months: number): Promise<AccountingLine[]> {
-    const ids = Array.from({ length: Math.max(1, months) }, (_, index) => shiftMonth(month, -index));
-    const values = await Promise.all(ids.map((id) => this.api.getDocuments(this.profileId, id)));
-    return values.flatMap(mapDocuments);
-  }
-
-  async getPaymentHistory(month: string, type?: string): Promise<PaymentHistoryLine[]> {
-    return mapPaymentHistory(await this.api.getPaymentHistory(this.profileId, month, month, type));
-  }
+  async getInvoicesForRange(month: string, months: number): Promise<Invoice[]> { const ids = Array.from({ length: Math.max(1, months) }, (_, index) => shiftMonth(month, -index)); return mapInvoices((await Promise.all(ids.map((id) => this.api.getInvoices(this.profileId, id)))).flat()); }
+  async getPaymentHistory(month: string, type?: string): Promise<PaymentHistoryLine[]> { return mapPaymentHistory(await this.api.getPayments(this.profileId, month, month, type)); }
+  async getCounterparties(): Promise<Counterparty[]> { return (await this.api.getCounterparties(this.profileId)).map(mapCounterparty); }
+  async performPeriodAction(month: string, action: 'SETTLE' | 'FREEZE' | 'REOPEN'): Promise<void> { if (action === 'SETTLE') return this.api.settle(this.profileId, month); if (action === 'FREEZE') return this.api.freeze(this.profileId, month); return this.api.reopen(this.profileId, month); }
+  getCurrentMonth(): Promise<AccountingPeriod> { return this.getMonth(currentLocalAccountingMonth()); }
 }
-
-function shiftMonth(value: string, offset: number): string {
-  const date = new Date(`${value}-01T00:00:00Z`);
-  date.setUTCMonth(date.getUTCMonth() + offset);
-  return date.toISOString().slice(0, 7);
-}
+function shiftMonth(value: string, offset: number): string { const date = new Date(`${value}-01T00:00:00Z`); date.setUTCMonth(date.getUTCMonth() + offset); return date.toISOString().slice(0, 7); }

@@ -1,197 +1,30 @@
-/** Decimal values are strings on the API; number remains accepted during rollout for old fixtures. */
-export type Decimal = string | number;
+/** Canonical accounting REST decimals are exact strings. */
+export type Decimal = string;
 
-export type AccountingMonthOverviewDto = {
+export type AccountingPeriodDto = {
   month: string;
-  lifecycle: string;
-  lifecycleLabel: string;
-  nextAction: string;
-  nextActionLabel: string;
-  summary: {
-    revenue: Decimal;
-    vat: Decimal;
-    ryczalt: Decimal;
-    zus: Decimal;
-    documents: number;
-    bankTransactions: number;
-    totalObligations: Decimal;
-  };
-  issues: AccountingIssueDto[];
-  sources: { evidenceCount: number; imported: number; reviewRequired: number; failed: number };
-  ksefStatus: string;
-  documentSummary: {
-    salesCount: number;
-    purchaseCount: number;
-    totalCount: number;
-    reviewRequired: number;
-    failed: number;
-  };
-  bankSummary: { transactionCount: number; unmatchedCount: number; importStatus: string };
-  paymentSummary: {
-    expectedCount: number;
-    outstandingCount: number;
-    totalOutstanding: Decimal;
-    payments: {
-      obligationType: string;
-      amount: Decimal;
-      paidAmount: Decimal;
-      outstandingAmount: Decimal;
-      dueDate: string | null;
-      status: string | null;
-    }[];
-  };
-  filingSummary: {
-    lifecycle: string;
-    lifecycleLabel: string;
-    ready: boolean;
-    issues: string[];
-    jpkStatus: string;
-    jpkGeneratedAt: string | null;
-    upoStatus: string;
-    upoReference: string | null;
-    upoReceivedAt: string | null;
-  };
-  reconciliationSummary: {
-    rowCount: number;
-    settledCount: number;
-    mismatchCount: number;
-    missingEvidenceCount: number;
-  };
+  status: string;
+  calculations: unknown[];
+  summary: { revenue: Decimal; ryczalt: Decimal; vat: Decimal; zus: Decimal };
+  documents: { invoiceCount: number; transactionCount: number };
+  settlement: SettlementDto;
+  reconciliation: ReconciliationDto;
+  completeness: { status: string; blockingIssueCount: number };
   allowedActions: string[];
 };
-
-export type AutoApprovalSettingsDto = {
-  enabled: boolean;
-  maxAmount: string;
-  trustedCategories: string[];
+export type SettlementDto = { expectedCount: number; paidCount: number; outstandingCount: number; totalExpected: Decimal; totalPaid: Decimal; totalOutstanding: Decimal; fullySettled: boolean };
+export type ReconciliationDto = { rowCount: number; settledCount: number; mismatchCount: number; missingEvidenceCount: number };
+export type InvoiceDto = { id: number | string; direction: string; reference: string | null; issueDate: string | null; accountingDate: string | null; netAmount: Decimal | null; vatAmount: Decimal | null; grossAmount: Decimal | null; currency: string | null; bookedNetPln: Decimal | null; ryczaltRate: Decimal | null; deductibleVat: Decimal | null; counterparty: { id: number | string; legalName: string; alias: string | null } | null; approvalStatus: string | null; approvalMethod: string | null; paymentVerificationPolicy: string | null };
+export type TransactionDto = { id: number | string; bookingDate: string | null; amount: Decimal | null; currency: string | null; reference: string | null; counterparty: string | null; description: string | null; matchedAmount: Decimal | null };
+export type ObligationDto = { id: number | string; type: string; expectedAmount: Decimal | null; paidAmount: Decimal | null; outstandingAmount: Decimal | null; currency: string | null; dueDate: string | null; status: string };
+export type PaymentDto = ObligationDto & { paymentDate: string | null };
+export type AccountingIssueDto = { id: string; code: string; severity: string; kind: string; title: string | null; message: string | null; sourceReference: string | null };
+export type CounterpartyDto = { id: number | string; legalName: string; alias: string | null; displayName?: string | null; taxIdentifier: string | null; country: string | null; ruleCount?: number; invoiceCount?: number };
+export type CounterpartyRuleDto = { id: number | string; name: string; sourceType: string | null; documentType: string | null; serviceKey: string | null; classification: string | null; vatTreatment: string | null; vatDeductionRatio: Decimal | null; ryczaltRate: Decimal | null; autoApprove: boolean; paymentVerificationPolicy: string };
+export type InvoiceCandidateDto = {
+  candidateKey: string; sourceType: string; sourceExternalId: string; documentType: string; direction: string; issueDate: string | null; saleDate: string | null; dueDate: string | null; reference: string | null; counterpartyId: number | string | null; currency: string | null;
+  netAmount: Decimal | null; vatAmount: Decimal | null; grossAmount: Decimal | null; classification: string | null; vatTreatment: string | null; ryczaltRate: Decimal | null; approvalStatus: string | null; approvalMethod: string | null; paymentVerificationPolicy: string | null; paymentStatus: string | null; duplicate: boolean; periodYear: number; periodMonth: number; requiredInputs: RequiredInputDto[];
 };
-
-export type AccountingIssueDto = {
-  id: string;
-  code: string;
-  severity: string;
-  kind: string;
-  title: string | null;
-  message: string | null;
-  sourceReference: string | null;
-  resolution: {
-    type: string;
-    command: string | null;
-    options: { value: string; label: string; recommended: boolean }[];
-    settingsPath: string | null;
-    actionLabel: string | null;
-    reason: string | null;
-  };
-};
-
-export type AccountingDocumentDto = {
-  id: number;
-  type: string;
-  counterparty: string | null;
-  documentNumber: string | null;
-  issueDate: string | null;
-  saleDate: string | null;
-  category: string | null;
-  source: string | null;
-  amount: Decimal;
-  currency: string | null;
-  status: string | null;
-  sourceType: string | null;
-  sourceTypeLabel: string | null;
-  categoryLabel: string | null;
-  importStatus: string | null;
-  reviewStatus: string | null;
-  paymentStatus: string | null;
-  documentKind?: string | null;
-  correctsDocumentId?: number | null;
-  correctsDocumentReference?: string | null;
-};
-
-export type PaymentHistoryDto = {
-  type: string;
-  period: string;
-  amount: Decimal | null;
-  paidAmount: Decimal | null;
-  outstandingAmount: Decimal | null;
-  dueDate: string | null;
-  paymentDate: string | null;
-  status: string | null;
-};
-
-export type CounterpartyDto = {
-  id: number;
-  taxIdentifier: string | null;
-  country: string | null;
-  name: string;
-  alias: string | null;
-  documentCount: number;
-};
-
-export type CandidateDto = {
-  sourceReference: string;
-  documentType: string;
-  issueDate: string | null;
-  saleDate: string | null;
-  dueDate: string | null;
-  reference: string | null;
-  seller: string | null;
-  buyer: string | null;
-  sellerNip: string | null;
-  buyerNip: string | null;
-  category: string | null;
-  currency: string | null;
-  netAmount: Decimal | null;
-  vatAmount: Decimal | null;
-  grossAmount: Decimal | null;
-  note: string | null;
-  status: string;
-  vatTreatment?: string | null;
-  vatRate?: Decimal | null;
-  vatTreatmentOptions?: { value: string; label: string; recommended: boolean }[];
-  requiredInputs?: RequiredInputDto[];
-  duplicate?: boolean;
-  existingDocumentId?: number | null;
-};
-
-export type RequiredInputDto = {
-  field: string;
-  inputType: string;
-  label: string;
-  required: boolean;
-  options: { value: string; label: string; recommended: boolean }[];
-  dependsOn: string | null;
-  dependsOnValues: string[];
-};
-
-export type DocumentMutationDto = {
-  documentId: number | null;
-  reference: string | null;
-  status: string;
-  ksefStatus: string | null;
-  duplicate: boolean;
-  existingDocumentId: number | null;
-  message: string | null;
-};
-
-export type ReviewedDocumentDto = {
-  sourceReference: string;
-  documentType: string;
-  issueDate: string | null;
-  saleDate: string | null;
-  dueDate: string | null;
-  reference: string | null;
-  counterpartyAlias: string | null;
-  counterpartyTaxIdentifier: string | null;
-  counterpartyCountry: string | null;
-  category: string | null;
-  currency: string | null;
-  netAmount: Decimal | null;
-  vatAmount: Decimal | null;
-  grossAmount: Decimal | null;
-  vatDeductionRatio: number | null;
-  vatTreatment: string | null;
-  note: string | null;
-  taxPeriod: string | null;
-  vatRate: Decimal | null;
-  correctsDocumentReference?: string | null;
-};
+export type RequiredInputDto = { field: string; inputType: string; required: boolean; options: { value: string; labelKey: string }[]; dependsOn: string | null; dependsOnValues: string[] };
+export type InvoiceCreateDto = { candidateKey: string; counterpartyId?: number | string | null; classification?: string | null; vatTreatment?: string | null; vatDeductionRatio?: Decimal | null; ryczaltRate?: Decimal | null; paymentVerificationPolicy?: string | null; approve: boolean; rememberRule?: boolean; ruleName?: string | null; serviceKey?: string | null };
+export type InvoiceResultDto = { id: number | string; profileId: number | string; direction: string; reference: string; issueDate: string; accountingDate: string; currency: string; netAmount: Decimal; vatAmount: Decimal; grossAmount: Decimal; approvalStatus: string; paymentVerificationPolicy: string; paymentStatus: string | null };

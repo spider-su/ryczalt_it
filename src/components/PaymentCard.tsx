@@ -1,10 +1,10 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { PaymentLine } from '../model/accounting';
+import { Obligation } from '../model/accounting';
 import { formatMoney } from '../utils/money';
 import { theme } from '../theme/theme';
 
-export function PaymentCard({ items, onItemPress }: { items: PaymentLine[]; onItemPress?: (item: PaymentLine) => void }) {
+export function PaymentCard({ items, onItemPress }: { items: Obligation[]; onItemPress?: (item: Obligation) => void }) {
   return (
     <View style={styles.card}>
       {items.map((item, index) => (

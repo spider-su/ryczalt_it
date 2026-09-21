@@ -1,4 +1,4 @@
-import { AccountingIssue, AccountingLine, PaymentLine } from '../model/accounting';
+import { AccountingIssue, AccountingPeriod, Invoice, Obligation } from '../model/accounting';
 import { t } from '../i18n';
 
 export type PresentationStatus = 'resolved' | 'informational' | 'requires_action' | 'setup_required' | 'error' | 'processing' | 'unknown';
@@ -18,16 +18,14 @@ export function homeStatusCopy(status: PresentationStatus): HomeStatusCopy {
   return { title: 'home.unknownTitle', body: 'home.unknownBody' };
 }
 
-export function statusForMonth(month: { lifecycle?: string; nextAction?: string; issues: AccountingIssue[] }): PresentationStatus {
+export function statusForMonth(month: Pick<AccountingPeriod, 'completeness' | 'status' | 'issues' | 'allowedActions'>): PresentationStatus {
   if (month.issues.some((issue) => statusForIssue(issue) === 'error')) return 'error';
   if (month.issues.some((issue) => statusForIssue(issue) === 'requires_action' || statusForIssue(issue) === 'setup_required')) return 'requires_action';
-  const lifecycle = (month.lifecycle ?? '').toUpperCase();
-  const nextAction = (month.nextAction ?? '').toUpperCase();
-  if (['PROCESSING', 'SYNCING', 'IN_PROGRESS'].includes(lifecycle) || ['PROCESSING', 'SYNCING', 'IN_PROGRESS'].includes(nextAction)) return 'processing';
+  const status = month.status.toUpperCase();
+  if (['PROCESSING', 'SYNCING', 'IN_PROGRESS', 'CALCULATING'].includes(status)) return 'processing';
   if (month.issues.some((issue) => statusForIssue(issue) === 'informational')) return 'informational';
-  if (nextAction === 'NONE' || lifecycle === 'LOCKED') return 'resolved';
-  if (['WAITING_FOR_SOURCE', 'REVIEW', 'CONFIRM', 'FILE', 'SETTLE', 'LOCK'].includes(nextAction)) return 'requires_action';
-  if (['OPEN', 'SOURCES_INCOMPLETE', 'READY_FOR_REVIEW', 'ISSUES', 'CONFIRMED', 'FILED', 'PAID', 'SETTLED'].includes(lifecycle)) return 'informational';
+  if (month.completeness.status.toUpperCase() === 'COMPLETE' && month.completeness.blockingIssueCount === 0) return 'resolved';
+  if (month.completeness.status.toUpperCase() !== 'UNKNOWN') return 'informational';
   return 'unknown';
 }
 
@@ -46,7 +44,7 @@ export function statusForIssue(issue: AccountingIssue): PresentationStatus {
     case 'NEEDS_ANSWER': return 'requires_action';
     case 'SETUP': return 'setup_required';
     case 'BLOCKED': return 'error';
-    default: return 'unknown';
+    default: return 'requires_action';
   }
 }
 
@@ -86,28 +84,28 @@ export function issuePresentation(issue: AccountingIssue): {
   };
 }
 
-export function statusForPayment(payment: PaymentLine): PresentationStatus {
+export function statusForPayment(payment: Obligation): PresentationStatus {
   const status = String(payment.status ?? '').trim().toUpperCase();
-  if (status === 'PAID' || status === 'SETTLED' || status === 'MATCHED') return 'resolved';
+  if (status === 'PAID' || status === 'OVERPAID') return 'resolved';
   if (status === 'OVERDUE') return 'error';
   if (status === 'NOT_DUE') return 'informational';
-  if (status === 'NOT_PAID' || status === 'DUE' || status === 'PARTIAL') return 'requires_action';
+  if (status === 'OPEN' || status === 'PARTIALLY_PAID' || status === 'DUE') return 'requires_action';
   return 'unknown';
 }
 
-export function matchesInvoice(line: AccountingLine, query: string): boolean {
+export function matchesInvoice(line: Invoice, query: string): boolean {
   const needle = query.trim().toLowerCase();
   if (!needle) return true;
-  return [line.counterparty, line.documentNumber, line.nip, line.title, line.subtitle]
+  return [line.counterparty, line.documentNumber, line.taxIdentifier, line.title, line.subtitle]
     .filter(Boolean).some((value) => value!.toLowerCase().includes(needle));
 }
 
-export function paymentMatches(line: AccountingLine, filter: 'ALL' | 'PAID' | 'UNPAID' | 'OVERDUE'): boolean {
+export function paymentMatches(line: Invoice, filter: 'ALL' | 'PAID' | 'UNPAID' | 'OVERDUE'): boolean {
   if (filter === 'ALL') return true;
   const status = line.paymentStatus?.toUpperCase();
-  if (filter === 'PAID') return ['PAID', 'SETTLED', 'MATCHED'].includes(status ?? '');
+  if (filter === 'PAID') return ['PAID', 'OVERPAID', 'MATCHED'].includes(status ?? '');
   if (filter === 'OVERDUE') return status === 'OVERDUE';
-  return ['NOT_PAID', 'DUE', 'PARTIAL'].includes(status ?? '');
+  return ['OPEN', 'PARTIALLY_PAID', 'DUE', 'UNMATCHED'].includes(status ?? '');
 }
 
 export type DocumentDateRange = 'SELECTED_MONTH' | 'PREVIOUS_MONTH' | 'LAST_3_MONTHS';
@@ -117,7 +115,7 @@ function calendarMonth(value: string): { year: number; month: number } | null {
   return match ? { year: Number(match[1]), month: Number(match[2]) } : null;
 }
 
-export function dateMatches(line: AccountingLine, filter: DocumentDateRange, month: string): boolean {
+export function dateMatches(line: Invoice, filter: DocumentDateRange, month: string): boolean {
   if (!line.issueDate) return false;
   const date = calendarMonth(line.issueDate);
   const current = calendarMonth(month);

@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { createAccountingRepository } from '../api/config';
-import { AccountingStatus, PaymentHistoryLine, PaymentLine } from '../model/accounting';
+import { AccountingPeriod, PaymentHistoryLine, Obligation } from '../model/accounting';
 import { formatDate, formatMonth, paymentLabel, paymentStatusLabel, t } from '../i18n';
 import { formatMoney } from '../utils/money';
 import { statusForPayment } from '../presentation/accounting';
@@ -22,9 +22,9 @@ export function PaymentsScreen() {
   const { locale } = useLocale();
   const { profileId } = useAuth();
   const repository = useMemo(() => createAccountingRepository(), []);
-  const [payments, setPayments] = useState<PaymentLine[]>([]);
+  const [payments, setPayments] = useState<Obligation[]>([]);
   const [history, setHistory] = useState<PaymentHistoryLine[]>([]);
-  const [total, setTotal] = useState<PaymentLine['amount'] | null>(null);
+  const [total, setTotal] = useState<Obligation['amount'] | null>(null);
   const [filter, setFilter] = useState<Filter>('ALL');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('ALL');
   const [filterSheet, setFilterSheet] = useState(false);
@@ -34,17 +34,17 @@ export function PaymentsScreen() {
   const [historyError, setHistoryError] = useState(false);
   const [historyRetry, setHistoryRetry] = useState(0);
   const [obligationsRetry, setObligationsRetry] = useState(0);
-  const [selected, setSelected] = useState<PaymentLine | null>(null);
-  const [accountingStatus, setAccountingStatus] = useState<AccountingStatus | null>(null);
+  const [selected, setSelected] = useState<Obligation | null>(null);
+  const [accountingPeriod, setAccountingPeriod] = useState<AccountingPeriod | null>(null);
   const { month, refreshVersion } = useAccountingMonth();
 
   useEffect(() => {
     let active = true;
-    setObligationsLoading(true); setObligationsError(false); setPayments([]); setTotal(null); setAccountingStatus(null);
+    setObligationsLoading(true); setObligationsError(false); setPayments([]); setTotal(null); setAccountingPeriod(null);
     repository.getMonth(month).then((value) => {
       if (!active) return;
-      setPayments(value.payments); setTotal(value.totalToPay); setAccountingStatus(value.status);
-      if (profileId != null) void getNotificationPreferences(profileId).then((preferences) => { if (preferences.enabled) return reconcilePaymentReminders(profileId, month, value.payments, preferences.leadDays, locale); }).catch(() => undefined);
+      setPayments(value.obligations); setTotal(value.settlement.totalOutstanding); setAccountingPeriod(value);
+      if (profileId != null) void getNotificationPreferences(profileId).then((preferences) => { if (preferences.enabled) return reconcilePaymentReminders(profileId, month, value.obligations, preferences.leadDays, locale); }).catch(() => undefined);
     }).catch(() => active && setObligationsError(true)).finally(() => active && setObligationsLoading(false));
     return () => { active = false; };
   }, [repository, month, refreshVersion, obligationsRetry, profileId, locale]);
@@ -66,7 +66,7 @@ export function PaymentsScreen() {
       <SegmentedControl options={filterOptions} selected={filter} onSelect={setFilter} /><View style={styles.filterButtonRow}><FilterButton onPress={() => setFilterSheet(true)} active={statusFilter !== 'ALL'} /></View>
       {obligationsLoading ? <LoadingState /> : obligationsError ? <ErrorState title={t('common.unavailable')} onRetry={() => setObligationsRetry((value) => value + 1)} /> : visible.length === 0 ? <Text style={styles.empty}>{t('settlements.noPayments')}</Text> : <ListGroup>{visible.map((payment, index) => <PaymentRow key={`${payment.id}-${index}`} payment={payment} last={index === visible.length - 1} amountKind="outstanding" onPress={() => setSelected(payment)} />)}</ListGroup>}
     </Section>
-    <AccountingStatusSection status={accountingStatus} />
+    <AccountingStatusSection period={accountingPeriod} />
     <Section title={t('settlements.history')} tone="secondary">
       {historyLoading ? <LoadingState /> : historyError ? <ErrorState title={t('settlements.historyError')} onRetry={() => setHistoryRetry((value) => value + 1)} /> : visibleHistory.length === 0 ? <Text style={styles.note}>{t('settlements.noHistory')}</Text> : <ListGroup>{visibleHistory.map((payment, index) => <PaymentRow key={`${payment.id}-${index}`} payment={payment} last={index === visibleHistory.length - 1} amountKind="total" onPress={() => setSelected(payment)} />)}</ListGroup>}
     </Section>
@@ -76,9 +76,9 @@ export function PaymentsScreen() {
 function matchesStatusFilter(status: string, filter: StatusFilter): boolean {
   if (filter === 'ALL') return true;
   const normalized = status.trim().toUpperCase();
-  if (filter === 'PAID') return ['PAID', 'SETTLED', 'MATCHED'].includes(normalized);
+  if (filter === 'PAID') return ['PAID', 'OVERPAID', 'MATCHED'].includes(normalized);
   if (filter === 'OVERDUE') return normalized === 'OVERDUE';
-  return ['NOT_PAID', 'DUE', 'PARTIAL'].includes(normalized);
+  return ['OPEN', 'PARTIALLY_PAID', 'DUE', 'UNMATCHED'].includes(normalized);
 }
 
 function PaymentFilterSheet({ visible, selected, onSelect, onClose }: { visible: boolean; selected: StatusFilter; onSelect: (value: StatusFilter) => void; onClose: () => void }) {
@@ -86,7 +86,7 @@ function PaymentFilterSheet({ visible, selected, onSelect, onClose }: { visible:
   return <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}><View style={styles.overlay}><View style={styles.sheet}><SheetHeader title={t('common.filters')} onClose={onClose} /><Text style={styles.filterTitle}>{t('settlements.status')}</Text><SelectionList options={options} selected={selected} onSelect={onSelect} /><Pressable style={styles.apply} onPress={onClose} accessibilityRole="button"><Text style={styles.applyText}>{t('common.close')}</Text></Pressable></View></View></Modal>;
 }
 
-function PaymentRow({ payment, last, amountKind, onPress }: { payment: PaymentLine; last: boolean; amountKind: 'outstanding' | 'total'; onPress: () => void }) {
+function PaymentRow({ payment, last, amountKind, onPress }: { payment: Obligation; last: boolean; amountKind: 'outstanding' | 'total'; onPress: () => void }) {
   const state = statusForPayment(payment);
   const displayAmount = amountKind === 'total' ? payment.amount : payment.outstandingAmount;
   const dueDate = payment.dueDate ? formatDate(payment.dueDate) : t('settlements.dueDateUnavailable');
@@ -98,7 +98,7 @@ function paymentStatusText(status: string | null | undefined): string {
   return !normalized || normalized === 'UNKNOWN' ? t('settlements.statusUnavailable') : paymentStatusLabel(normalized);
 }
 
-function PaymentDetails({ payment, onClose }: { payment: PaymentLine | null; onClose: () => void }) {
+function PaymentDetails({ payment, onClose }: { payment: Obligation | null; onClose: () => void }) {
   if (!payment) return null;
   return <Modal visible transparent animationType="slide" onRequestClose={onClose}><View style={styles.overlay}><View style={styles.sheet}><SheetHeader title={paymentLabel(payment.title)} onClose={onClose} /><KeyValueRow label={t('settlements.period')} value={formatMonth(payment.period ?? '')} /><KeyValueRow label={t('settlements.amount')} value={formatMoney(payment.amount)} /><KeyValueRow label={t('settlements.paidAmount')} value={formatMoney(payment.paidAmount)} /><KeyValueRow label={t('settlements.remaining')} value={formatMoney(payment.outstandingAmount)} /><KeyValueRow label={t('settlements.dueDate')} value={payment.dueDate ? formatDate(payment.dueDate) : t('settlements.dueDateUnavailable')} /><KeyValueRow label={t('settlements.status')} value={paymentStatusText(payment.status)} /></View></View></Modal>;
 }

@@ -1,15 +1,15 @@
 import { describe, expect, it } from 'vitest';
 import { accountingPaths } from './accountingPaths';
 
-describe('accounting API paths', () => {
-  it('uses the verified mobile overview and document routes', () => {
-    expect(accountingPaths.mobileMonth(1, '2026-09')).toBe('/api/v1/profiles/1/accounting/months/2026-09');
-    expect(accountingPaths.mobileDocuments(1, '2026-09')).toBe('/api/v1/profiles/1/accounting/months/2026-09/documents');
+describe('canonical accounting API paths', () => {
+  it('uses the unversioned accounting root for every accounting resource', () => {
+    expect(accountingPaths.period(7, '2026-09')).toBe('/api/profiles/7/accounting/periods/2026-09');
+    expect(accountingPaths.invoices(7, '2026-09')).toBe('/api/profiles/7/accounting/periods/2026-09/invoices');
+    expect(accountingPaths.payments(7)).toBe('/api/profiles/7/accounting/payments');
+    expect(accountingPaths.recognizeInvoice(7)).toBe('/api/profiles/7/accounting/invoices/recognize');
   });
-
-  it('uses the unversioned mutation and history controller routes', () => {
-    expect(accountingPaths.recognizeDocument(1)).toBe('/api/profiles/1/accounting/documents/recognize');
-    expect(accountingPaths.documents(1)).toBe('/api/profiles/1/accounting/documents');
-    expect(accountingPaths.paymentHistory(1)).toBe('/api/v1/profiles/1/accounting/payments/history');
+  it('exposes period commands and counterparty rules without legacy aliases', () => {
+    expect(accountingPaths.settle(7, '2026-09')).toBe('/api/profiles/7/accounting/periods/2026-09/settle');
+    expect(accountingPaths.rule(7, '3', '11')).toBe('/api/profiles/7/accounting/counterparties/3/rules/11');
   });
 });

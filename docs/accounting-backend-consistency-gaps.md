@@ -5,7 +5,7 @@ or repaired by client-side accounting rules.
 
 ## Payment status
 
-- Observed behavior: `paymentSummary.payments[].status` and payment-history
+- Observed behavior: canonical obligations and payment-history
   status may be `UNKNOWN`/null while amount, paid amount, and outstanding
   amount are present.
 - Current field: `status` is carried through the DTO and mapper without
@@ -18,9 +18,9 @@ or repaired by client-side accounting rules.
 - Safe mobile fallback: do not infer `PAID`; use unavailable copy and keep
   reminder eligibility conservative.
 
-## Document payment status
+## Invoice payment status
 
-- Observed behavior: `AccountingDocumentDto.paymentStatus` is nullable and
+- Observed behavior: canonical invoice `paymentStatus` is nullable and
   may be absent from document responses.
 - Current field: the mapper preserves `paymentStatus` as nullable/raw.
 - Why mobile cannot infer it: invoice amount, dates, bank data, and

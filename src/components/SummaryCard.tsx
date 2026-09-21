@@ -1,22 +1,22 @@
 import { StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { AccountingMonth } from '../model/accounting';
+import { AccountingPeriod } from '../model/accounting';
 import { formatMoney } from '../utils/money';
 import { theme } from '../theme/theme';
 import { t } from '../i18n';
 
 type Props = {
-  month: AccountingMonth;
+  month: AccountingPeriod;
 };
 
 export function SummaryCard({ month }: Props) {
-  const matched = month.attentionCount === 0 && month.nextAction !== 'REVIEW';
+  const matched = month.completeness.blockingIssueCount === 0 && month.issues.length === 0;
 
   return (
     <View style={styles.card}>
       <View style={styles.top}>
         <View>
-          <Text style={styles.total}>{formatMoney(month.totalToPay)}</Text>
+          <Text style={styles.total}>{formatMoney(month.settlement.totalOutstanding)}</Text>
           <Text style={styles.caption}>{t('home.obligations')}</Text>
         </View>
 
@@ -33,9 +33,9 @@ export function SummaryCard({ month }: Props) {
       </View>
 
       <View style={styles.taxRow}>
-        <TaxTile label={t('home.ryczalt')} value={formatMoney(month.taxes.ryczalt)} />
-        <TaxTile label={t('payments.types.vat')} value={formatMoney(month.taxes.vat)} />
-        <TaxTile label={t('payments.types.zus')} value={formatMoney(month.taxes.zus)} />
+        <TaxTile label={t('home.ryczalt')} value={formatMoney(month.summary.ryczalt)} />
+        <TaxTile label={t('payments.types.vat')} value={formatMoney(month.summary.vat)} />
+        <TaxTile label={t('payments.types.zus')} value={formatMoney(month.summary.zus)} />
       </View>
     </View>
   );

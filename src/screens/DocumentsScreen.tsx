@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { createAccountingRepository } from '../api/config';
-import { AccountingLine } from '../model/accounting';
+import { Invoice } from '../model/accounting';
 import { formatDate, formatMonth, paymentStatusLabel, t } from '../i18n';
 import { formatMoney } from '../utils/money';
 import { dateMatches, matchesInvoice, paymentMatches, type DocumentDateRange } from '../presentation/accounting';
@@ -20,19 +20,19 @@ export function DocumentsScreen() {
   useLocale();
   const repository = useMemo(() => createAccountingRepository(), []);
   const { month, refreshVersion } = useAccountingMonth();
-  const [items, setItems] = useState<AccountingLine[]>([]);
+  const [items, setItems] = useState<Invoice[]>([]);
   const [filters, setFilters] = useState(initialFilters);
   const [query, setQuery] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [sheet, setSheet] = useState(false);
-  const [selected, setSelected] = useState<AccountingLine | null>(null);
+  const [selected, setSelected] = useState<Invoice | null>(null);
 
   useEffect(() => {
     let active = true;
     setLoading(true); setError(false); setItems([]);
     const count = filters.date === 'LAST_3_MONTHS' ? 3 : filters.date === 'PREVIOUS_MONTH' ? 2 : 1;
-    repository.getDocumentsForRange(month, count).then((value) => active && setItems(value)).catch(() => active && setError(true)).finally(() => active && setLoading(false));
+    repository.getInvoicesForRange(month, count).then((value) => active && setItems(value)).catch(() => active && setError(true)).finally(() => active && setLoading(false));
     return () => { active = false; };
   }, [repository, month, filters.date, refreshVersion]);
 
@@ -51,7 +51,7 @@ export function DocumentsScreen() {
   </ScrollView><FilterSheet visible={sheet} filters={filters} currencies={currencies} onChange={setFilters} onClose={() => setSheet(false)} /><DocumentDetailsModal item={selected} onClose={() => setSelected(null)} /></SafeAreaView>;
 }
 
-function DocumentRow({ item, last, onPress }: { item: AccountingLine; last: boolean; onPress: () => void }) {
+function DocumentRow({ item, last, onPress }: { item: Invoice; last: boolean; onPress: () => void }) {
   return <Pressable onPress={onPress} accessibilityRole="button" accessibilityLabel={`${item.counterparty ?? item.title}, ${formatMoney(item.amount)}`} style={({ pressed }) => [styles.row, !last && styles.divider, pressed && styles.pressed]}><View style={styles.copy}><Text style={styles.rowTitle} numberOfLines={1}>{item.counterparty ?? item.title}</Text><Text style={styles.meta} numberOfLines={1}>{item.documentNumber ?? t('common.unknown')} · {formatDate(item.issueDate)}</Text></View><View style={styles.right}><Text style={styles.amount}>{formatMoney(item.amount)}</Text>{item.paymentStatus ? <Text style={styles.meta}>{paymentStatusLabel(item.paymentStatus)}</Text> : null}</View></Pressable>;
 }
 

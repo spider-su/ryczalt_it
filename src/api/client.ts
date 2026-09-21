@@ -6,13 +6,13 @@ export class ConfigurationError extends Error {
 }
 
 export class ApiError extends Error {
-  public readonly kind: 'authentication' | 'not-found' | 'unavailable' | 'response';
+  public readonly kind: 'authentication' | 'authorization' | 'not-found' | 'conflict' | 'validation' | 'unavailable' | 'response';
 
   constructor(
     message: string,
     public readonly status?: number,
     public readonly cause?: unknown,
-    kind: 'authentication' | 'not-found' | 'unavailable' | 'response' = 'response'
+    kind: 'authentication' | 'authorization' | 'not-found' | 'conflict' | 'validation' | 'unavailable' | 'response' = 'response'
   ) {
     super(message);
     this.name = 'ApiError';
@@ -70,6 +70,10 @@ export class HttpClient {
     });
   }
 
+  async delete<T = void>(path: string): Promise<T> {
+    return this.request<T>(path, { method: 'DELETE' }, false);
+  }
+
   async postForm<T>(path: string, body: FormData): Promise<T> {
     return this.request<T>(path, { method: 'POST', body });
   }
@@ -92,8 +96,6 @@ export class HttpClient {
       const response = await this.fetchImpl(url, {
         ...init,
         method: init.method ?? 'GET',
-        // The web POC reuses the authenticated Investory browser session.
-        credentials: 'include',
         headers: {
           Accept: 'application/json',
           ...(currentToken ? { Authorization: `Bearer ${currentToken}` } : {}),
@@ -103,21 +105,26 @@ export class HttpClient {
       });
 
       if (!response.ok) {
+        const problemMessage = await this.readProblemMessage(response);
         if (response.status === 401 || response.status === 403) {
           if (response.status === 401) this.onUnauthorized?.();
           throw new ApiError(
-            response.status === 401
-              ? 'Investory authentication is required'
-              : 'Investory access is not authorized',
+            problemMessage ?? (response.status === 401 ? 'Investory authentication is required' : 'Investory access is not authorized'),
             response.status,
             undefined,
-            'authentication'
+            response.status === 401 ? 'authentication' : 'authorization'
           );
         }
         if (response.status === 404) {
-          throw new ApiError('Investory accounting data was not found', response.status, undefined, 'not-found');
+          throw new ApiError(problemMessage ?? 'Investory accounting data was not found', response.status, undefined, 'not-found');
         }
-        throw new ApiError(`Investory API returned HTTP ${response.status}`, response.status);
+        if (response.status === 409) {
+          throw new ApiError(problemMessage ?? 'Investory request conflicts with current accounting state', response.status, undefined, 'conflict');
+        }
+        if (response.status === 400 || response.status === 422) {
+          throw new ApiError(problemMessage ?? 'Investory request failed validation', response.status, undefined, 'validation');
+        }
+        throw new ApiError(problemMessage ?? `Investory API returned HTTP ${response.status}`, response.status);
       }
 
       if (!expectJson || response.status === 204) return undefined as T;
@@ -135,5 +142,17 @@ export class HttpClient {
     } finally {
       clearTimeout(timeout);
     }
+  }
+
+  private async readProblemMessage(response: Response): Promise<string | null> {
+    if (!(response.headers.get('content-type') ?? '').includes('json')) return null;
+    try {
+      const body = (await response.clone().json()) as { message?: unknown; detail?: unknown };
+      if (typeof body.message === 'string' && body.message.trim()) return body.message;
+      if (typeof body.detail === 'string' && body.detail.trim()) return body.detail;
+    } catch {
+      // Keep the HTTP status as the fallback when the error body is malformed.
+    }
+    return null;
   }
 }
