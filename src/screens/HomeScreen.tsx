@@ -3,18 +3,17 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { AccountingPeriod, Obligation } from '../model/accounting';
 import { createAccountingRepository } from '../api/config';
-import { formatDate, paymentLabel, paymentStatusLabel, t } from '../i18n';
+import { formatCurrency, formatDate, paymentLabel, paymentStatusLabel, t } from '../i18n';
 import { formatMoney } from '../utils/money';
 import { theme } from '../theme/theme';
-import { homeStatusCopy, issuePresentation, orderedIssues, statusForIssue, statusForMonth } from '../presentation/accounting';
+import { homeStatusCopy, isQuietIssue, issuePresentation, orderedIssues, statusForIssue, statusForMonth } from '../presentation/accounting';
 import { useAccountingMonth } from '../navigation/AccountingMonthContext';
 import { MonthSelector } from '../components/MonthSelector';
 import { useLocale } from '../i18n/LocaleContext';
-import { ErrorState, KeyValueRow, ListGroup, LoadingState, PageHeader, Section, StatusBanner } from '../components/ui';
+import { ErrorState, ListGroup, LoadingState, Section, StatusBanner } from '../components/ui';
 import { IssueDetailsModal } from '../components/IssueDetailsModal';
 import { DocumentDetailsModal } from '../components/DocumentDetailsModal';
 import { resolveIssueAction } from '../presentation/issueResolution';
-import { isExactDecimalZero } from '../utils/decimal';
 
 export function HomeScreen() {
   useLocale();
@@ -39,38 +38,28 @@ export function HomeScreen() {
   if (!month) return <SafeAreaView style={styles.safe}><LoadingState /></SafeAreaView>;
 
   const monthlyStatus = statusForMonth(month);
-  const issues = orderedIssues(month.issues).filter((issue) => ['requires_action', 'setup_required', 'error'].includes(statusForIssue(issue))).slice(0, 3);
+  const issues = orderedIssues(month.issues).filter((issue) => !isQuietIssue(issue) && ['requires_action', 'setup_required', 'error'].includes(statusForIssue(issue))).slice(0, 3);
   const documents = month.invoices;
   const statusCopy = homeStatusCopy(monthlyStatus);
   const bannerKind = monthlyStatus === 'resolved' ? 'success' : monthlyStatus === 'requires_action' ? 'warning' : monthlyStatus === 'error' ? 'error' : monthlyStatus === 'unknown' ? 'unknown' : 'info';
 
   return <SafeAreaView style={styles.safe}><ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-    <PageHeader title={t('home.greeting')} />
     <MonthSelector loading={!month} />
     {issues.length === 0 ? <StatusBanner kind={bannerKind} title={t(statusCopy.title)} body={t(statusCopy.body)} /> : null}
 
-    <Section title={t('home.obligations')}>
-      <ListGroup>
-        <KeyValueRow label={paymentLabel('RYCZALT')} value={formatMoney(month.summary.ryczalt)} />
-        <KeyValueRow label={paymentLabel('VAT')} value={formatMoney(month.summary.vat)} />
-        <KeyValueRow label={paymentLabel('ZUS')} value={formatMoney(month.summary.zus)} />
-      </ListGroup>
-    </Section>
-
-    <Section title={t('home.outstanding')}>
-      {month.settlement.totalOutstanding.amount == null ? <Text style={styles.unavailable}>{t('home.amountUnavailable')}</Text> : <View style={styles.outstanding}><Text style={isExactDecimalZero(month.settlement.totalOutstanding.amount) ? styles.zeroAmount : styles.total}>{formatMoney(month.settlement.totalOutstanding)}</Text>{isExactDecimalZero(month.settlement.totalOutstanding.amount) && month.obligations.length === 0 ? <Text style={styles.supporting}>{t('home.noPayments')}</Text> : null}</View>}
-    </Section>
+    <Section title={t('home.payments')}><ListGroup>{month.obligations.length ? month.obligations.map((payment, index) => <PaymentRow key={`${payment.id}-${index}`} payment={payment} last={index === month.obligations.length - 1} />) : <Text style={styles.unavailable}>{t('home.noPayments')}</Text>}</ListGroup></Section>
 
     {month.allowedActions.length ? <Section title={t('home.actions')}><View style={styles.actions}>{month.allowedActions.filter((action): action is 'SETTLE' | 'FREEZE' | 'REOPEN' => ['SETTLE', 'FREEZE', 'REOPEN'].includes(action)).map((action) => <Pressable key={action} disabled={actionBusy != null} onPress={() => { setActionBusy(action); void repository.performPeriodAction(month.id, action).then(() => setRetry((value) => value + 1)).catch(() => setError(true)).finally(() => setActionBusy(null)); }} style={[styles.actionButton, actionBusy === action && styles.actionBusy]}><Text style={styles.actionText}>{actionBusy === action ? t('common.loading') : action}</Text></Pressable>)}</View></Section> : null}
-
-    {month.obligations.length ? <Section title={t('home.payments')}><ListGroup>{month.obligations.map((payment, index) => <PaymentRow key={`${payment.id}-${index}`} payment={payment} last={index === month.obligations.length - 1} />)}</ListGroup></Section> : null}
 
     {issues.length ? <Section title={t('home.attention')}><ListGroup>{issues.map((issue, index) => { const presentation = issuePresentation(issue); const action = resolveIssueAction(issue, documents); return <Pressable key={`${issue.id}-${index}`} onPress={() => setSelectedIssue(issue)} style={({ pressed }) => [styles.issue, index < issues.length - 1 && styles.issueDivider, pressed && styles.issuePressed]} accessibilityRole="button" accessibilityLabel={`${presentation.title}. ${t('home.issueDetails')}`}><Text style={styles.issueTitle}>{presentation.title}</Text><Text style={styles.issueBody}>{presentation.body}</Text>{action.kind === 'SUPPORTED_NAVIGATION' ? <Text style={styles.issueAction}>{t('home.checkDocument')}</Text> : null}</Pressable>; })}</ListGroup></Section> : null}
   </ScrollView><IssueDetailsModal issue={selectedIssue} documents={documents} onClose={() => setSelectedIssue(null)} onDocument={(document) => { setSelectedIssue(null); setSelectedDocument(document); }} /><DocumentDetailsModal item={selectedDocument} onClose={() => setSelectedDocument(null)} /></SafeAreaView>;
 }
 
 function PaymentRow({ payment, last }: { payment: Obligation; last: boolean }) {
-  return <View style={[styles.paymentRow, !last && styles.divider]}><View style={styles.paymentCopy}><Text style={styles.paymentTitle}>{paymentLabel(payment.title)}</Text><Text style={styles.paymentDate}>{formatDate(payment.dueDate)}</Text></View><View style={styles.paymentAmount}><Text style={styles.amount}>{formatMoney(payment.outstandingAmount)}</Text><Text style={styles.paymentStatus}>{paymentStatusLabel(payment.status)}</Text></View></View>;
+  const paid = ['PAID', 'OVERPAID'].includes(payment.status.trim().toUpperCase());
+  const partial = payment.status.trim().toUpperCase() === 'PARTIALLY_PAID';
+  const status = partial ? `${paymentStatusLabel(payment.status)} (${formatCurrency(payment.outstandingAmount.amount)} ${t('settlements.remainingShort')})` : paymentStatusLabel(payment.status);
+  return <View style={[styles.paymentRow, !last && styles.divider]}><View style={styles.paymentCopy}><Text style={styles.paymentTitle}>{paymentLabel(payment.title)}</Text><Text style={styles.paymentDate}>{payment.dueDate ? formatDate(payment.dueDate) : t('settlements.dueDateUnavailable')}</Text></View><View style={styles.paymentAmount}><Text style={styles.amount}>{formatMoney(paid || partial ? payment.amount : payment.outstandingAmount)}</Text><Text style={styles.paymentStatus}>{status}</Text></View></View>;
 }
 
 const styles = StyleSheet.create({

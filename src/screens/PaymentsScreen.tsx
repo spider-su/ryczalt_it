@@ -5,7 +5,7 @@ import { createAccountingRepository } from '../api/config';
 import { AccountingPeriod, PaymentHistoryLine, Obligation } from '../model/accounting';
 import { formatDate, formatMonth, paymentLabel, paymentStatusLabel, t } from '../i18n';
 import { formatMoney } from '../utils/money';
-import { statusForPayment } from '../presentation/accounting';
+import { isPaymentHistoryItem, isUpcomingPayment, statusForPayment } from '../presentation/accounting';
 import { theme } from '../theme/theme';
 import { useAccountingMonth } from '../navigation/AccountingMonthContext';
 import { MonthSelector } from '../components/MonthSelector';
@@ -56,8 +56,8 @@ export function PaymentsScreen() {
     return () => { active = false; };
   }, [repository, month, filter, refreshVersion, historyRetry]);
 
-  const visible = payments.filter((item) => (filter === 'ALL' || item.title.toUpperCase() === filter) && matchesStatusFilter(item.status, statusFilter));
-  const visibleHistory = history.filter((item) => matchesStatusFilter(item.status, statusFilter));
+  const visible = payments.filter((item) => isUpcomingPayment(item) && (filter === 'ALL' || item.title.toUpperCase() === filter) && matchesStatusFilter(item.status, statusFilter));
+  const visibleHistory = history.filter((item) => isPaymentHistoryItem(item) && matchesStatusFilter(item.status, statusFilter));
   const filterOptions = [{ value: 'ALL' as const, label: t('common.all') }, { value: 'RYCZALT' as const, label: paymentLabel('RYCZALT') }, { value: 'VAT' as const, label: paymentLabel('VAT') }, { value: 'ZUS' as const, label: paymentLabel('ZUS') }];
 
   return <SafeAreaView style={styles.safe}><ScrollView contentContainerStyle={styles.content}><PageHeader title={t('settlements.title')} /><MonthSelector loading={obligationsLoading || historyLoading} />

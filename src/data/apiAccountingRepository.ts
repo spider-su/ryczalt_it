@@ -14,6 +14,9 @@ export class ApiAccountingRepository implements AccountingRepository {
     return mapPeriod(period, invoices, transactions, obligations, issues);
   }
   async getInvoicesForRange(month: string, months: number): Promise<Invoice[]> { const ids = Array.from({ length: Math.max(1, months) }, (_, index) => shiftMonth(month, -index)); return mapInvoices((await Promise.all(ids.map((id) => this.api.getInvoices(this.profileId, id)))).flat()); }
+  async getCounterpartyInvoices(counterpartyId: string): Promise<Invoice[]> { return mapInvoices(await this.api.getCounterpartyInvoices(this.profileId, counterpartyId)); }
+  async markInvoiceManuallyPaid(invoiceId: string, paidDate: string, note?: string): Promise<void> { return this.api.markInvoiceManuallyPaid(this.profileId, invoiceId, paidDate, note); }
+  async clearInvoiceManualPayment(invoiceId: string): Promise<void> { return this.api.clearInvoiceManualPayment(this.profileId, invoiceId); }
   async getPaymentHistory(month: string, type?: string): Promise<PaymentHistoryLine[]> { return mapPaymentHistory(await this.api.getPayments(this.profileId, month, month, type)); }
   async getCounterparties(): Promise<Counterparty[]> { return (await this.api.getCounterparties(this.profileId)).map(mapCounterparty); }
   async performPeriodAction(month: string, action: 'SETTLE' | 'FREEZE' | 'REOPEN'): Promise<void> { if (action === 'SETTLE') return this.api.settle(this.profileId, month); if (action === 'FREEZE') return this.api.freeze(this.profileId, month); return this.api.reopen(this.profileId, month); }

@@ -1,7 +1,7 @@
 import { AccountingIssue, AccountingPeriod, Invoice, Obligation } from '../model/accounting';
 import { t } from '../i18n';
 
-export type PresentationStatus = 'resolved' | 'informational' | 'requires_action' | 'setup_required' | 'error' | 'processing' | 'unknown';
+export type PresentationStatus = 'resolved' | 'informational' | 'settlement_pending' | 'requires_action' | 'setup_required' | 'error' | 'processing' | 'unknown';
 
 export type HomeStatusCopy = { title: string; body: string };
 export type HomeDataState = 'loading' | 'error' | 'ready';
@@ -13,17 +13,20 @@ export function homeDataState(month: object | null, error: boolean): HomeDataSta
 export function homeStatusCopy(status: PresentationStatus): HomeStatusCopy {
   if (status === 'requires_action' || status === 'setup_required' || status === 'error') return { title: 'home.attentionTitle', body: 'home.attentionBody' };
   if (status === 'processing') return { title: 'home.processingTitle', body: 'home.processingBody' };
+  if (status === 'settlement_pending') return { title: 'home.settlementPendingTitle', body: 'home.settlementPendingBody' };
   if (status === 'resolved') return { title: 'home.healthyTitle', body: 'home.healthyBody' };
   if (status === 'informational') return { title: 'home.informationalTitle', body: 'home.informationalBody' };
   return { title: 'home.unknownTitle', body: 'home.unknownBody' };
 }
 
-export function statusForMonth(month: Pick<AccountingPeriod, 'completeness' | 'status' | 'issues' | 'allowedActions'>): PresentationStatus {
-  if (month.issues.some((issue) => statusForIssue(issue) === 'error')) return 'error';
-  if (month.issues.some((issue) => statusForIssue(issue) === 'requires_action' || statusForIssue(issue) === 'setup_required')) return 'requires_action';
+export function statusForMonth(month: Pick<AccountingPeriod, 'completeness' | 'status' | 'issues' | 'allowedActions'> & { settlement: Pick<AccountingPeriod['settlement'], 'fullySettled'> }): PresentationStatus {
+  const actionableIssues = month.issues.filter((issue) => !isQuietIssue(issue));
+  if (actionableIssues.some((issue) => statusForIssue(issue) === 'error')) return 'error';
+  if (actionableIssues.some((issue) => statusForIssue(issue) === 'requires_action' || statusForIssue(issue) === 'setup_required')) return 'requires_action';
   const status = month.status.toUpperCase();
   if (['PROCESSING', 'SYNCING', 'IN_PROGRESS', 'CALCULATING'].includes(status)) return 'processing';
-  if (month.issues.some((issue) => statusForIssue(issue) === 'informational')) return 'informational';
+  if (actionableIssues.some((issue) => statusForIssue(issue) === 'informational')) return 'informational';
+  if (month.settlement.fullySettled === false) return 'settlement_pending';
   if (month.completeness.status.toUpperCase() === 'COMPLETE' && month.completeness.blockingIssueCount === 0) return 'resolved';
   if (month.completeness.status.toUpperCase() !== 'UNKNOWN') return 'informational';
   return 'unknown';
@@ -36,6 +39,13 @@ export function issuePriority(issue: AccountingIssue): number {
 
 export function orderedIssues(issues: AccountingIssue[]): AccountingIssue[] {
   return [...issues].sort((a, b) => issuePriority(a) - issuePriority(b));
+}
+
+export function isQuietIssue(issue: Pick<AccountingIssue, 'code' | 'kind' | 'message'>): boolean {
+  const code = String(issue.code ?? '').toUpperCase();
+  const message = String(issue.message ?? '').toUpperCase();
+  if (code === 'UNSETTLED_OBLIGATION' || String(issue.kind ?? '').toUpperCase() === 'SETTLEMENT') return true;
+  return code.includes('MISSING_CALCULATION') || message.includes('NO CALCULATION IS AVAILABLE');
 }
 
 export function statusForIssue(issue: AccountingIssue): PresentationStatus {
@@ -91,6 +101,14 @@ export function statusForPayment(payment: Obligation): PresentationStatus {
   if (status === 'NOT_DUE') return 'informational';
   if (status === 'OPEN' || status === 'PARTIALLY_PAID' || status === 'DUE') return 'requires_action';
   return 'unknown';
+}
+
+export function isUpcomingPayment(payment: Pick<Obligation, 'status'>): boolean {
+  return ['OPEN', 'PARTIALLY_PAID', 'DUE'].includes(String(payment.status ?? '').trim().toUpperCase());
+}
+
+export function isPaymentHistoryItem(payment: Pick<Obligation, 'status'>): boolean {
+  return ['PAID', 'OVERPAID'].includes(String(payment.status ?? '').trim().toUpperCase());
 }
 
 export function matchesInvoice(line: Invoice, query: string): boolean {
