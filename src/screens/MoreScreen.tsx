@@ -62,7 +62,7 @@ const styles = StyleSheet.create({
   sheet: { backgroundColor: theme.colors.surface, borderTopLeftRadius: theme.radius.large, borderTopRightRadius: theme.radius.large, padding: theme.spacing.xl, paddingBottom: theme.spacing.xxxl },
   description: { color: theme.colors.textSecondary, lineHeight: 20, marginBottom: theme.spacing.xl },
   languageHeading: { color: theme.colors.textPrimary, fontWeight: '700', marginBottom: theme.spacing.sm },
-  languageRow: { minHeight: 56, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: theme.spacing.sm },
+  languageRow: { minHeight: 56, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: theme.spacing.sm, paddingHorizontal: theme.spacing.lg },
   languageDivider: { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: theme.colors.divider },
   languageText: { color: theme.colors.textPrimary, fontSize: theme.typography.body, fontWeight: '600' }
 });

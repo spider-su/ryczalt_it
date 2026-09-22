@@ -1,7 +1,7 @@
 import { StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { AccountingPeriod } from '../model/accounting';
-import { formatMoney } from '../utils/money';
+import { formatMoneyWithoutCurrency } from '../utils/money';
 import { theme } from '../theme/theme';
 import { t } from '../i18n';
 
@@ -16,7 +16,7 @@ export function SummaryCard({ month }: Props) {
     <View style={styles.card}>
       <View style={styles.top}>
         <View>
-          <Text style={styles.total}>{formatMoney(month.settlement.totalOutstanding)}</Text>
+          <Text style={styles.total}>{formatMoneyWithoutCurrency(month.settlement.totalOutstanding)}</Text>
           <Text style={styles.caption}>{t('home.obligations')}</Text>
         </View>
 
@@ -33,9 +33,9 @@ export function SummaryCard({ month }: Props) {
       </View>
 
       <View style={styles.taxRow}>
-        <TaxTile label={t('home.ryczalt')} value={formatMoney(month.summary.ryczalt)} />
-        <TaxTile label={t('payments.types.vat')} value={formatMoney(month.summary.vat)} />
-        <TaxTile label={t('payments.types.zus')} value={formatMoney(month.summary.zus)} />
+        <TaxTile label={t('home.ryczalt')} value={formatMoneyWithoutCurrency(month.summary.ryczalt)} />
+        <TaxTile label={t('payments.types.vat')} value={formatMoneyWithoutCurrency(month.summary.vat)} />
+        <TaxTile label={t('payments.types.zus')} value={formatMoneyWithoutCurrency(month.summary.zus)} />
       </View>
     </View>
   );

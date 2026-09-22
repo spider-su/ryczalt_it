@@ -1,22 +1,28 @@
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
+import * as React from 'react';
+import { ActivityIndicator, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { formatMonth, t } from '../i18n';
 import { useAccountingMonth } from '../navigation/AccountingMonthContext';
 import { theme } from '../theme/theme';
 import { useLocale } from '../i18n/LocaleContext';
+import { currentLocalAccountingMonth } from '../utils/calendar';
 
 export function MonthSelector({ loading = false }: { loading?: boolean }) {
   useLocale();
-  const { month, previousMonth, nextMonth, canGoNext } = useAccountingMonth();
-  return <View style={styles.row} accessibilityLabel={t('month.selector')}>
+  const { month, setMonth, previousMonth, nextMonth, canGoNext } = useAccountingMonth();
+  const [open, setOpen] = React.useState(false);
+  const selectedYear = Number(month.slice(0, 4));
+  const latestMonth = currentLocalAccountingMonth();
+  const months = Array.from({ length: 12 }, (_, index) => `${selectedYear}-${String(index + 1).padStart(2, '0')}`);
+  return <><View style={styles.row} accessibilityLabel={t('month.selector')}>
     <Pressable onPress={previousMonth} style={styles.button} accessibilityRole="button" accessibilityLabel={t('month.previous')}>
       <Ionicons name="chevron-back" size={22} color={theme.colors.primary} />
     </Pressable>
-    <View style={styles.center}>{loading ? <ActivityIndicator size="small" color={theme.colors.primary} /> : <Text style={styles.label}>{formatMonth(month)}</Text>}</View>
+    <Pressable onPress={() => setOpen(true)} disabled={loading} style={styles.center} accessibilityRole="button" accessibilityLabel={t('month.selector')}><View>{loading ? <ActivityIndicator size="small" color={theme.colors.primary} /> : <Text style={styles.label}>{formatMonth(month)}</Text>}</View></Pressable>
     <Pressable onPress={nextMonth} disabled={!canGoNext} style={[styles.button, !canGoNext && styles.disabled]} accessibilityRole="button" accessibilityLabel={t('month.next')}>
       <Ionicons name="chevron-forward" size={22} color={canGoNext ? theme.colors.primary : theme.colors.textMuted} />
     </Pressable>
-  </View>;
+  </View><Modal visible={open} transparent animationType="slide" onRequestClose={() => setOpen(false)}><View style={styles.overlay}><View style={styles.sheet}><View style={styles.sheetHeader}><Text style={styles.sheetTitle}>{t('month.selector')}</Text><Pressable onPress={() => setOpen(false)} accessibilityRole="button" accessibilityLabel={t('common.close')}><Ionicons name="close" size={24} color={theme.colors.textPrimary} /></Pressable></View><View style={styles.yearRow}><Pressable onPress={() => setMonth(`${selectedYear - 1}-${month.slice(5)}`)} style={styles.yearButton} accessibilityRole="button" accessibilityLabel={t('month.previous')}><Ionicons name="chevron-back" size={20} color={theme.colors.primary} /></Pressable><Text style={styles.year}>{selectedYear}</Text><Pressable onPress={() => setMonth(`${selectedYear + 1}-${month.slice(5)}`)} disabled={`${selectedYear + 1}-${month.slice(5)}` > latestMonth} style={[styles.yearButton, `${selectedYear + 1}-${month.slice(5)}` > latestMonth && styles.disabled]} accessibilityRole="button" accessibilityLabel={t('month.next')}><Ionicons name="chevron-forward" size={20} color={`${selectedYear + 1}-${month.slice(5)}` > latestMonth ? theme.colors.textMuted : theme.colors.primary} /></Pressable></View><View style={styles.grid}>{months.map((value) => { const disabled = value > latestMonth; const selected = value === month; return <Pressable key={value} onPress={() => { setMonth(value); setOpen(false); }} disabled={disabled} style={[styles.month, selected && styles.selectedMonth, disabled && styles.disabled]} accessibilityRole="button" accessibilityState={{ selected, disabled }}><Text style={[styles.monthLabel, selected && styles.selectedMonthLabel]}>{formatMonth(value).replace(/\s+\d{4}$/, '')}</Text></Pressable>; })}</View></View></View></Modal></>;
 }
 
-const styles = StyleSheet.create({ row: { minHeight: 52, flexDirection: 'row', alignItems: 'center', borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: theme.colors.divider }, button: { width: 52, minHeight: 52, alignItems: 'center', justifyContent: 'center' }, disabled: { opacity: 0.45 }, center: { flex: 1, alignItems: 'center' }, label: { color: theme.colors.textPrimary, fontSize: theme.typography.body, fontWeight: '700', textTransform: 'capitalize' } });
+const styles = StyleSheet.create({ row: { minHeight: 52, flexDirection: 'row', alignItems: 'center', borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: theme.colors.divider }, button: { width: 52, minHeight: 52, alignItems: 'center', justifyContent: 'center' }, disabled: { opacity: 0.45 }, center: { flex: 1, alignItems: 'center' }, label: { color: theme.colors.textPrimary, fontSize: theme.typography.body, fontWeight: '700', textTransform: 'capitalize' }, overlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: theme.colors.overlay }, sheet: { backgroundColor: theme.colors.surface, borderTopLeftRadius: theme.radius.large, borderTopRightRadius: theme.radius.large, padding: theme.spacing.xl, paddingBottom: theme.spacing.xxxl }, sheetHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }, sheetTitle: { color: theme.colors.textPrimary, fontSize: theme.typography.section, fontWeight: '800' }, yearRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: theme.spacing.xl, marginBottom: theme.spacing.md }, yearButton: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center', borderRadius: theme.radius.control, backgroundColor: theme.colors.surfaceSecondary }, year: { color: theme.colors.textPrimary, fontSize: theme.typography.section, fontWeight: '800' }, grid: { flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.sm }, month: { width: '31%', minHeight: 48, alignItems: 'center', justifyContent: 'center', borderRadius: theme.radius.control, borderWidth: 1, borderColor: theme.colors.borderSubtle }, selectedMonth: { backgroundColor: theme.colors.accent, borderColor: theme.colors.accent }, monthLabel: { color: theme.colors.textPrimary, fontSize: theme.typography.small, textTransform: 'capitalize' }, selectedMonthLabel: { color: theme.colors.onAccent, fontWeight: '700' } });

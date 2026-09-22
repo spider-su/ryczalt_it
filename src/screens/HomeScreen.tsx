@@ -4,9 +4,9 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { AccountingPeriod, Obligation } from '../model/accounting';
 import { createAccountingRepository } from '../api/config';
 import { formatCurrency, formatDate, paymentLabel, paymentStatusLabel, t } from '../i18n';
-import { formatMoney } from '../utils/money';
+import { formatMoneyWithoutCurrency } from '../utils/money';
 import { theme } from '../theme/theme';
-import { homeStatusCopy, isQuietIssue, issuePresentation, orderedIssues, statusForIssue, statusForMonth } from '../presentation/accounting';
+import { homeStatusCopy, isQuietIssue, issuePresentation, orderedIssues, statusForIssue, statusForMonth, statusForPayment } from '../presentation/accounting';
 import { useAccountingMonth } from '../navigation/AccountingMonthContext';
 import { MonthSelector } from '../components/MonthSelector';
 import { useLocale } from '../i18n/LocaleContext';
@@ -58,8 +58,15 @@ export function HomeScreen() {
 function PaymentRow({ payment, last }: { payment: Obligation; last: boolean }) {
   const paid = ['PAID', 'OVERPAID'].includes(payment.status.trim().toUpperCase());
   const partial = payment.status.trim().toUpperCase() === 'PARTIALLY_PAID';
+  const tone = paymentTone(statusForPayment(payment));
   const status = partial ? `${paymentStatusLabel(payment.status)} (${formatCurrency(payment.outstandingAmount.amount)} ${t('settlements.remainingShort')})` : paymentStatusLabel(payment.status);
-  return <View style={[styles.paymentRow, !last && styles.divider]}><View style={styles.paymentCopy}><Text style={styles.paymentTitle}>{paymentLabel(payment.title)}</Text><Text style={styles.paymentDate}>{payment.dueDate ? formatDate(payment.dueDate) : t('settlements.dueDateUnavailable')}</Text></View><View style={styles.paymentAmount}><Text style={styles.amount}>{formatMoney(paid || partial ? payment.amount : payment.outstandingAmount)}</Text><Text style={styles.paymentStatus}>{status}</Text></View></View>;
+  return <View style={[styles.paymentRow, !last && styles.divider]}><View style={styles.paymentCopy}><Text style={styles.paymentTitle}>{paymentLabel(payment.title)}</Text><Text style={styles.paymentDate}>{payment.dueDate ? formatDate(payment.dueDate) : t('settlements.dueDateUnavailable')}</Text></View><View style={styles.paymentAmount}><Text style={styles.amount}>{formatMoneyWithoutCurrency(paid || partial ? payment.amount : payment.outstandingAmount)}</Text><View style={styles.statusLine}><View style={[styles.statusDot, { backgroundColor: tone }]} /><Text style={[styles.paymentStatus, { color: tone }]}>{status}</Text></View></View></View>;
+}
+
+function paymentTone(status: ReturnType<typeof statusForPayment>): string {
+  if (status === 'resolved') return theme.colors.success;
+  if (status === 'error' || status === 'requires_action') return theme.colors.warning;
+  return theme.colors.textMuted;
 }
 
 const styles = StyleSheet.create({
@@ -70,14 +77,16 @@ const styles = StyleSheet.create({
   zeroAmount: { color: theme.colors.textPrimary, fontSize: theme.typography.amount, lineHeight: 34, fontWeight: '700' },
   unavailable: { color: theme.colors.textMuted, fontSize: theme.typography.body },
   supporting: { color: theme.colors.textSecondary, fontSize: theme.typography.supporting, marginTop: theme.spacing.xs },
-  paymentRow: { minHeight: 68, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: theme.spacing.md },
+  paymentRow: { minHeight: 76, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: theme.spacing.md, paddingHorizontal: theme.spacing.lg },
   divider: { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: theme.colors.divider },
   paymentCopy: { flex: 1, minWidth: 0 },
   paymentTitle: { color: theme.colors.textPrimary, fontSize: theme.typography.rowTitle, fontWeight: '600' },
   paymentDate: { color: theme.colors.textSecondary, fontSize: theme.typography.supporting, marginTop: theme.spacing.xs },
   paymentAmount: { alignItems: 'flex-end' },
-  amount: { color: theme.colors.textPrimary, fontSize: theme.typography.body, fontWeight: '700' },
-  paymentStatus: { color: theme.colors.textSecondary, fontSize: theme.typography.status, marginTop: theme.spacing.xs },
+  amount: { color: theme.colors.textPrimary, fontSize: 20, fontWeight: '700' },
+  statusLine: { flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', gap: theme.spacing.xs, marginTop: theme.spacing.xs },
+  statusDot: { width: 7, height: 7, borderRadius: 4 },
+  paymentStatus: { fontSize: theme.typography.status },
   issue: { paddingVertical: theme.spacing.lg },
   issueDivider: { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: theme.colors.divider },
   issuePressed: { backgroundColor: theme.colors.surfaceSecondary },

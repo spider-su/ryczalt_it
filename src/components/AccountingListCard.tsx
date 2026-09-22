@@ -1,7 +1,7 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Invoice } from '../model/accounting';
-import { formatMoney } from '../utils/money';
+import { formatMoneyWithoutCurrency } from '../utils/money';
 import { theme } from '../theme/theme';
 
 type Props = {
@@ -24,7 +24,7 @@ export function AccountingListCard({ items, kind, onItemPress }: Props) {
             pressed && styles.pressed
           ]}
           accessibilityRole="button"
-          accessibilityLabel={`${item.title}, ${formatMoney(item.amount)}`}
+          accessibilityLabel={`${item.title}, ${formatMoneyWithoutCurrency(item.amount)}`}
         >
           <View style={[styles.icon, kind === 'cost' && styles.costIcon]}>
             <Ionicons
@@ -39,7 +39,7 @@ export function AccountingListCard({ items, kind, onItemPress }: Props) {
             {item.subtitle ? <Text style={styles.subtitle}>{item.subtitle}</Text> : null}
           </View>
 
-          <Text style={styles.amount}>{formatMoney(item.amount)}</Text>
+          <Text style={styles.amount}>{formatMoneyWithoutCurrency(item.amount)}</Text>
           <Ionicons name="chevron-forward" size={18} color={theme.colors.textMuted} />
         </Pressable>
       ))}

@@ -111,6 +111,14 @@ export function isPaymentHistoryItem(payment: Pick<Obligation, 'status'>): boole
   return ['PAID', 'OVERPAID'].includes(String(payment.status ?? '').trim().toUpperCase());
 }
 
+export type StatusTone = 'success' | 'warning' | 'muted';
+export function invoiceStatusTone(status: string | null | undefined): StatusTone {
+  const normalized = String(status ?? '').trim().toUpperCase();
+  if (['MATCHED', 'MANUALLY_CONFIRMED', 'NOT_REQUIRED', 'PAID', 'OVERPAID'].includes(normalized)) return 'success';
+  if (['UNMATCHED', 'PARTIALLY_MATCHED', 'OPEN', 'PARTIALLY_PAID', 'DUE', 'OVERDUE', 'NEEDS_REVIEW'].includes(normalized)) return 'warning';
+  return 'muted';
+}
+
 export function matchesInvoice(line: Invoice, query: string): boolean {
   const needle = query.trim().toLowerCase();
   if (!needle) return true;

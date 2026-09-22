@@ -4,8 +4,9 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { createAccountingRepository } from '../api/config';
 import { Invoice } from '../model/accounting';
 import { formatDate, formatMonth, paymentStatusLabel, t } from '../i18n';
-import { formatMoney } from '../utils/money';
+import { formatMoneyWithoutCurrency } from '../utils/money';
 import { dateMatches, matchesInvoice, paymentMatches, type DocumentDateRange } from '../presentation/accounting';
+import { invoiceStatusTone } from '../presentation/accounting';
 import { theme } from '../theme/theme';
 import { useAccountingMonth } from '../navigation/AccountingMonthContext';
 import { MonthSelector } from '../components/MonthSelector';
@@ -52,7 +53,9 @@ export function DocumentsScreen() {
 }
 
 function DocumentRow({ item, last, onPress }: { item: Invoice; last: boolean; onPress: () => void }) {
-  return <Pressable onPress={onPress} accessibilityRole="button" accessibilityLabel={`${item.counterparty ?? item.title}, ${formatMoney(item.amount)}`} style={({ pressed }) => [styles.row, !last && styles.divider, pressed && styles.pressed]}><View style={styles.copy}><Text style={styles.rowTitle} numberOfLines={1}>{item.counterparty ?? item.title}</Text><Text style={styles.meta} numberOfLines={1}>{item.documentNumber ?? t('common.unknown')} · {formatDate(item.issueDate)}</Text></View><View style={styles.right}><Text style={styles.amount}>{formatMoney(item.amount)}</Text>{item.paymentStatus ? <Text style={styles.meta}>{paymentStatusLabel(item.paymentStatus)}</Text> : null}</View></Pressable>;
+  const tone = invoiceStatusTone(item.paymentStatus);
+  const color = tone === 'success' ? theme.colors.success : tone === 'warning' ? theme.colors.warning : theme.colors.textMuted;
+  return <Pressable onPress={onPress} accessibilityRole="button" accessibilityLabel={`${item.counterparty ?? item.title}, ${formatMoneyWithoutCurrency(item.amount)}`} style={({ pressed }) => [styles.row, !last && styles.divider, pressed && styles.pressed]}><View style={styles.copy}><Text style={styles.rowTitle} numberOfLines={1}>{item.counterparty ?? item.title}</Text><Text style={styles.meta} numberOfLines={1}>{item.documentNumber ?? t('common.unknown')} · {formatDate(item.issueDate)}</Text></View><View style={styles.right}><Text style={styles.amount}>{formatMoneyWithoutCurrency(item.amount)}</Text><View style={styles.statusLine}><View style={[styles.statusDot, { backgroundColor: color }]} /><Text style={[styles.meta, { color }]}>{item.paymentStatus ? paymentStatusLabel(item.paymentStatus) : t('common.unknown')}</Text></View></View></Pressable>;
 }
 
 function Empty({ filtered, onClear }: { filtered: boolean; onClear: () => void }) {
@@ -72,14 +75,16 @@ const styles = StyleSheet.create({
   content: { width: '100%', maxWidth: 640, alignSelf: 'center', paddingHorizontal: theme.spacing.xl, paddingTop: theme.spacing.lg, paddingBottom: theme.spacing.xxxl },
   searchWrap: { marginTop: theme.spacing.xl },
   direction: { marginTop: theme.spacing.md },
-  row: { minHeight: 76, flexDirection: 'row', alignItems: 'center', gap: theme.spacing.md, paddingVertical: theme.spacing.md },
+  row: { minHeight: 80, flexDirection: 'row', alignItems: 'center', gap: theme.spacing.md, paddingVertical: theme.spacing.md, paddingHorizontal: theme.spacing.lg },
   divider: { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: theme.colors.divider },
   pressed: { backgroundColor: theme.colors.surfaceSecondary },
   copy: { flex: 1, minWidth: 0 },
   rowTitle: { color: theme.colors.textPrimary, fontSize: theme.typography.rowTitle, fontWeight: '600' },
   meta: { color: theme.colors.textSecondary, fontSize: theme.typography.supporting, marginTop: theme.spacing.xs },
   right: { alignItems: 'flex-end', maxWidth: '42%' },
-  amount: { color: theme.colors.textPrimary, fontSize: theme.typography.body, fontWeight: '700' },
+  amount: { color: theme.colors.textPrimary, fontSize: 20, fontWeight: '700' },
+  statusLine: { flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', gap: theme.spacing.xs, marginTop: theme.spacing.xs },
+  statusDot: { width: 7, height: 7, borderRadius: 4 },
   empty: { marginTop: theme.spacing.xxl },
   clearButton: { alignItems: 'center', marginTop: -theme.spacing.lg, minHeight: 44, justifyContent: 'center' },
   link: { color: theme.colors.accent, fontWeight: '700' },

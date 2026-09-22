@@ -1,9 +1,9 @@
 export const theme = {
   colors: {
-    canvas: '#F6F8FB',
-    background: '#F6F8FB',
+    canvas: '#F5F7FC',
+    background: '#F5F7FC',
     surface: '#FFFFFF',
-    surfaceSecondary: '#F0F4F8',
+    surfaceSecondary: '#EEF3F8',
     surfaceElevated: '#FFFFFF',
     surfaceMuted: '#F0F4F8',
     textPrimary: '#152238',

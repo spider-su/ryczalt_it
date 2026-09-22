@@ -4,7 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { createAccountingRepository } from '../api/config';
 import { AccountingPeriod, PaymentHistoryLine, Obligation } from '../model/accounting';
 import { formatDate, formatMonth, paymentLabel, paymentStatusLabel, t } from '../i18n';
-import { formatMoney } from '../utils/money';
+import { formatMoney, formatMoneyWithoutCurrency } from '../utils/money';
 import { isPaymentHistoryItem, isUpcomingPayment, statusForPayment } from '../presentation/accounting';
 import { theme } from '../theme/theme';
 import { useAccountingMonth } from '../navigation/AccountingMonthContext';
@@ -62,7 +62,7 @@ export function PaymentsScreen() {
 
   return <SafeAreaView style={styles.safe}><ScrollView contentContainerStyle={styles.content}><PageHeader title={t('settlements.title')} /><MonthSelector loading={obligationsLoading || historyLoading} />
     <Section title={t('settlements.upcoming')}>
-      {total ? <Text style={styles.total}>{formatMoney(total)}</Text> : null}
+      {total ? <Text style={styles.total}>{formatMoneyWithoutCurrency(total)}</Text> : null}
       <SegmentedControl options={filterOptions} selected={filter} onSelect={setFilter} /><View style={styles.filterButtonRow}><FilterButton onPress={() => setFilterSheet(true)} active={statusFilter !== 'ALL'} /></View>
       {obligationsLoading ? <LoadingState /> : obligationsError ? <ErrorState title={t('common.unavailable')} onRetry={() => setObligationsRetry((value) => value + 1)} /> : visible.length === 0 ? <Text style={styles.empty}>{t('settlements.noPayments')}</Text> : <ListGroup>{visible.map((payment, index) => <PaymentRow key={`${payment.id}-${index}`} payment={payment} last={index === visible.length - 1} amountKind="outstanding" onPress={() => setSelected(payment)} />)}</ListGroup>}
     </Section>
@@ -90,7 +90,8 @@ function PaymentRow({ payment, last, amountKind, onPress }: { payment: Obligatio
   const state = statusForPayment(payment);
   const displayAmount = amountKind === 'total' ? payment.amount : payment.outstandingAmount;
   const dueDate = payment.dueDate ? formatDate(payment.dueDate) : t('settlements.dueDateUnavailable');
-  return <Pressable onPress={onPress} style={({ pressed }) => [styles.row, !last && styles.divider, pressed && styles.pressed]} accessibilityRole="button" accessibilityLabel={`${paymentLabel(payment.title)}, ${paymentStatusText(payment.status)}`}><View style={styles.copy}><Text style={styles.rowTitle}>{paymentLabel(payment.title)}</Text><Text style={styles.subtitle}>{t('settlements.period')}: {formatMonth(payment.period ?? '')}</Text><Text style={styles.subtitle}>{t('settlements.dueDate')}: {dueDate}</Text></View><View style={styles.amount}><Text style={styles.amountText}>{formatMoney(displayAmount)}</Text><Text style={[styles.status, state === 'resolved' && styles.paid, state === 'error' && styles.overdue]}>{paymentStatusText(payment.status)}</Text></View></Pressable>;
+  const tone = state === 'resolved' ? theme.colors.success : state === 'error' || state === 'requires_action' ? theme.colors.warning : theme.colors.textMuted;
+  return <Pressable onPress={onPress} style={({ pressed }) => [styles.row, !last && styles.divider, pressed && styles.pressed]} accessibilityRole="button" accessibilityLabel={`${paymentLabel(payment.title)}, ${paymentStatusText(payment.status)}`}><View style={styles.copy}><Text style={styles.rowTitle}>{paymentLabel(payment.title)}</Text><Text style={styles.subtitle}>{t('settlements.period')}: {formatMonth(payment.period ?? '')}</Text><Text style={styles.subtitle}>{t('settlements.dueDate')}: {dueDate}</Text></View><View style={styles.amount}><Text style={styles.amountText}>{formatMoneyWithoutCurrency(displayAmount)}</Text><View style={styles.statusLine}><View style={[styles.statusDot, { backgroundColor: tone }]} /><Text style={[styles.status, { color: tone }]}>{paymentStatusText(payment.status)}</Text></View></View></Pressable>;
 }
 
 function paymentStatusText(status: string | null | undefined): string {
@@ -111,17 +112,17 @@ const styles = StyleSheet.create({
   note: { color: theme.colors.textSecondary, lineHeight: 20 },
   filterButtonRow: { alignItems: 'flex-end', marginTop: theme.spacing.sm },
   filterTitle: { color: theme.colors.textPrimary, fontWeight: '600', marginTop: theme.spacing.sm, marginBottom: theme.spacing.sm },
-  row: { minHeight: 88, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: theme.spacing.md, paddingVertical: theme.spacing.md },
+  row: { minHeight: 92, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: theme.spacing.md, paddingVertical: theme.spacing.md, paddingHorizontal: theme.spacing.lg },
   divider: { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: theme.colors.divider },
   pressed: { backgroundColor: theme.colors.surfaceSecondary },
   copy: { flex: 1, minWidth: 0 },
   rowTitle: { color: theme.colors.textPrimary, fontSize: theme.typography.rowTitle, fontWeight: '600' },
   subtitle: { color: theme.colors.textSecondary, fontSize: theme.typography.supporting, marginTop: theme.spacing.xs },
   amount: { alignItems: 'flex-end', maxWidth: '34%' },
-  amountText: { color: theme.colors.textPrimary, fontSize: theme.typography.body, fontWeight: '700' },
-  status: { color: theme.colors.textSecondary, fontSize: theme.typography.status, marginTop: theme.spacing.xs },
-  paid: { color: theme.colors.success },
-  overdue: { color: theme.colors.danger },
+  amountText: { color: theme.colors.textPrimary, fontSize: 20, fontWeight: '700' },
+  statusLine: { flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', gap: theme.spacing.xs, marginTop: theme.spacing.xs },
+  statusDot: { width: 7, height: 7, borderRadius: 4 },
+  status: { fontSize: theme.typography.status },
   overlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: theme.colors.overlay },
   sheet: { backgroundColor: theme.colors.surface, borderTopLeftRadius: theme.radius.large, borderTopRightRadius: theme.radius.large, padding: theme.spacing.xl, paddingBottom: theme.spacing.xxxl, gap: theme.spacing.md },
   apply: { minHeight: 48, alignItems: 'center', justifyContent: 'center', borderRadius: theme.radius.control, backgroundColor: theme.colors.accent, marginTop: theme.spacing.md },

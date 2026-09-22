@@ -1,7 +1,7 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Obligation } from '../model/accounting';
-import { formatMoney } from '../utils/money';
+import { formatMoneyWithoutCurrency } from '../utils/money';
 import { theme } from '../theme/theme';
 
 export function PaymentCard({ items, onItemPress }: { items: Obligation[]; onItemPress?: (item: Obligation) => void }) {
@@ -25,7 +25,7 @@ export function PaymentCard({ items, onItemPress }: { items: Obligation[]; onIte
             <Text style={styles.title}>{item.title}</Text>
             <Text style={styles.subtitle}>{item.dueDate ? `Due ${item.dueDate}` : 'Due date not available'} · {item.status}</Text>
           </View>
-          <View style={styles.amountCopy}><Text style={styles.amount}>{formatMoney(item.outstandingAmount)}</Text><Text style={styles.expected}>of {formatMoney(item.amount)}</Text></View>
+          <View style={styles.amountCopy}><Text style={styles.amount}>{formatMoneyWithoutCurrency(item.outstandingAmount)}</Text><Text style={styles.expected}>of {formatMoneyWithoutCurrency(item.amount)}</Text></View>
           <Ionicons name="chevron-forward" size={18} color={theme.colors.textMuted} />
         </Pressable>
       ))}
