@@ -14,7 +14,7 @@ import { NotificationSettingsScreen } from './NotificationSettingsScreen';
 import { KeyValueRow, ListGroup, ListRow, PageHeader, Section, SheetHeader } from '../components/ui';
 
 export function MoreScreen() {
-  const { signOut } = useAuth();
+  const { signOut, isDemo } = useAuth();
   const { locale, setLocale } = useLocale();
   const [settingsOpen, setSettingsOpen] = React.useState(false);
   const [counterpartiesOpen, setCounterpartiesOpen] = React.useState(false);
@@ -39,7 +39,7 @@ export function MoreScreen() {
     ['help-circle-outline', t('more.help')]
   ];
 
-  return <SafeAreaView style={styles.safe}><ScrollView contentContainerStyle={styles.content}><PageHeader title={t('more.title')} /><ListGroup>{rows.map(([icon, label, onPress], index) => <ListRow key={label} icon={icon} title={label} onPress={onPress} last={index === rows.length - 1} />)}</ListGroup>
+  return <SafeAreaView style={styles.safe}><ScrollView contentContainerStyle={styles.content}><PageHeader title={t('more.title')} />{isDemo ? <View style={styles.demoBanner}><Ionicons name="flask-outline" size={20} color={theme.colors.primary} /><View style={styles.demoCopy}><Text style={styles.demoTitle}>{t('more.demoProfile')}</Text><Text style={styles.demoDescription}>{t('more.demoDescription')}</Text></View></View> : null}<ListGroup>{rows.map(([icon, label, onPress], index) => <ListRow key={label} icon={icon} title={label} onPress={onPress} last={index === rows.length - 1} />)}</ListGroup>
     <Section title={t('more.systems')}><ListGroup><KeyValueRow label={t('more.periodStatus')} value={statusLoading ? t('common.loading') : status?.status ?? t('common.unknown')} state={statusLoading ? 'pending' : 'unknown'} /><KeyValueRow label={t('more.completeness')} value={statusLoading ? t('common.loading') : status?.completeness.status ?? t('common.unknown')} state={status?.completeness.blockingIssueCount ? 'attention' : 'success'} /><KeyValueRow label={t('more.reconciliation')} value={statusLoading ? t('common.loading') : status?.reconciliation.state ?? t('common.unknown')} state={status?.reconciliation.state === 'healthy' ? 'success' : 'unknown'} /></ListGroup></Section>
     <Pressable style={styles.signOut} onPress={signOut} accessibilityRole="button" accessibilityLabel={t('more.signOut')}><Ionicons name="log-out-outline" size={21} color={theme.colors.danger} /><Text style={styles.signOutText}>{t('more.signOut')}</Text></Pressable>
   </ScrollView><SettingsModal visible={settingsOpen} locale={locale} onClose={() => setSettingsOpen(false)} onLocale={setLocale} /><CounterpartiesScreen visible={counterpartiesOpen} onClose={() => setCounterpartiesOpen(false)} /><NotificationSettingsScreen visible={notificationsOpen} onClose={() => setNotificationsOpen(false)} /></SafeAreaView>;
@@ -57,6 +57,10 @@ const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: theme.colors.canvas },
   content: { width: '100%', maxWidth: 640, alignSelf: 'center', paddingHorizontal: theme.spacing.xl, paddingTop: theme.spacing.lg, paddingBottom: theme.spacing.xxxl },
   signOut: { minHeight: 52, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: theme.spacing.sm, marginTop: theme.spacing.xxxl, borderRadius: theme.radius.control, backgroundColor: theme.colors.dangerSoft },
+  demoBanner: { flexDirection: 'row', alignItems: 'flex-start', gap: theme.spacing.md, padding: theme.spacing.lg, marginBottom: theme.spacing.lg, borderRadius: theme.radius.card, backgroundColor: theme.colors.accentSoft },
+  demoCopy: { flex: 1 },
+  demoTitle: { color: theme.colors.textPrimary, fontWeight: '700' },
+  demoDescription: { color: theme.colors.textSecondary, lineHeight: 19, marginTop: 3 },
   signOutText: { color: theme.colors.danger, fontSize: theme.typography.button, fontWeight: '700' },
   overlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: theme.colors.overlay },
   sheet: { backgroundColor: theme.colors.surface, borderTopLeftRadius: theme.radius.large, borderTopRightRadius: theme.radius.large, padding: theme.spacing.xl, paddingBottom: theme.spacing.xxxl },

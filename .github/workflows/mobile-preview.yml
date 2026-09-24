@@ -1,18 +1,6 @@
 name: Mobile Preview
 
 on:
-  push:
-    branches:
-      - develop
-    paths:
-      - "package.json"
-      - "package-lock.json"
-      - "app.json"
-      - "eas.json"
-      - "tsconfig.json"
-      - "App.tsx"
-      - "src/**"
-
   workflow_dispatch:
 
 permissions:
@@ -23,6 +11,13 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      - name: Require main branch
+        run: |
+          if [ "$GITHUB_REF" != "refs/heads/main" ]; then
+            echo "::error::Expo/EAS builds are restricted to the main branch."
+            exit 1
+          fi
+
       - name: Checkout
         uses: actions/checkout@v6
 
@@ -37,7 +32,7 @@ jobs:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
         run: |
           if [ -z "$EXPO_TOKEN" ]; then
-            echo "::error title=CI configuration missing::EXPO_TOKEN is required for the automatic EAS preview build. Add it as a repository secret."
+            echo "::error title=CI configuration missing::EXPO_TOKEN is required for the manual EAS preview build. Add it as a repository secret."
             exit 1
           fi
 

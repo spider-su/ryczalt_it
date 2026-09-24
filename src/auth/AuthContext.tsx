@@ -2,17 +2,18 @@ import * as SecureStore from 'expo-secure-store';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type PropsWithChildren } from 'react';
 import { Platform } from 'react-native';
-import { API_BASE_URL, setAccountingAuthFailureHandler, setAccountingAuthToken, setAccountingProfileId } from '../api/config';
+import { API_BASE_URL, setAccountingAuthFailureHandler, setAccountingAuthToken, setAccountingProfileId, setDemoMode } from '../api/config';
 import { DEFAULT_REQUEST_TIMEOUT_MS } from '../api/client';
 import { authErrorForFailure, authErrorForStatus, type AuthErrorCode } from './authErrors';
 import { profileIdentityFromResponse, type ProfileIdentity } from './profileIdentity';
 import { cancelAllProfileReminders } from '../notifications/notificationService';
+import { DEMO_PROFILE_ID, DEMO_SESSION_TOKEN, isDemoSession } from './demoSession';
 
 const TOKEN_KEY = 'investory.authToken';
 const PROFILE_ID_KEY = 'investory.accountingProfileId';
 const LOGIN_PATH = process.env.EXPO_PUBLIC_AUTH_LOGIN_PATH ?? '/api/v1/auth/login';
 const CURRENT_PROFILE_PATH = '/api/v1/auth/me';
-type AuthContextValue = { token: string | null; profileId: number | null; loading: boolean; error: AuthErrorCode | null; signIn: (email: string, password: string) => Promise<void>; signOut: () => Promise<void> };
+type AuthContextValue = { token: string | null; profileId: number | null; isDemo: boolean; loading: boolean; error: AuthErrorCode | null; signIn: (email: string, password: string) => Promise<void>; startDemo: () => Promise<void>; signOut: () => Promise<void> };
 const AuthContext = createContext<AuthContextValue | null>(null);
 
 // SecureStore is native-only. Expo web uses the existing browser-backed
@@ -26,11 +27,12 @@ const sessionStore = {
 export function AuthProvider({ children }: PropsWithChildren) {
   const [token, setToken] = useState<string | null>(null);
   const [profileId, setProfileId] = useState<number | null>(null);
+  const [isDemo, setIsDemo] = useState(false);
   const profileIdRef = useRef<number | null>(null);
   profileIdRef.current = profileId;
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<AuthErrorCode | null>(null);
-  const invalidateSession = useCallback(async () => { const activeProfileId = profileIdRef.current; if (activeProfileId != null) await cancelAllProfileReminders(activeProfileId).catch(() => undefined); await sessionStore.delete(TOKEN_KEY); await sessionStore.delete(PROFILE_ID_KEY); setAccountingAuthToken(null); setAccountingProfileId(null); setToken(null); setProfileId(null); }, []);
+  const invalidateSession = useCallback(async () => { const activeProfileId = profileIdRef.current; if (activeProfileId != null) await cancelAllProfileReminders(activeProfileId).catch(() => undefined); await sessionStore.delete(TOKEN_KEY); await sessionStore.delete(PROFILE_ID_KEY); setDemoMode(false); setIsDemo(false); setAccountingAuthToken(null); setAccountingProfileId(null); setToken(null); setProfileId(null); }, []);
   async function resolveProfile(nextToken: string): Promise<ProfileIdentity> {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), DEFAULT_REQUEST_TIMEOUT_MS);
@@ -46,10 +48,15 @@ export function AuthProvider({ children }: PropsWithChildren) {
       try {
         const value = await sessionStore.get(TOKEN_KEY);
         if (!value) return;
+        if (isDemoSession(value)) {
+          if (cancelled) return;
+          setDemoMode(true); setIsDemo(true); setAccountingAuthToken(null); setAccountingProfileId(DEMO_PROFILE_ID); setToken(value); setProfileId(DEMO_PROFILE_ID);
+          return;
+        }
         const profile = await resolveProfile(value);
         if (cancelled) return;
         await sessionStore.set(PROFILE_ID_KEY, String(profile.id));
-        setAccountingAuthToken(value); setAccountingProfileId(profile.id); setToken(value); setProfileId(profile.id);
+        setDemoMode(false); setIsDemo(false); setAccountingAuthToken(value); setAccountingProfileId(profile.id); setToken(value); setProfileId(profile.id);
       } catch (reason) {
         if (!cancelled) { await invalidateSession(); setError(authErrorForFailure(reason)); }
       } finally { if (!cancelled) setLoading(false); }
@@ -60,6 +67,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
   useEffect(() => { setAccountingAuthFailureHandler(() => { void invalidateSession(); }); return () => setAccountingAuthFailureHandler(null); }, [invalidateSession]);
   async function signIn(email: string, password: string) {
     setError(null);
+    setDemoMode(false); setIsDemo(false);
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), DEFAULT_REQUEST_TIMEOUT_MS);
     try {
@@ -73,7 +81,13 @@ export function AuthProvider({ children }: PropsWithChildren) {
       setAccountingAuthToken(nextToken); setAccountingProfileId(profile.id); setToken(nextToken); setProfileId(profile.id);
     } catch (reason) { const code = authErrorForFailure(reason); setError(code); throw new Error(code); } finally { clearTimeout(timeout); }
   }
+  async function startDemo() {
+    setError(null);
+    await sessionStore.set(TOKEN_KEY, DEMO_SESSION_TOKEN);
+    await sessionStore.set(PROFILE_ID_KEY, String(DEMO_PROFILE_ID));
+    setDemoMode(true); setIsDemo(true); setAccountingAuthToken(null); setAccountingProfileId(DEMO_PROFILE_ID); setToken(DEMO_SESSION_TOKEN); setProfileId(DEMO_PROFILE_ID);
+  }
   async function signOut() { await invalidateSession(); }
-  return <AuthContext.Provider value={{ token, profileId, loading, error, signIn, signOut }}>{children}</AuthContext.Provider>;
+  return <AuthContext.Provider value={{ token, profileId, isDemo, loading, error, signIn, startDemo, signOut }}>{children}</AuthContext.Provider>;
 }
 export function useAuth() { const value = useContext(AuthContext); if (!value) throw new Error('useAuth must be used inside AuthProvider'); return value; }

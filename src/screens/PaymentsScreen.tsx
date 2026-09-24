@@ -20,7 +20,7 @@ type StatusFilter = 'ALL' | 'PAID' | 'UNPAID' | 'OVERDUE';
 
 export function PaymentsScreen() {
   const { locale } = useLocale();
-  const { profileId } = useAuth();
+  const { profileId, isDemo } = useAuth();
   const repository = useMemo(() => createAccountingRepository(), []);
   const [payments, setPayments] = useState<Obligation[]>([]);
   const [history, setHistory] = useState<PaymentHistoryLine[]>([]);
@@ -44,10 +44,10 @@ export function PaymentsScreen() {
     repository.getMonth(month).then((value) => {
       if (!active) return;
       setPayments(value.obligations); setTotal(value.settlement.totalOutstanding); setAccountingPeriod(value);
-      if (profileId != null) void getNotificationPreferences(profileId).then((preferences) => { if (preferences.enabled) return reconcilePaymentReminders(profileId, month, value.obligations, preferences.leadDays, locale); }).catch(() => undefined);
+      if (!isDemo && profileId != null) void getNotificationPreferences(profileId).then((preferences) => { if (preferences.enabled) return reconcilePaymentReminders(profileId, month, value.obligations, preferences.leadDays, locale); }).catch(() => undefined);
     }).catch(() => active && setObligationsError(true)).finally(() => active && setObligationsLoading(false));
     return () => { active = false; };
-  }, [repository, month, refreshVersion, obligationsRetry, profileId, locale]);
+  }, [repository, month, refreshVersion, obligationsRetry, profileId, locale, isDemo]);
 
   useEffect(() => {
     let active = true;

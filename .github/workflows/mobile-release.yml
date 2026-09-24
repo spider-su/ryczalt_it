@@ -17,6 +17,13 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
+      - name: Require main branch
+        run: |
+          if [ "$GITHUB_REF" != "refs/heads/main" ]; then
+            echo "::error::Expo/EAS builds are restricted to the main branch. Select main when dispatching this workflow."
+            exit 1
+          fi
+
       - uses: actions/checkout@v6
       - uses: actions/setup-node@v6
         with:

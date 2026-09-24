@@ -55,6 +55,8 @@ npm start
 
 Then open the app using Expo Go or an Android/iOS development build.
 
+On the sign-in screen, choose **Try the demo** to browse local sample accounting data without contacting the backend. The demo session remains active across app restarts until you sign out; demo changes are stored only in memory and are discarded when the app process restarts.
+
 ## Release validation
 
 The managed Expo project has Android and iOS prebuild support and three EAS profiles:
@@ -182,9 +184,9 @@ npm run ci
 npx expo-doctor
 ```
 
-The authoritative validation workflow is `.github/workflows/mobile.yml`. It runs Expo Doctor plus typechecking and tests for pull requests and pushes to `develop`/`main`. Preview, production and manually triggered release workflows remain build/release workflows.
+The authoritative validation workflow is `.github/workflows/mobile.yml`. It runs Expo Doctor plus typechecking and tests for pull requests and pushes to `develop`/`main`, including changes to workflow files. Validation is allowed on non-main branches; EAS builds are restricted to `main`.
 
-EAS workflows use the same repository-level `EXPO_TOKEN` secret: `mobile-preview.yml` builds an Android preview on pushes to `develop`, `mobile-production.yml` builds Android production on pushes to `main`, and `mobile-release.yml` supports manual preview/production builds. Each workflow fails before dependency installation if the secret is missing. The token is never stored in the repository or printed in logs. Configure the Expo project/account and repository secret outside Git.
+EAS workflows use the same repository-level `EXPO_TOKEN` secret. `mobile-production.yml` automatically builds Android production on pushes to `main`. `mobile-preview.yml` and `mobile-release.yml` are manually dispatched and fail immediately unless dispatched from `main`. Each workflow validates the token before dependency installation. The token is never stored in the repository or printed in logs. These workflows run EAS builds; they do not submit builds to app stores or publish OTA updates. Configure the Expo project/account and repository secret outside Git.
 
 ## Suggested next increment
 

@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "Investory Accounting",
-    "slug": "investory-accounting",
+    "slug": "smart-box",
     "version": "0.1.0",
     "orientation": "portrait",
     "userInterfaceStyle": "light",
@@ -22,9 +22,9 @@
     ],
     "extra": {
       "eas": {
-        "projectId": "ac59413e-32fb-4344-9aa3-e578acbbdaf6"
+        "projectId": "8fa28fb6-df62-4889-8e3a-8094de92bd59"
       }
     },
-    "owner": "spider-su"
+    "owner": "smart-box"
   }
 }

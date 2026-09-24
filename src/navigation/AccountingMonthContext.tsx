@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, type Dispatch, type PropsWithChildren, type SetStateAction } from 'react';
-import { DEFAULT_ACCOUNTING_MONTH } from '../api/config';
+import { getInitialAccountingMonth } from '../api/config';
 import { currentLocalAccountingMonth } from '../utils/calendar';
 
 type AccountingMonthContextValue = {
@@ -15,7 +15,7 @@ type AccountingMonthContextValue = {
 const AccountingMonthContext = createContext<AccountingMonthContextValue | null>(null);
 
 export function AccountingMonthProvider({ children }: PropsWithChildren) {
-  const [month, setMonth] = useState(DEFAULT_ACCOUNTING_MONTH);
+  const [month, setMonth] = useState(getInitialAccountingMonth);
   const [refreshVersion, setRefreshVersion] = useState(0);
   const latestId = currentLocalAccountingMonth();
   const shift = (value: string, offset: number) => {
