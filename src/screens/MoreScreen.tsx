@@ -3,7 +3,7 @@ import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-nati
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../auth/AuthContext';
-import { t } from '../i18n';
+import { completenessStatusLabel, periodStatusLabel, reconciliationStateLabel, t } from '../i18n';
 import { useLocale } from '../i18n/LocaleContext';
 import { theme } from '../theme/theme';
 import { createAccountingRepository } from '../api/config';
@@ -23,6 +23,8 @@ export function MoreScreen() {
   const [statusLoading, setStatusLoading] = React.useState(true);
   const repository = React.useMemo(() => createAccountingRepository(), []);
   const { month, refreshVersion } = useAccountingMonth();
+  const completeness = status?.completeness.status.trim().toUpperCase();
+  const completenessTone = status?.completeness.blockingIssueCount ? 'attention' : completeness === 'COMPLETE' ? 'success' : completeness === 'INCOMPLETE' ? 'attention' : 'unknown';
 
   React.useEffect(() => {
     let active = true;
@@ -40,7 +42,7 @@ export function MoreScreen() {
   ];
 
   return <SafeAreaView style={styles.safe}><ScrollView contentContainerStyle={styles.content}><PageHeader title={t('more.title')} />{isDemo ? <View style={styles.demoBanner}><Ionicons name="flask-outline" size={20} color={theme.colors.primary} /><View style={styles.demoCopy}><Text style={styles.demoTitle}>{t('more.demoProfile')}</Text><Text style={styles.demoDescription}>{t('more.demoDescription')}</Text></View></View> : null}<ListGroup>{rows.map(([icon, label, onPress], index) => <ListRow key={label} icon={icon} title={label} onPress={onPress} last={index === rows.length - 1} />)}</ListGroup>
-    <Section title={t('more.systems')}><ListGroup><KeyValueRow label={t('more.periodStatus')} value={statusLoading ? t('common.loading') : status?.status ?? t('common.unknown')} state={statusLoading ? 'pending' : 'unknown'} /><KeyValueRow label={t('more.completeness')} value={statusLoading ? t('common.loading') : status?.completeness.status ?? t('common.unknown')} state={status?.completeness.blockingIssueCount ? 'attention' : 'success'} /><KeyValueRow label={t('more.reconciliation')} value={statusLoading ? t('common.loading') : status?.reconciliation.state ?? t('common.unknown')} state={status?.reconciliation.state === 'healthy' ? 'success' : 'unknown'} /></ListGroup></Section>
+    <Section title={t('more.systems')}><ListGroup><KeyValueRow label={t('more.periodStatus')} value={statusLoading ? t('common.loading') : periodStatusLabel(status?.status)} state={statusLoading ? 'pending' : 'unknown'} /><KeyValueRow label={t('more.completeness')} value={statusLoading ? t('common.loading') : completenessStatusLabel(status?.completeness.status)} state={statusLoading ? 'pending' : completenessTone} /><KeyValueRow label={t('more.reconciliation')} value={statusLoading ? t('common.loading') : reconciliationStateLabel(status?.reconciliation.state)} state={status?.reconciliation.state === 'healthy' ? 'success' : status?.reconciliation.state && status.reconciliation.state !== 'unknown' ? 'attention' : 'unknown'} /></ListGroup></Section>
     <Pressable style={styles.signOut} onPress={signOut} accessibilityRole="button" accessibilityLabel={t('more.signOut')}><Ionicons name="log-out-outline" size={21} color={theme.colors.danger} /><Text style={styles.signOutText}>{t('more.signOut')}</Text></Pressable>
   </ScrollView><SettingsModal visible={settingsOpen} locale={locale} onClose={() => setSettingsOpen(false)} onLocale={setLocale} /><CounterpartiesScreen visible={counterpartiesOpen} onClose={() => setCounterpartiesOpen(false)} /><NotificationSettingsScreen visible={notificationsOpen} onClose={() => setNotificationsOpen(false)} /></SafeAreaView>;
 }

@@ -15,6 +15,17 @@ describe('HttpClient authentication lifecycle', () => {
     expect(authorization).toEqual(['Bearer first', 'Bearer second']);
   });
 
+  it('supports bodyless POST commands without a JSON body or content-type', async () => {
+    const fetchImpl = vi.fn(async (_input: RequestInfo | URL, init?: RequestInit) => {
+      expect(init?.method).toBe('POST');
+      expect(init?.body).toBeUndefined();
+      expect(init?.headers).toEqual({ Accept: 'application/json' });
+      return new Response('{}', { status: 200 });
+    });
+    await new HttpClient({ baseUrl: 'https://example.test', fetchImpl }).postEmpty('/calculate');
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
+  });
+
   it('notifies the central session handler once a request is unauthorized', async () => {
     const onUnauthorized = vi.fn();
     const fetchImpl = vi.fn(async () => new Response('{}', { status: 401 }));

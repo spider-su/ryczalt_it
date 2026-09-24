@@ -2,6 +2,17 @@ import type { Invoice } from '../model/accounting';
 
 export type InvoiceMonthGroup = { month: string; invoices: Invoice[] };
 
+export function receivedInvoiceGroups(invoices: Invoice[]): { income: Invoice[]; costs: Invoice[] } {
+  return {
+    income: invoices.filter((invoice) => invoice.direction === 'SALE'),
+    costs: invoices.filter((invoice) => invoice.direction === 'PURCHASE')
+  };
+}
+
+export function invoiceCounterpartyLabel(invoice: Invoice): string {
+  return invoice.alias?.trim() || invoice.legalName?.trim() || invoice.counterparty?.trim() || invoice.title;
+}
+
 /** Groups display-filtered invoices by their already-mapped YYYY-MM-DD date. */
 export function groupInvoicesByMonth(invoices: Invoice[]): InvoiceMonthGroup[] {
   const groups = new Map<string, Invoice[]>();
@@ -28,7 +39,7 @@ export function invoiceApprovalPresentation(
   approvalMethod: string | null | undefined
 ): InvoiceApprovalPresentation {
   const status = approvalStatus?.trim().toUpperCase();
-  const automatic = approvalMethod?.trim().toUpperCase() === 'COUNTERPARTY_RULE';
+  const automatic = ['COUNTERPARTY_RULE', 'KSEF_TRUSTED'].includes(approvalMethod?.trim().toUpperCase() ?? '');
   if (!status) return null;
   if (status === 'APPROVED') return { label: 'approved', tone: 'success', automatic };
   if (status === 'NEEDS_REVIEW') return { label: 'needsReview', tone: 'warning', automatic: false };
@@ -44,13 +55,14 @@ export type InvoiceSourcePresentation = {
 export function invoiceSourcePresentation(source: {
   sourceType: string | null;
   sourceReference?: string | null;
+  source?: string | null;
   documentNumber: string | null;
   issueDate: string | null;
 }): InvoiceSourcePresentation {
   if (source.sourceType?.trim().toUpperCase() === 'KSEF') {
     return {
       kind: 'ksef',
-      reference: source.sourceReference?.trim() || source.documentNumber,
+      reference: source.sourceReference?.trim() || source.source?.trim() || source.documentNumber,
       date: source.issueDate
     };
   }

@@ -1,7 +1,7 @@
 import { AccountingIssue, AccountingPeriod, Invoice, Obligation } from '../model/accounting';
 import { t } from '../i18n';
 
-export type PresentationStatus = 'resolved' | 'informational' | 'settlement_pending' | 'requires_action' | 'setup_required' | 'error' | 'processing' | 'unknown';
+export type PresentationStatus = 'resolved' | 'informational' | 'settlement_pending' | 'calculations_pending' | 'requires_action' | 'setup_required' | 'error' | 'processing' | 'unknown';
 
 export type HomeStatusCopy = { title: string; body: string };
 export type HomeDataState = 'loading' | 'error' | 'ready';
@@ -13,18 +13,30 @@ export function homeDataState(month: object | null, error: boolean): HomeDataSta
 export function homeStatusCopy(status: PresentationStatus): HomeStatusCopy {
   if (status === 'requires_action' || status === 'setup_required' || status === 'error') return { title: 'home.attentionTitle', body: 'home.attentionBody' };
   if (status === 'processing') return { title: 'home.processingTitle', body: 'home.processingBody' };
+  if (status === 'calculations_pending') return { title: 'home.calculationsPendingTitle', body: 'home.calculationsPendingBody' };
   if (status === 'settlement_pending') return { title: 'home.settlementPendingTitle', body: 'home.settlementPendingBody' };
   if (status === 'resolved') return { title: 'home.healthyTitle', body: 'home.healthyBody' };
   if (status === 'informational') return { title: 'home.informationalTitle', body: 'home.informationalBody' };
   return { title: 'home.unknownTitle', body: 'home.unknownBody' };
 }
 
-export function statusForMonth(month: Pick<AccountingPeriod, 'completeness' | 'status' | 'issues' | 'allowedActions'> & { settlement: Pick<AccountingPeriod['settlement'], 'fullySettled'> }): PresentationStatus {
+export function calculationsReady(
+  calculations: Pick<AccountingPeriod['calculations'][number], 'type' | 'status'>[],
+  obligations: Pick<Obligation, 'title'>[] = []
+): boolean {
+  const readyStatuses = new Set(['CURRENT', 'CALCULATED', 'FROZEN']);
+  if (calculations.length === 0 || !calculations.every((calculation) => readyStatuses.has(String(calculation.status ?? '').trim().toUpperCase()))) return false;
+  const calculatedTypes = new Set(calculations.map((calculation) => String(calculation.type ?? '').trim().toUpperCase()));
+  return obligations.every((obligation) => calculatedTypes.has(String(obligation.title ?? '').trim().toUpperCase()));
+}
+
+export function statusForMonth(month: Pick<AccountingPeriod, 'completeness' | 'status' | 'issues' | 'allowedActions' | 'calculations'> & { obligations: Pick<Obligation, 'title'>[]; settlement: Pick<AccountingPeriod['settlement'], 'fullySettled'> }): PresentationStatus {
   const actionableIssues = month.issues.filter((issue) => !isQuietIssue(issue));
   if (actionableIssues.some((issue) => statusForIssue(issue) === 'error')) return 'error';
   if (actionableIssues.some((issue) => statusForIssue(issue) === 'requires_action' || statusForIssue(issue) === 'setup_required')) return 'requires_action';
   const status = month.status.toUpperCase();
   if (['PROCESSING', 'SYNCING', 'IN_PROGRESS', 'CALCULATING'].includes(status)) return 'processing';
+  if (!month.settlement.fullySettled && !calculationsReady(month.calculations, month.obligations)) return 'calculations_pending';
   if (actionableIssues.some((issue) => statusForIssue(issue) === 'informational')) return 'informational';
   if (month.settlement.fullySettled === false) return 'settlement_pending';
   if (month.completeness.status.toUpperCase() === 'COMPLETE' && month.completeness.blockingIssueCount === 0) return 'resolved';
@@ -59,6 +71,7 @@ export function statusForIssue(issue: AccountingIssue): PresentationStatus {
 }
 
 const knownIssueCopy: Record<string, string> = {
+  DIRTY_CALCULATION: 'dirtyCalculation',
   UNSUPPORTED_VAT_RATE: 'unsupportedVatRate',
   MISSING_VAT_CLASSIFICATION: 'review',
   MISSING_EXPLICIT_VAT_RATE: 'review',
@@ -111,11 +124,15 @@ export function isPaymentHistoryItem(payment: Pick<Obligation, 'status'>): boole
   return ['PAID', 'OVERPAID'].includes(String(payment.status ?? '').trim().toUpperCase());
 }
 
+export function areAllObligationsPaid(payments: Pick<Obligation, 'status'>[]): boolean {
+  return payments.length > 0 && payments.every(isPaymentHistoryItem);
+}
+
 export type StatusTone = 'success' | 'warning' | 'muted';
 export function invoiceStatusTone(status: string | null | undefined): StatusTone {
   const normalized = String(status ?? '').trim().toUpperCase();
-  if (['MATCHED', 'MANUALLY_CONFIRMED', 'NOT_REQUIRED', 'PAID', 'OVERPAID'].includes(normalized)) return 'success';
-  if (['UNMATCHED', 'PARTIALLY_MATCHED', 'OPEN', 'PARTIALLY_PAID', 'DUE', 'OVERDUE', 'NEEDS_REVIEW'].includes(normalized)) return 'warning';
+  if (['MATCHED', 'MANUALLY_CONFIRMED'].includes(normalized)) return 'success';
+  if (['UNMATCHED', 'PARTIALLY_MATCHED', 'NEEDS_REVIEW'].includes(normalized)) return 'warning';
   return 'muted';
 }
 
@@ -126,12 +143,13 @@ export function matchesInvoice(line: Invoice, query: string): boolean {
     .filter(Boolean).some((value) => value!.toLowerCase().includes(needle));
 }
 
-export function paymentMatches(line: Invoice, filter: 'ALL' | 'PAID' | 'UNPAID' | 'OVERDUE'): boolean {
+export type InvoicePaymentFilter = 'ALL' | 'PAID' | 'UNPAID' | 'NOT_REQUIRED';
+export function invoicePaymentMatches(line: Invoice, filter: InvoicePaymentFilter): boolean {
   if (filter === 'ALL') return true;
-  const status = line.paymentStatus?.toUpperCase();
-  if (filter === 'PAID') return ['PAID', 'OVERPAID', 'MATCHED'].includes(status ?? '');
-  if (filter === 'OVERDUE') return status === 'OVERDUE';
-  return ['OPEN', 'PARTIALLY_PAID', 'DUE', 'UNMATCHED'].includes(status ?? '');
+  const status = line.paymentStatus?.trim().toUpperCase();
+  if (filter === 'PAID') return ['MATCHED', 'MANUALLY_CONFIRMED'].includes(status ?? '');
+  if (filter === 'UNPAID') return ['UNMATCHED', 'PARTIALLY_MATCHED'].includes(status ?? '');
+  return status === 'NOT_REQUIRED';
 }
 
 export type DocumentDateRange = 'SELECTED_MONTH' | 'PREVIOUS_MONTH' | 'LAST_3_MONTHS';

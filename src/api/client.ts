@@ -62,6 +62,10 @@ export class HttpClient {
     });
   }
 
+  async postEmpty<T>(path: string): Promise<T> {
+    return this.request<T>(path, { method: 'POST' });
+  }
+
   async put<T>(path: string, body: unknown): Promise<T> {
     return this.request<T>(path, {
       method: 'PUT',
@@ -78,11 +82,10 @@ export class HttpClient {
     return this.request<T>(path, { method: 'POST', body });
   }
 
-  async postVoid(path: string, body: unknown): Promise<void> {
+  async postVoid(path: string, body?: unknown): Promise<void> {
     await this.request<unknown>(path, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body)
+      ...(body === undefined ? {} : { headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
     }, false);
   }
 

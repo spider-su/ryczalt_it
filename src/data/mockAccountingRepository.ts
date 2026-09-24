@@ -26,7 +26,8 @@ export class MockAccountingRepository implements AccountingRepository {
   async clearInvoiceManualPayment(_invoiceId: string): Promise<void> {}
   async getPaymentHistory(_month: string, _type?: string): Promise<PaymentHistoryLine[]> { return july2026PaymentHistory; }
   async getCounterparties(): Promise<Counterparty[]> { return mockCounterparties.map((item) => ({ ...item, invoiceCount: demoInvoices.filter((invoice) => invoice.legalName === item.legalName).length })); }
-  async performPeriodAction(_month: string, _action: 'SETTLE' | 'FREEZE' | 'REOPEN'): Promise<void> {}
+  async calculatePeriod(_month: string): Promise<void> { throw new Error('Calculation refresh is unavailable in the local demo.'); }
+  async performPeriodAction(_month: string, _action: 'FREEZE' | 'REOPEN'): Promise<void> {}
 }
 
 export const accountingRepository: AccountingRepository = new MockAccountingRepository();

@@ -11,7 +11,8 @@ describe('canonical accounting API paths', () => {
     expect(accountingPaths.recognizeInvoice(7)).toBe('/api/profiles/7/accounting/invoices/recognize');
   });
   it('exposes period commands and counterparty rules without legacy aliases', () => {
-    expect(accountingPaths.settle(7, '2026-09')).toBe('/api/profiles/7/accounting/periods/2026-09/settle');
+    expect(accountingPaths.calculate(7, '2026-09')).toBe('/api/profiles/7/accounting/periods/2026-09/calculate');
+    expect(accountingPaths).not.toHaveProperty('settle');
     expect(accountingPaths.rule(7, '3', '11')).toBe('/api/profiles/7/accounting/counterparties/3/rules/11');
   });
 });

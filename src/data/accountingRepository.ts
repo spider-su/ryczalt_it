@@ -9,5 +9,6 @@ export interface AccountingRepository {
   clearInvoiceManualPayment(invoiceId: string): Promise<void>;
   getPaymentHistory(month: string, type?: string): Promise<PaymentHistoryLine[]>;
   getCounterparties(): Promise<Counterparty[]>;
-  performPeriodAction(month: string, action: 'SETTLE' | 'FREEZE' | 'REOPEN'): Promise<void>;
+  calculatePeriod(month: string): Promise<void>;
+  performPeriodAction(month: string, action: 'FREEZE' | 'REOPEN'): Promise<void>;
 }

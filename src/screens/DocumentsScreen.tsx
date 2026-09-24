@@ -4,9 +4,9 @@ import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { createAccountingRepository } from '../api/config';
 import { Invoice } from '../model/accounting';
-import { formatDate, formatMonth, t } from '../i18n';
+import { formatDate, formatMonth, invoicePaymentStatusLabel, t } from '../i18n';
 import { formatMoneyWithoutCurrency } from '../utils/money';
-import { dateMatches, matchesInvoice, paymentMatches, type DocumentDateRange } from '../presentation/accounting';
+import { dateMatches, matchesInvoice, invoicePaymentMatches, type DocumentDateRange, type InvoicePaymentFilter } from '../presentation/accounting';
 import { theme } from '../theme/theme';
 import { useAccountingMonth } from '../navigation/AccountingMonthContext';
 import { MonthSelector } from '../components/MonthSelector';
@@ -15,7 +15,7 @@ import { EmptyState, ErrorState, ListGroup, LoadingState, PageHeader, SearchFiel
 import { DocumentDetailsModal } from '../components/DocumentDetailsModal';
 import { groupInvoicesByMonth, invoiceApprovalPresentation, invoiceSourcePresentation, type InvoiceMonthGroup } from '../presentation/invoiceList';
 
-type Filters = { direction: 'ALL' | 'SALE' | 'PURCHASE'; currency: string; payment: 'ALL' | 'PAID' | 'UNPAID' | 'OVERDUE'; date: DocumentDateRange };
+type Filters = { direction: 'ALL' | 'SALE' | 'PURCHASE'; currency: string; payment: InvoicePaymentFilter; date: DocumentDateRange };
 const initialFilters: Filters = { direction: 'ALL', currency: 'ALL', payment: 'ALL', date: 'SELECTED_MONTH' };
 
 export function DocumentsScreen() {
@@ -39,7 +39,7 @@ export function DocumentsScreen() {
   }, [repository, month, filters.date, refreshVersion]);
 
   const currencies = [...new Set(items.map((item) => item.currency).filter(Boolean) as string[])];
-  const filtered = items.filter((item) => filters.direction === 'ALL' || item.direction === filters.direction).filter((item) => filters.currency === 'ALL' || item.currency === filters.currency).filter((item) => matchesInvoice(item, query)).filter((item) => paymentMatches(item, filters.payment)).filter((item) => dateMatches(item, filters.date, month));
+  const filtered = items.filter((item) => filters.direction === 'ALL' || item.direction === filters.direction).filter((item) => filters.currency === 'ALL' || item.currency === filters.currency).filter((item) => matchesInvoice(item, query)).filter((item) => invoicePaymentMatches(item, filters.payment)).filter((item) => dateMatches(item, filters.date, month));
   const groups = groupInvoicesByMonth(filtered);
   const hasFilters = query.trim().length > 0 || JSON.stringify(filters) !== JSON.stringify(initialFilters);
   const clear = () => { setQuery(''); setFilters(initialFilters); };
@@ -84,7 +84,7 @@ function Empty({ filtered, onClear }: { filtered: boolean; onClear: () => void }
 function FilterSheet({ visible, filters, currencies, onChange, onClose }: { visible: boolean; filters: Filters; currencies: string[]; onChange: (value: Filters) => void; onClose: () => void }) {
   const set = (value: Partial<Filters>) => onChange({ ...filters, ...value });
   const dateOptions = [{ value: 'SELECTED_MONTH' as const, label: t('invoices.selectedMonth') }, { value: 'PREVIOUS_MONTH' as const, label: t('common.previousMonth') }, { value: 'LAST_3_MONTHS' as const, label: t('common.last3Months') }];
-  const paymentOptions = [{ value: 'ALL' as const, label: t('common.all') }, { value: 'PAID' as const, label: t('common.paid') }, { value: 'UNPAID' as const, label: t('common.unpaid') }, { value: 'OVERDUE' as const, label: t('common.overdue') }];
+  const paymentOptions = [{ value: 'ALL' as const, label: t('common.all') }, { value: 'PAID' as const, label: invoicePaymentStatusLabel('MATCHED') }, { value: 'UNPAID' as const, label: t('common.unpaid') }, { value: 'NOT_REQUIRED' as const, label: invoicePaymentStatusLabel('NOT_REQUIRED') }];
   const currencyOptions = ['ALL', ...currencies].map((value) => ({ value, label: value === 'ALL' ? t('common.all') : value }));
   return <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}><View style={styles.overlay}><View style={styles.sheet}><SheetHeader title={t('common.filters')} onClose={onClose} /><Text style={styles.filterTitle}>{t('invoices.issueDate')}</Text><SelectionList options={dateOptions} selected={filters.date} onSelect={(date) => set({ date })} /><Text style={styles.filterTitle}>{t('invoices.currency')}</Text><SelectionList options={currencyOptions} selected={filters.currency} onSelect={(currency) => set({ currency })} /><Text style={styles.filterTitle}>{t('invoices.status')}</Text><SelectionList options={paymentOptions} selected={filters.payment} onSelect={(payment) => set({ payment })} /><Pressable style={styles.apply} onPress={onClose} accessibilityRole="button"><Text style={styles.applyText}>{t('common.close')}</Text></Pressable></View></View></Modal>;
 }

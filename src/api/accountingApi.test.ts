@@ -12,6 +12,12 @@ describe('canonical AccountingApi', () => {
     expect(client.get).toHaveBeenNthCalledWith(2, '/api/profiles/7/accounting/periods/2026-09/invoices');
     expect(client.get).toHaveBeenNthCalledWith(3, '/api/profiles/7/accounting/payments?from=2026-08&to=2026-09&type=VAT');
   });
+  it('posts to calculate with no request body, matching the backend controller', async () => {
+    const client = { postEmpty: vi.fn(async () => ({})) };
+    const api = new AccountingApi(client as never);
+    await api.calculate(42, '2026-09');
+    expect(client.postEmpty).toHaveBeenCalledWith('/api/profiles/42/accounting/periods/2026-09/calculate');
+  });
   it('uses native invoice recognition and save routes', async () => {
     const client = { postForm: vi.fn(async () => ({})), post: vi.fn(async () => ({ invoice: {} })) };
     const api = new AccountingApi(client as never);

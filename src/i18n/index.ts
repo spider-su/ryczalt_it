@@ -54,7 +54,7 @@ let activeLocale: UiLocale = DEFAULT_UI_LOCALE;
 export function setActiveLocale(value: UiLocale): void { activeLocale = value; }
 export function getActiveLocale(): UiLocale { return activeLocale; }
 export function toIntlLocale(value: UiLocale = activeLocale): string { return intlLocale[value]; }
-export function t(path: string, valueLocale: UiLocale = activeLocale): string { const value = path.split('.').reduce<unknown>((current, key) => (current as Record<string, unknown> | undefined)?.[key], translations[valueLocale]); return typeof value === 'string' ? value : path; }
+export function t(path: string, valueLocale: UiLocale = activeLocale): string { const value = path.split('.').reduce<unknown>((current, key) => (current as Record<string, unknown> | undefined)?.[key], translationsByLocale[valueLocale]); return typeof value === 'string' ? value : path; }
 export function formatDate(value: string | null | undefined, options: Intl.DateTimeFormatOptions = { day: 'numeric', month: 'short', year: 'numeric' }): string { if (!value) return t('common.unknown'); const date = new Date(`${value.slice(0, 10)}T00:00:00`); return Number.isNaN(date.getTime()) ? value : new Intl.DateTimeFormat(toIntlLocale(), options).format(date); }
 export function formatMonth(value: string | null | undefined): string {
   if (!value || !/^\d{4}-(0[1-9]|1[0-2])$/.test(value)) return t('common.unknown');
@@ -74,29 +74,25 @@ function exactDecimalParts(amount: string): { negative: boolean; integer: string
   return { negative: Boolean(match.groups.sign) && (/[1-9]/.test(integer) || /[1-9]/.test(rawFraction)), integer, fraction: significantFraction };
 }
 
-function currencyMinorDigits(currency?: string | null): number {
-  return 0;
-}
-
 function formatExactDecimal(amount: string, currency?: string | null): string | null {
   const parts = exactDecimalParts(amount);
   if (!parts) return null;
   const locale = toIntlLocale();
-  const minorDigits = currencyMinorDigits(currency);
-  const fraction = parts.fraction.length > minorDigits ? parts.fraction : parts.fraction.padEnd(minorDigits, '0');
+  // Mobile accounting screens intentionally show whole currency units. Keep the
+  // wire/domain amount exact; only omit its fractional part at presentation time.
+  const displayDigits = 0;
   const formatter = currency
-    ? new Intl.NumberFormat(locale, { style: 'currency', currency, minimumFractionDigits: minorDigits, maximumFractionDigits: minorDigits })
-    : new Intl.NumberFormat(locale, { minimumFractionDigits: minorDigits, maximumFractionDigits: minorDigits });
+    ? new Intl.NumberFormat(locale, { style: 'currency', currency, minimumFractionDigits: displayDigits, maximumFractionDigits: displayDigits })
+    : new Intl.NumberFormat(locale, { minimumFractionDigits: displayDigits, maximumFractionDigits: displayDigits });
   const groupedInteger = new Intl.NumberFormat(locale, { useGrouping: true, maximumFractionDigits: 0 }).format(BigInt(parts.integer));
-  const template = formatter.formatToParts(parts.negative ? -1 : 1);
+  const template = formatter.formatToParts(BigInt(parts.negative ? -1 : 1));
   return template.map((part) => part.type === 'integer'
     ? groupedInteger
-    : part.type === 'fraction' ? fraction : part.type === 'decimal' && minorDigits === 0 ? ''
     : part.value).join('');
 }
 
 export function formatCurrency(amount: string | null | undefined, currency?: string | null): string {
-  if (amount == null) return t('common.unknown');
+  if (amount == null) return t('home.amountUnavailable');
   try {
     return formatExactDecimal(amount, currency) ?? t('common.unknown');
   } catch {
@@ -107,8 +103,59 @@ export type PaymentLabelKey = 'ppe' | 'vat' | 'zus' | 'unknown';
 export function paymentLabelKey(type: string): PaymentLabelKey { const normalized = type.toUpperCase(); return normalized === 'RYCZALT' ? 'ppe' : normalized === 'VAT' ? 'vat' : normalized === 'ZUS' ? 'zus' : 'unknown'; }
 export function paymentLabel(type: string): string { return t(`payments.types.${paymentLabelKey(type)}`); }
 export type PaymentStatusKey = 'paid' | 'overdue' | 'partial' | 'unpaid' | 'notDue' | 'unknown';
-export function paymentStatusKey(status: string): PaymentStatusKey { const normalized = status.toUpperCase(); if (['PAID', 'OVERPAID', 'MATCHED', 'MANUALLY_CONFIRMED'].includes(normalized)) return 'paid'; if (normalized === 'OVERDUE') return 'overdue'; if (['PARTIALLY_PAID', 'PARTIAL'].includes(normalized)) return 'partial'; if (['OPEN', 'DUE', 'UNMATCHED'].includes(normalized)) return 'unpaid'; if (normalized === 'NOT_DUE') return 'notDue'; return 'unknown'; }
+export function paymentStatusKey(status: string): PaymentStatusKey { const normalized = status.toUpperCase(); if (['PAID', 'OVERPAID'].includes(normalized)) return 'paid'; if (normalized === 'OVERDUE') return 'overdue'; if (['PARTIALLY_PAID', 'PARTIAL'].includes(normalized)) return 'partial'; if (['OPEN', 'DUE'].includes(normalized)) return 'unpaid'; if (normalized === 'NOT_DUE') return 'notDue'; return 'unknown'; }
 export function paymentStatusLabel(status: string): string { return t(`payments.status.${paymentStatusKey(status)}`); }
+export type InvoicePaymentStatusKey = 'matched' | 'manuallyConfirmed' | 'partiallyMatched' | 'unmatched' | 'notRequired' | 'unknown';
+export function invoicePaymentStatusKey(status: string | null | undefined): InvoicePaymentStatusKey {
+  switch (status?.trim().toUpperCase()) {
+    case 'MATCHED': return 'matched';
+    case 'MANUALLY_CONFIRMED': return 'manuallyConfirmed';
+    case 'PARTIALLY_MATCHED': return 'partiallyMatched';
+    case 'UNMATCHED': return 'unmatched';
+    case 'NOT_REQUIRED': return 'notRequired';
+    default: return 'unknown';
+  }
+}
+export function invoicePaymentStatusLabel(status: string | null | undefined): string { return t(`invoices.paymentStatuses.${invoicePaymentStatusKey(status)}`); }
+export function paymentVerificationLabel(policy: string | null | undefined): string {
+  switch (policy?.trim().toUpperCase()) {
+    case 'REQUIRED': return t('invoices.paymentVerificationRequired');
+    case 'NOT_REQUIRED': return t('invoices.paymentVerificationNotRequired');
+    default: return t('common.unknown');
+  }
+}
+export function periodStatusLabel(status: string | null | undefined): string { return knownStatusLabel('status.period', status); }
+export function completenessStatusLabel(status: string | null | undefined): string { return knownStatusLabel('status.completeness', status); }
+export function periodActionLabel(action: string): string { return knownStatusLabel('status.action', action); }
+export function reconciliationStateLabel(state: string | null | undefined): string {
+  const labels: Record<string, string> = { healthy: 'status.reconciliationHealthy', mismatch: 'status.reconciliationMismatch', missing_evidence: 'status.reconciliationMissingEvidence' };
+  return state ? t(labels[state.trim().toLowerCase()] ?? 'status.unknown') : t('status.unknown');
+}
+function knownStatusLabel(prefix: string, value: string | null | undefined): string {
+  if (!value) return t('common.unknown');
+  const path = `${prefix}.${value.trim().toLowerCase()}`;
+  const label = t(path);
+  return label === path ? t('common.unknown') : label;
+}
+export function invoiceSourceLabel(sourceType: string | null | undefined, sourceReference?: string | null): string {
+  const normalized = sourceType?.trim().toUpperCase();
+  if (normalized === 'KSEF') return [t('invoices.sourceKsef'), sourceReference?.trim()].filter(Boolean).join(' · ');
+  if (normalized === 'UPLOAD') return t('invoices.sourceUpload');
+  return t('common.unknown');
+}
 export function costInputLabel(field: string, fallback?: string | null): string { if (field === 'vatTreatment' || field === 'classification') return t('cost.vatTreatment'); if (field === 'vatRate') return t('cost.vatRate'); if (field === 'counterpartyCountry') return t('cost.country'); return fallback || t('common.unknown'); }
 export function costOptionLabel(value: string, fallback?: string | null): string { if (value === 'DOMESTIC_PURCHASE') return t('cost.treatments.domestic'); if (value === 'IMPORT_OF_SERVICES_EU') return t('cost.treatments.eu'); if (value === 'IMPORT_OF_SERVICES_NON_EU') return t('cost.treatments.nonEu'); return fallback || t('cost.treatments.unknown'); }
-export const translationsByLocale = translations;
+export const translationsByLocale = {
+  pl: {
+    ...translations.pl,
+    invoices: { ...translations.pl.invoices, search: 'Szukaj kontrahenta lub numeru faktury', paymentVerification: 'Weryfikacja płatności', paymentVerificationRequired: 'Wymagana', paymentVerificationNotRequired: 'Niewymagana', paymentNotRequiredShort: 'Niewymagana', sourceKsef: 'KSeF', sourceUpload: 'Dokument przesłany', paymentStatuses: { matched: 'Opłacone', manuallyConfirmed: 'Opłacone ręcznie', partiallyMatched: 'Częściowo opłacone', unmatched: 'Nieopłacone', notRequired: 'Weryfikacja płatności niewymagana', unknown: 'Nieznany status płatności' } },
+    home: { ...translations.pl.home, received: 'Otrzymane', incomeInvoices: 'Faktury sprzedaży', costBills: 'Faktury kosztowe', calculationsPendingTitle: 'Oczekiwanie na obliczenia', waitingForInvoicesBody: 'Kwoty płatności pojawią się po otrzymaniu faktur i przygotowaniu obliczeń.', calculationsPendingBody: 'Kwoty płatności pojawią się po zakończeniu obliczeń.', calculate: 'Przelicz', calculating: 'Przeliczanie…', calculateFailure: 'Nie udało się przeliczyć danych. Spróbuj ponownie.', demoCalculateUnavailable: 'W wersji demo nie można uruchomić obliczeń serwerowych.', issueCodes: { ...translations.pl.home.issueCodes, dirtyCalculationTitle: 'Obliczenia wymagają odświeżenia', dirtyCalculationBody: 'Przelicz dane dla tego okresu, aby zobaczyć aktualne kwoty.' } },
+    status: { ...translations.pl.status, period: { open: 'Otwarty', dirty: 'Wymaga przeliczenia', calculated: 'Przeliczony', paid: 'Opłacony', frozen: 'Zamrożony' }, completeness: { complete: 'Kompletne', incomplete: 'Niekompletne' }, action: { freeze: 'Zamknij okres', reopen: 'Otwórz ponownie' } }
+  },
+  en: {
+    ...translations.en,
+    invoices: { ...translations.en.invoices, search: 'Search counterparty or invoice number', paymentVerificationRequired: 'Required', paymentVerificationNotRequired: 'Not required', paymentNotRequiredShort: 'Not required', sourceKsef: 'KSeF', sourceUpload: 'Uploaded document', paymentStatuses: { matched: 'Paid', manuallyConfirmed: 'Paid manually', partiallyMatched: 'Partially matched', unmatched: 'Unmatched', notRequired: 'Payment verification not required', unknown: 'Unknown payment status' } },
+    home: { ...translations.en.home, received: 'Received', incomeInvoices: 'Income invoices', costBills: 'Cost bills', calculationsPendingTitle: 'Waiting for calculations', waitingForInvoicesBody: 'Payment amounts will appear after invoices arrive and calculations are ready.', calculationsPendingBody: 'Payment amounts will appear when calculations are ready.', calculate: 'Refresh calculations', calculating: 'Refreshing…', calculateFailure: 'Could not refresh calculations. Try again.', demoCalculateUnavailable: 'Server-side calculation is not available in the demo.', issueCodes: { ...translations.en.home.issueCodes, dirtyCalculationTitle: 'Calculations need refresh', dirtyCalculationBody: 'Refresh the calculations for this period to see current amounts.' } },
+    status: { ...translations.en.status, period: { open: 'Open', dirty: 'Needs calculation', calculated: 'Calculated', paid: 'Paid', frozen: 'Frozen' }, completeness: { complete: 'Complete', incomplete: 'Incomplete' }, action: { freeze: 'Freeze period', reopen: 'Reopen period' } }
+  }
+} as const;

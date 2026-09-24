@@ -23,7 +23,7 @@ export class AccountingApi {
   deleteCounterpartyRule(profileId: number, id: string, ruleId: string): Promise<void> { return this.client.delete(accountingPaths.rule(profileId, id, ruleId)); }
   recognizeInvoice(profileId: number, file: { uri: string; name: string; type: string }): Promise<InvoiceCandidateDto> { const form = new FormData(); form.append('file', { uri: file.uri, name: file.name, type: file.type } as unknown as Blob); return this.client.postForm(accountingPaths.recognizeInvoice(profileId), form); }
   createInvoice(profileId: number, invoice: InvoiceCreateDto): Promise<InvoiceResultDto> { return this.client.post(accountingPaths.invoicesCreate(profileId), invoice); }
-  settle(profileId: number, month: string): Promise<void> { return this.client.postVoid(accountingPaths.settle(profileId, month), {}); }
+  calculate(profileId: number, month: string): Promise<unknown> { return this.client.postEmpty(accountingPaths.calculate(profileId, month)); }
   freeze(profileId: number, month: string): Promise<void> { return this.client.postVoid(accountingPaths.freeze(profileId, month), { reason: 'Requested from mobile client' }); }
   reopen(profileId: number, month: string): Promise<void> { return this.client.postVoid(accountingPaths.reopen(profileId, month), { reason: 'Requested from mobile client' }); }
 }
