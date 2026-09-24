@@ -2,18 +2,18 @@ import { AccountingApi } from '../api/accountingApi';
 import { mapCounterparty, mapInvoices, mapPaymentHistory, mapPeriod } from '../api/mappers/accountingMapper';
 import type { AccountingRepository } from './accountingRepository';
 import type { AccountingPeriod, Counterparty, Invoice, PaymentHistoryLine } from '../model/accounting';
-import { currentLocalAccountingMonth } from '../utils/calendar';
+import { currentLocalAccountingMonth, isAccountingMonthAllowed, MIN_ACCOUNTING_MONTH } from '../utils/calendar';
 
 export class ApiAccountingRepository implements AccountingRepository {
   constructor(private readonly api: AccountingApi, private readonly profileId: number) {}
-  async getPeriods(): Promise<unknown[]> { return this.api.getPeriods(this.profileId); }
+  async getPeriods(): Promise<unknown[]> { const periods = await this.api.getPeriods(this.profileId); return Array.isArray(periods) ? periods.filter((period) => typeof period === 'object' && period !== null && typeof (period as { month?: unknown }).month === 'string' && isAccountingMonthAllowed((period as { month: string }).month)) : []; }
   async getMonth(month: string): Promise<AccountingPeriod> {
     const [period, invoices, transactions, obligations, issues] = await Promise.all([
       this.api.getPeriod(this.profileId, month), this.api.getInvoices(this.profileId, month), this.api.getTransactions(this.profileId, month), this.api.getObligations(this.profileId, month), this.api.getIssues(this.profileId, month)
     ]);
     return mapPeriod(period, invoices, transactions, obligations, issues);
   }
-  async getInvoicesForRange(month: string, months: number): Promise<Invoice[]> { const ids = Array.from({ length: Math.max(1, months) }, (_, index) => shiftMonth(month, -index)); return mapInvoices((await Promise.all(ids.map((id) => this.api.getInvoices(this.profileId, id)))).flat()); }
+  async getInvoicesForRange(month: string, months: number): Promise<Invoice[]> { const ids = Array.from({ length: Math.max(1, months) }, (_, index) => shiftMonth(month, -index)).filter((id) => id >= MIN_ACCOUNTING_MONTH); return mapInvoices((await Promise.all(ids.map((id) => this.api.getInvoices(this.profileId, id)))).flat()); }
   async getCounterpartyInvoices(counterpartyId: string): Promise<Invoice[]> { return mapInvoices(await this.api.getCounterpartyInvoices(this.profileId, counterpartyId)); }
   async markInvoiceManuallyPaid(invoiceId: string, paidDate: string, note?: string): Promise<void> { return this.api.markInvoiceManuallyPaid(this.profileId, invoiceId, paidDate, note); }
   async clearInvoiceManualPayment(invoiceId: string): Promise<void> { return this.api.clearInvoiceManualPayment(this.profileId, invoiceId); }

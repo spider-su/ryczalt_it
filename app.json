@@ -18,6 +18,7 @@
     "plugins": [
       "expo-font",
       "expo-secure-store",
+      ["expo-local-authentication", { "faceIDPermission": "Allow Investory Accounting to use Face ID to unlock your account." }],
       "expo-notifications"
     ],
     "extra": {

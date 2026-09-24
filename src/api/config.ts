@@ -3,12 +3,12 @@ import { ConfigurationError, HttpClient } from './client';
 import { AccountingRepository } from '../data/accountingRepository';
 import { ApiAccountingRepository } from '../data/apiAccountingRepository';
 import { MockAccountingRepository } from '../data/mockAccountingRepository';
-import { currentLocalAccountingMonth } from '../utils/calendar';
+import { clampAccountingMonth, currentLocalAccountingMonth } from '../utils/calendar';
 import { DEMO_ACCOUNTING_MONTH } from '../auth/demoSession';
 
 export const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL ?? 'https://investory-61359240267.europe-central2.run.app/';
 export const ACCOUNTING_DATA_SOURCE = process.env.EXPO_PUBLIC_ACCOUNTING_DATA_SOURCE ?? 'api';
-export const DEFAULT_ACCOUNTING_MONTH = process.env.EXPO_PUBLIC_ACCOUNTING_MONTH ?? currentLocalAccountingMonth();
+export const DEFAULT_ACCOUNTING_MONTH = clampAccountingMonth(process.env.EXPO_PUBLIC_ACCOUNTING_MONTH ?? currentLocalAccountingMonth());
 let demoMode = false;
 export function setDemoMode(enabled: boolean) { demoMode = enabled; }
 export function isDemoMode() { return demoMode; }
