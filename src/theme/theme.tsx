@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useMemo, useState, type PropsWithChildren } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform, StyleSheet, useColorScheme } from 'react-native';
+import * as SystemUI from 'expo-system-ui';
 import { resolveThemeMode, type AppearancePreference, type ThemeMode } from './appearance';
 export type { AppearancePreference, ThemeMode } from './appearance';
 
@@ -27,7 +28,8 @@ export function ThemeProvider({ children }: PropsWithChildren) {
   theme.mode = mode;
   Object.assign(theme.colors, mode === 'dark' ? darkColors : lightColors);
   useEffect(() => { if (Platform.OS === 'web' && typeof document !== 'undefined') document.documentElement.style.colorScheme = mode; }, [mode]);
-  const value = useMemo(() => ({ preference, mode, ready, setPreference: async (next: AppearancePreference) => { await AsyncStorage.setItem(APPEARANCE_STORAGE_KEY, next); setPreferenceState(next); } }), [preference, mode, ready]);
+  useEffect(() => { if (Platform.OS === 'android') void SystemUI.setBackgroundColorAsync(theme.colors.canvas).catch(() => undefined); }, [mode]);
+  const value = useMemo(() => ({ preference, mode, ready, setPreference: async (next: AppearancePreference) => { setPreferenceState(next); await AsyncStorage.setItem(APPEARANCE_STORAGE_KEY, next).catch(() => undefined); } }), [preference, mode, ready]);
   return <ThemeContext.Provider value={value}>{ready ? children : null}</ThemeContext.Provider>;
 }
 export function useTheme() { const value = useContext(ThemeContext); if (!value) throw new Error('useTheme must be used inside ThemeProvider'); return value; }

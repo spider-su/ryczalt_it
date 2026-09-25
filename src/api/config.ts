@@ -12,7 +12,10 @@ export const DEFAULT_ACCOUNTING_MONTH = clampAccountingMonth(process.env.EXPO_PU
 let demoMode = false;
 export function setDemoMode(enabled: boolean) { demoMode = enabled; }
 export function isDemoMode() { return demoMode; }
-export function getInitialAccountingMonth() { return demoMode ? DEMO_ACCOUNTING_MONTH : DEFAULT_ACCOUNTING_MONTH; }
+export function initialAccountingMonth(dataSource: string, isDemo: boolean, liveDefault: string, mockDefault: string): string {
+  return isDemo || dataSource === 'mock' ? mockDefault : liveDefault;
+}
+export function getInitialAccountingMonth() { return initialAccountingMonth(ACCOUNTING_DATA_SOURCE, demoMode, DEFAULT_ACCOUNTING_MONTH, DEMO_ACCOUNTING_MONTH); }
 let authToken: string | null = null;
 export function setAccountingAuthToken(token: string | null) { authToken = token; }
 let accountingProfileId: number | null = null;

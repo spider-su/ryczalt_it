@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { createAccountingApi, createAccountingRepository, isDemoMode, requireAccountingProfileId, setAccountingProfileId, setDemoMode } from './config';
+import { createAccountingApi, createAccountingRepository, initialAccountingMonth, isDemoMode, requireAccountingProfileId, setAccountingProfileId, setDemoMode } from './config';
 
 describe('accounting profile configuration', () => {
   it('requires an explicit backend-derived profile id', () => {
@@ -17,5 +17,11 @@ describe('accounting profile configuration', () => {
     expect(() => createAccountingApi()).toThrow('require the API data source');
     setDemoMode(false);
     expect(isDemoMode()).toBe(false);
+  });
+
+  it('starts demo and mock data sources on the latest populated fixture month', () => {
+    expect(initialAccountingMonth('api', true, '2026-09', '2026-08')).toBe('2026-08');
+    expect(initialAccountingMonth('mock', false, '2026-09', '2026-08')).toBe('2026-08');
+    expect(initialAccountingMonth('api', false, '2026-09', '2026-08')).toBe('2026-09');
   });
 });

@@ -4,18 +4,41 @@
     "slug": "smart-box",
     "version": "0.1.0",
     "orientation": "portrait",
-    "userInterfaceStyle": "light",
+    "userInterfaceStyle": "automatic",
+    "icon": "assets/brand/app-icon.png",
+    "splash": {
+      "image": "assets/brand/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#F5F7FC"
+    },
     "assetBundlePatterns": [
       "**/*"
     ],
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "pl.investory.accounting"
+      "bundleIdentifier": "pl.investory.accounting",
+      "icon": "assets/brand/app-icon.png"
     },
     "android": {
-      "package": "pl.investory.accounting"
+      "package": "pl.investory.accounting",
+      "adaptiveIcon": {
+        "foregroundImage": "assets/brand/adaptive-foreground.png",
+        "backgroundColor": "#1769E0"
+      }
+    },
+    "web": {
+      "name": "Investory",
+      "shortName": "Investory",
+      "lang": "en",
+      "themeColor": "#1769E0",
+      "backgroundColor": "#F5F7FC",
+      "display": "standalone",
+      "startUrl": "/",
+      "scope": "/",
+      "favicon": "public/favicon-48.png"
     },
     "plugins": [
+      "expo-system-ui",
       "expo-font",
       "expo-secure-store",
       ["expo-local-authentication", { "faceIDPermission": "Allow Investory Accounting to use Face ID to unlock your account." }],
