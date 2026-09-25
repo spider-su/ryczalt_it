@@ -10,6 +10,8 @@ export class AccountingApi {
   getCounterpartyInvoices(profileId: number, counterpartyId: string | number): Promise<InvoiceDto[]> { return this.client.get(accountingPaths.counterpartyInvoices(profileId, counterpartyId)); }
   markInvoiceManuallyPaid(profileId: number, invoiceId: string | number, paidDate: string, note?: string): Promise<void> { return this.client.postVoid(accountingPaths.manualPaid(profileId, invoiceId), { paidDate, note: note || null }); }
   clearInvoiceManualPayment(profileId: number, invoiceId: string | number): Promise<void> { return this.client.delete(accountingPaths.manualPaid(profileId, invoiceId)); }
+  markObligationManuallyPaid(profileId: number, month: string, obligationId: string | number, paidDate: string, note?: string): Promise<void> { return this.client.postVoid(accountingPaths.obligationManualPaid(profileId, month, obligationId), { paidDate, note: note || null }); }
+  clearObligationManualPayment(profileId: number, month: string, obligationId: string | number): Promise<void> { return this.client.delete(accountingPaths.obligationManualPaid(profileId, month, obligationId)); }
   getTransactions(profileId: number, month: string): Promise<TransactionDto[]> { return this.client.get(accountingPaths.transactions(profileId, month)); }
   getObligations(profileId: number, month: string): Promise<ObligationDto[]> { return this.client.get(accountingPaths.obligations(profileId, month)); }
   getIssues(profileId: number, month: string): Promise<AccountingIssueDto[]> { return this.client.get(accountingPaths.issues(profileId, month)); }

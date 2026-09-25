@@ -1,4 +1,5 @@
 import type { Invoice } from '../model/accounting';
+import { invoicePaymentStatusKey, t } from '../i18n';
 
 export type InvoiceMonthGroup = { month: string; invoices: Invoice[] };
 
@@ -11,6 +12,46 @@ export function receivedInvoiceGroups(invoices: Invoice[]): { income: Invoice[];
 
 export function invoiceCounterpartyLabel(invoice: Invoice): string {
   return invoice.alias?.trim() || invoice.legalName?.trim() || invoice.counterparty?.trim() || invoice.title;
+}
+
+const incomeClassificationKeys: Record<string, string> = {
+  PL_SERVICE: 'plService', EU_SERVICE: 'euService', PL_GOODS: 'plGoods', EU_GOODS: 'euGoods', EXPORT: 'export'
+};
+const costCategoryKeys: Record<string, string> = {
+  FUEL: 'fuel', VEHICLE_FUEL: 'fuel', VEHICLE_SERVICE: 'vehicleService', CAR_WASH: 'vehicleService',
+  ACCOUNTING_SERVICE: 'accounting', BUSINESS_SERVICE: 'businessService', SOFTWARE: 'software',
+  EQUIPMENT: 'equipment', OFFICE_COST: 'office', OFFICE_SERVICE: 'office', VEHICLE_LEASING: 'vehicleLeasing', VEHICLE: 'vehicle'
+};
+
+export function invoiceClassificationLabel(direction: Invoice['direction'], classification: string | null | undefined): string | null {
+  const normalized = classification?.trim().toUpperCase();
+  if (!normalized) return null;
+  const key = direction === 'SALE' ? incomeClassificationKeys[normalized] : direction === 'PURCHASE' ? costCategoryKeys[normalized] : incomeClassificationKeys[normalized] ?? costCategoryKeys[normalized];
+  return key ? t(`invoices.classification.${key}`) : t('common.unknown');
+}
+
+export type InvoiceApprovalFilter = 'ALL' | 'NEEDS_REVIEW' | 'APPROVED';
+export function invoiceApprovalMatches(invoice: Invoice, filter: InvoiceApprovalFilter): boolean {
+  return filter === 'ALL' || invoice.approvalStatus?.trim().toUpperCase() === filter;
+}
+
+export type InvoiceSourceFilter = 'ALL' | 'KSEF' | 'UPLOAD';
+export function invoiceSourceMatches(invoice: Invoice, filter: InvoiceSourceFilter): boolean {
+  return filter === 'ALL' || invoice.sourceType?.trim().toUpperCase() === filter;
+}
+
+export function invoicePaymentPresentation(status: string | null | undefined): { labelKey: string; tone: 'success' | 'warning' | 'info' | 'muted' } | null {
+  const key = invoicePaymentStatusKey(status);
+  if (key === 'unknown') return null;
+  if (key === 'matched' || key === 'manuallyConfirmed') return { labelKey: 'common.paid', tone: 'success' };
+  if (key === 'unmatched') return { labelKey: 'common.unpaid', tone: 'warning' };
+  if (key === 'partiallyMatched') return { labelKey: 'common.partial', tone: 'info' };
+  return { labelKey: 'invoices.paymentNotRequiredShort', tone: 'muted' };
+}
+
+export function canMarkInvoiceManuallyPaid(paymentStatus: string | null | undefined): boolean {
+  const status = paymentStatus?.trim().toUpperCase();
+  return status !== 'MATCHED' && status !== 'MANUALLY_CONFIRMED' && status !== 'NOT_REQUIRED';
 }
 
 /** Groups display-filtered invoices by their already-mapped YYYY-MM-DD date. */

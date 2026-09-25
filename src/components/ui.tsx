@@ -1,7 +1,7 @@
 import { ActivityIndicator, Platform, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import type { ReactNode } from 'react';
 import { Ionicons } from '@expo/vector-icons';
-import { theme } from '../theme/theme';
+import { createThemeStyles, theme } from '../theme/theme';
 import { t } from '../i18n';
 
 export function Screen({ children, contentStyle }: { children: ReactNode; contentStyle?: object }) {
@@ -21,8 +21,8 @@ export function PageHeader({ title, subtitle }: { title: string; subtitle?: stri
   return <View style={styles.pageHeader}><Text style={styles.pageTitle}>{title}</Text>{subtitle ? <Text style={styles.pageSubtitle}>{subtitle}</Text> : null}</View>;
 }
 
-export function Section({ title, children, description, tone = 'primary' }: { title: string; children: ReactNode; description?: string; tone?: 'primary' | 'secondary' }) {
-  return <View style={styles.section}><Text style={[styles.sectionTitle, tone === 'secondary' && styles.sectionTitleSecondary]}>{title}</Text>{description ? <Text style={styles.sectionDescription}>{description}</Text> : null}{children}</View>;
+export function Section({ title, children, description, tone = 'primary', trailing }: { title: string; children: ReactNode; description?: string; tone?: 'primary' | 'secondary'; trailing?: ReactNode }) {
+  return <View style={styles.section}><View style={styles.sectionHeading}><Text style={[styles.sectionTitle, tone === 'secondary' && styles.sectionTitleSecondary]}>{title}</Text>{trailing}</View>{description ? <Text style={styles.sectionDescription}>{description}</Text> : null}{children}</View>;
 }
 
 export function ListGroup({ children, style }: { children: ReactNode; style?: object }) { return <View style={[styles.listGroup, style]}>{children}</View>; }
@@ -89,14 +89,15 @@ export function SettingsRow({ title, description, children, last = false }: { ti
 export function SettingsGroup({ children }: { children: ReactNode }) { return <ListGroup style={styles.settingsGroup}>{children}</ListGroup>; }
 
 const bannerColors = { success: theme.colors.success, info: theme.colors.info, warning: theme.colors.warning, error: theme.colors.danger, unknown: theme.colors.textSecondary } as const;
-const styles = StyleSheet.create({
+const styles = createThemeStyles({
   screen: { flex: 1, backgroundColor: theme.colors.background },
   content: { flex: 1, paddingHorizontal: theme.spacing.xl, paddingTop: theme.spacing.lg, paddingBottom: theme.spacing.xxl },
   pageHeader: { marginTop: theme.spacing.sm, marginBottom: theme.spacing.lg },
   pageTitle: { color: theme.colors.textPrimary, fontSize: theme.typography.pageTitle, lineHeight: 34, fontWeight: '800', letterSpacing: -0.4 },
   pageSubtitle: { color: theme.colors.textSecondary, fontSize: theme.typography.supporting, lineHeight: 19, marginTop: theme.spacing.xs },
   section: { marginTop: theme.spacing.xxl },
-  sectionTitle: { color: theme.colors.textPrimary, fontSize: theme.typography.section, lineHeight: 24, fontWeight: '800', marginBottom: theme.spacing.sm },
+  sectionHeading: { minHeight: 28, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: theme.spacing.sm, marginBottom: theme.spacing.sm },
+  sectionTitle: { color: theme.colors.textPrimary, fontSize: theme.typography.section, lineHeight: 24, fontWeight: '800' },
   sectionTitleSecondary: { color: theme.colors.textSecondary, fontSize: theme.typography.body, fontWeight: '700' },
   sectionDescription: { color: theme.colors.textSecondary, lineHeight: 20, marginBottom: theme.spacing.md },
   header: { minHeight: 64, flexDirection: 'row', alignItems: 'center', marginBottom: theme.spacing.lg },

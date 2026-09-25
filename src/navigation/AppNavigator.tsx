@@ -9,20 +9,19 @@ import { DocumentsScreen } from '../screens/DocumentsScreen';
 import { PaymentsScreen } from '../screens/PaymentsScreen';
 import { MoreScreen } from '../screens/MoreScreen';
 import { ActionLauncherScreen } from '../screens/ActionLauncherScreen';
-import { theme } from '../theme/theme';
+import { theme, useTheme } from '../theme/theme';
 import { t } from '../i18n';
 import { useLocale } from '../i18n/LocaleContext';
 import { getTabBarLayout } from './tabBarLayout';
 
-const Tab = createBottomTabNavigator();
-
 export type AppTabParamList = {
   Home: undefined;
-  Documents: undefined;
+  Documents: { direction?: 'SALE' | 'PURCHASE' } | undefined;
   Actions: undefined;
   Payments: undefined;
   More: undefined;
 };
+const Tab = createBottomTabNavigator<AppTabParamList>();
 export const navigationRef = createNavigationContainerRef<AppTabParamList>();
 
 const icons: Record<string, keyof typeof Ionicons.glyphMap> = {
@@ -34,20 +33,23 @@ const icons: Record<string, keyof typeof Ionicons.glyphMap> = {
 };
 
 export function AppNavigator() {
+  useTheme();
   useLocale();
   const insets = useSafeAreaInsets();
   const tabBarLayout = getTabBarLayout(insets.bottom);
   return (
     <Tab.Navigator
+      backBehavior="history"
       screenOptions={({ route }) => ({
         headerShown: false,
         tabBarActiveTintColor: theme.colors.accent,
         tabBarInactiveTintColor: theme.colors.textMuted,
         tabBarLabelStyle: {
-          fontSize: 10,
+          fontSize: 11,
           fontWeight: '600',
           letterSpacing: -0.15
         },
+        tabBarItemStyle: { minHeight: 56 },
         tabBarStyle: {
           ...tabBarLayout,
           borderTopWidth: 1,
@@ -67,14 +69,15 @@ export function AppNavigator() {
         options={{
           title: '+',
           tabBarShowLabel: false,
-          tabBarButton: ({ onPress }) => (
+          tabBarButton: ({ onPress, accessibilityState }) => (
             <Pressable
               onPress={onPress}
               accessibilityRole="button"
               accessibilityLabel={t('actions.title')}
-              style={{ alignItems: 'center', justifyContent: 'center', width: 56, height: 56, marginTop: -14, borderRadius: 28, backgroundColor: theme.colors.primary }}
+              accessibilityState={accessibilityState}
+              style={({ pressed }) => ({ alignItems: 'center', justifyContent: 'center', width: 56, height: 56, marginTop: -14, borderRadius: 28, backgroundColor: pressed ? theme.colors.accentPressed : theme.colors.primary })}
             >
-              <Ionicons name="add" size={30} color={theme.colors.onAccent} />
+              <Ionicons name="add" size={28} color={theme.colors.onAccent} />
             </Pressable>
           )
         }}

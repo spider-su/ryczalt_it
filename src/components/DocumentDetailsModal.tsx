@@ -3,10 +3,10 @@ import { Modal, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { createAccountingRepository } from '../api/config';
 import { Invoice } from '../model/accounting';
-import { formatDate, invoicePaymentStatusLabel, invoiceSourceLabel, paymentVerificationLabel, t } from '../i18n';
+import { formatDate, invoiceSourceLabel, paymentVerificationLabel, t } from '../i18n';
 import { formatMoney } from '../utils/money';
-import { invoiceApprovalPresentation } from '../presentation/invoiceList';
-import { theme } from '../theme/theme';
+import { canMarkInvoiceManuallyPaid, invoiceApprovalPresentation, invoiceClassificationLabel, invoicePaymentPresentation } from '../presentation/invoiceList';
+import { createThemeStyles, theme } from '../theme/theme';
 import { KeyValueRow, ListGroup, PrimaryButton, SheetHeader } from './ui';
 
 export function DocumentDetailsModal({ item, onClose }: { item: Invoice | null; onClose: () => void }) {
@@ -18,8 +18,13 @@ export function DocumentDetailsModal({ item, onClose }: { item: Invoice | null; 
   if (!item) return null;
   const isCost = item.direction === 'PURCHASE';
   const approval = invoiceApprovalPresentation(item.approvalStatus, item.approvalSource);
+  const classification = invoiceClassificationLabel(item.direction, item.category);
+  const paymentPresentation = invoicePaymentPresentation(paymentStatus);
   const approvalLabel = approval ? t(`invoices.approval.${approval.label}`) : t('common.unknown');
   const isManuallyPaid = paymentStatus?.toUpperCase() === 'MANUALLY_CONFIRMED';
+  const manualPaymentAllowed = canMarkInvoiceManuallyPaid(paymentStatus);
+  const sourceLabel = invoiceSourceLabel(item.sourceType, item.source);
+  const showSource = Boolean(item.sourceType || item.source) && sourceLabel !== t('common.unknown');
   const updateManualPayment = () => {
     setPaymentBusy(true); setPaymentError(false);
     const request = isManuallyPaid
@@ -27,7 +32,8 @@ export function DocumentDetailsModal({ item, onClose }: { item: Invoice | null; 
       : repository.markInvoiceManuallyPaid(item.id, localDateToday(), 'Paid manually from mobile app').then(() => setPaymentStatus('MANUALLY_CONFIRMED'));
     void request.catch(() => setPaymentError(true)).finally(() => setPaymentBusy(false));
   };
-  return <Modal visible transparent animationType="slide" onRequestClose={onClose}><SafeAreaView style={styles.overlay}><View style={styles.sheet}><SheetHeader title={t('invoices.details')} onClose={onClose} /><Text style={styles.detailTitle}>{item.counterparty ?? item.title}</Text><View style={styles.detailAmount}><Text style={styles.detailAmountValue}>{formatMoney(item.amount)}</Text><Text style={styles.meta}>{item.currency ?? t('common.unknown')}</Text></View><ListGroup><KeyValueRow label={t('invoices.number')} value={item.documentNumber ?? t('common.unknown')} /><KeyValueRow label={t('invoices.issueDate')} value={formatDate(item.issueDate)} />{item.sourceType || item.source ? <KeyValueRow label={t('invoices.source')} value={invoiceSourceLabel(item.sourceType, item.source)} /> : null}<KeyValueRow label={t('invoices.status')} value={invoicePaymentStatusLabel(paymentStatus)} /><KeyValueRow label={t('invoices.review')} value={approvalLabel} /><KeyValueRow label={t('invoices.paymentVerification')} value={paymentVerificationLabel(item.paymentVerificationPolicy)} />{item.correctsInvoiceReference || item.correctsInvoiceId ? <KeyValueRow label={t('invoices.correction')} value={String(item.correctsInvoiceReference ?? item.correctsInvoiceId)} /> : null}</ListGroup>{isCost ? <View style={styles.manualPayment}><PrimaryButton label={paymentBusy ? t('common.loading') : isManuallyPaid ? t('invoices.removeManualPaid') : t('invoices.manualPaid')} onPress={updateManualPayment} disabled={paymentBusy} />{paymentError ? <Text style={styles.error}>{t('invoices.manualPaidError')}</Text> : null}</View> : null}</View></SafeAreaView></Modal>;
+  const blockedManualLabel = paymentStatus?.trim().toUpperCase() === 'NOT_REQUIRED' ? t('invoices.paymentNotRequiredShort') : t('invoices.manualPaidAlready');
+  return <Modal visible transparent animationType="slide" onRequestClose={onClose}><SafeAreaView style={styles.overlay}><View style={styles.sheet}><SheetHeader title={t('invoices.details')} onClose={onClose} /><Text style={styles.detailTitle}>{item.counterparty ?? item.title}</Text><View style={styles.detailAmount}><Text style={styles.detailAmountValue}>{formatMoney(item.amount)}</Text><Text style={styles.meta}>{item.currency ?? t('common.unknown')}</Text></View><ListGroup><KeyValueRow label={t('invoices.number')} value={item.documentNumber ?? t('common.unknown')} /><KeyValueRow label={t('invoices.issueDate')} value={formatDate(item.issueDate)} />{classification ? <KeyValueRow label={t(isCost ? 'invoices.costCategory' : 'invoices.invoiceType')} value={classification} /> : null}{showSource ? <KeyValueRow label={t('invoices.source')} value={sourceLabel} /> : null}<KeyValueRow label={t('invoices.status')} value={paymentPresentation ? t(paymentPresentation.labelKey) : t('common.unknown')} /><KeyValueRow label={t('invoices.review')} value={approvalLabel} /><KeyValueRow label={t('invoices.paymentVerification')} value={paymentVerificationLabel(item.paymentVerificationPolicy)} />{item.correctsInvoiceReference || item.correctsInvoiceId ? <KeyValueRow label={t('invoices.correction')} value={String(item.correctsInvoiceReference ?? item.correctsInvoiceId)} /> : null}</ListGroup>{isCost ? <View style={styles.manualPayment}><PrimaryButton label={paymentBusy ? t('common.loading') : isManuallyPaid ? t('invoices.removeManualPaid') : !manualPaymentAllowed ? blockedManualLabel : t('invoices.manualPaid')} onPress={updateManualPayment} disabled={paymentBusy || (!isManuallyPaid && !manualPaymentAllowed)} />{paymentError ? <Text style={styles.error}>{t('invoices.manualPaidError')}</Text> : null}</View> : null}</View></SafeAreaView></Modal>;
 }
 
 function localDateToday(): string {
@@ -37,7 +43,7 @@ function localDateToday(): string {
   return `${now.getFullYear()}-${month}-${day}`;
 }
 
-const styles = StyleSheet.create({
+const styles = createThemeStyles({
   overlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: theme.colors.overlay },
   sheet: { backgroundColor: theme.colors.surface, borderTopLeftRadius: theme.radius.large, borderTopRightRadius: theme.radius.large, padding: theme.spacing.xl, paddingBottom: theme.spacing.xxxl, gap: theme.spacing.md },
   detailTitle: { color: theme.colors.textPrimary, fontSize: theme.typography.section, fontWeight: '800', marginBottom: theme.spacing.sm },

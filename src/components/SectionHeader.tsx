@@ -1,6 +1,6 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { theme } from '../theme/theme';
+import { createThemeStyles, theme } from '../theme/theme';
 
 type Props = {
   title: string;
@@ -25,7 +25,7 @@ export function SectionHeader({ title, meta, onPress }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = createThemeStyles({
   root: {
     minHeight: 44,
     flexDirection: 'row',

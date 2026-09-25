@@ -1,7 +1,7 @@
 export type Money = { amount: string | null; currency?: string | null };
 export type Invoice = {
   id: string; title: string; subtitle?: string; amount: Money; direction: 'SALE' | 'PURCHASE' | 'UNKNOWN'; counterparty: string | null; legalName: string | null; alias: string | null; taxIdentifier: string | null;
-  documentNumber: string | null; issueDate: string | null; currency: string | null; importStatus: string | null; approvalStatus: string | null; approvalSource: string | null;
+  documentNumber: string | null; issueDate: string | null; dueDate?: string | null; netAmount?: string | null; vatAmount?: string | null; currency: string | null; importStatus: string | null; approvalStatus: string | null; approvalSource: string | null;
   paymentVerificationPolicy: string | null; paymentStatus: string | null; source: string | null; category: string | null; sourceType: string | null; documentKind?: string | null; correctsInvoiceId?: string | null; correctsInvoiceReference?: string | null;
 };
 export type Transaction = { id: string; date: string | null; description: string | null; amount: Money; status: string | null };

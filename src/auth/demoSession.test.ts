@@ -6,6 +6,6 @@ describe('local demo session', () => {
     expect(isDemoSession(DEMO_SESSION_TOKEN)).toBe(true);
     expect(isDemoSession('server-issued-token')).toBe(false);
     expect(DEMO_PROFILE_ID).toBe(0);
-    expect(DEMO_ACCOUNTING_MONTH).toBe('2026-07');
+    expect(DEMO_ACCOUNTING_MONTH).toBe('2026-09');
   });
 });

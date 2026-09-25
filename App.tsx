@@ -13,10 +13,10 @@ import { Component, useEffect, type ErrorInfo, type PropsWithChildren } from 're
 import { navigationRef } from './src/navigation/AppNavigator';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { t } from './src/i18n';
-import { theme } from './src/theme/theme';
+import { ThemeProvider, useTheme, theme } from './src/theme/theme';
 
 export default function App() {
-  return <AppErrorBoundary><SafeAreaProvider><LocaleProvider><AuthProvider><AppContent /></AuthProvider></LocaleProvider></SafeAreaProvider></AppErrorBoundary>;
+  return <AppErrorBoundary><SafeAreaProvider><ThemeProvider><LocaleProvider><AuthProvider><AppContent /></AuthProvider></LocaleProvider></ThemeProvider></SafeAreaProvider></AppErrorBoundary>;
 }
 
 class AppErrorBoundary extends Component<PropsWithChildren, { failed: boolean }> {
@@ -33,6 +33,7 @@ let pendingPaymentNavigationProfileId: number | null = null;
 function AppContent() {
   const { token, profileId, isDemo, loading } = useAuth();
   const { ready: localeReady } = useLocale();
+  const { mode } = useTheme();
   useEffect(() => {
     if (loading || !localeReady) return;
     if (ACCOUNTING_DATA_SOURCE === 'api' && !isDemo && (!token || profileId == null)) { pendingPaymentNavigationProfileId = null; return; }
@@ -48,5 +49,5 @@ function AppContent() {
   }, [loading, localeReady, profileId, token, isDemo]);
   if (loading || !localeReady) return <SafeAreaView style={{ flex: 1, backgroundColor: theme.colors.background }}><View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12 }}><ActivityIndicator color={theme.colors.primary} /><Text style={{ color: theme.colors.textSecondary }}>{t('startup.loading')}</Text></View></SafeAreaView>;
   if (ACCOUNTING_DATA_SOURCE === 'api' && !isDemo && (!token || profileId == null)) return <AuthScreen />;
-  return <AccountingMonthProvider><NavigationContainer ref={navigationRef} onReady={() => { if (pendingPaymentNavigationProfileId === profileId) { pendingPaymentNavigationProfileId = null; navigationRef.navigate('Payments'); } }}><StatusBar style="dark" /><AppNavigator /></NavigationContainer></AccountingMonthProvider>;
+  return <AccountingMonthProvider><NavigationContainer ref={navigationRef} onReady={() => { if (pendingPaymentNavigationProfileId === profileId) { pendingPaymentNavigationProfileId = null; navigationRef.navigate('Payments'); } }}><StatusBar style={mode === 'dark' ? 'light' : 'dark'} /><AppNavigator /></NavigationContainer></AccountingMonthProvider>;
 }

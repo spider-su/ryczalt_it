@@ -1,25 +1,37 @@
 import { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useIsFocused } from '@react-navigation/native';
+import { useIsFocused, useNavigation } from '@react-navigation/native';
+import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import { t } from '../i18n';
-import { theme } from '../theme/theme';
+import { createThemeStyles, theme, useTheme } from '../theme/theme';
 import { AddCostScreen } from '../actions/cost/AddCostScreen';
 import { useLocale } from '../i18n/LocaleContext';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { SheetHeader } from '../components/ui';
+import type { AppTabParamList } from '../navigation/AppNavigator';
 
-type Mode = 'sheet' | 'cost';
+type Mode = 'sheet' | 'manual' | 'import';
 
 export function ActionLauncherScreen() {
+  useTheme();
   useLocale();
   const focused = useIsFocused();
+  const navigation = useNavigation<BottomTabNavigationProp<AppTabParamList>>();
   const [mode, setMode] = useState<Mode>('sheet');
   useEffect(() => { if (focused) setMode('sheet'); }, [focused]);
   if (!focused) return null;
-  return mode === 'cost' ? <AddCostScreen onBack={() => setMode('sheet')} /> : <ActionSheet onSelect={() => setMode('cost')} />;
+  const dismiss = () => { if (navigation.canGoBack()) navigation.goBack(); else navigation.navigate('Home'); };
+  return mode !== 'sheet' ? <AddCostScreen initialMode={mode === 'manual' ? 'manual' : 'file'} onBack={() => setMode('sheet')} /> : <ActionSheet onSelect={setMode} onDismiss={dismiss} />;
 }
 
-function ActionSheet({ onSelect }: { onSelect: () => void }) {
-  return <View style={styles.overlay}><View style={styles.sheet}><Text style={styles.title}>{t('actions.title')}</Text><Pressable style={styles.action} onPress={onSelect} accessibilityRole="button" accessibilityLabel={t('actions.cost')}><View style={styles.icon}><Ionicons name="attach-outline" size={22} color={theme.colors.primary} /></View><Text style={styles.actionText}>{t('actions.cost')}</Text><Ionicons name="chevron-forward" size={19} color={theme.colors.textMuted} /></Pressable></View></View>;
+function ActionSheet({ onSelect, onDismiss }: { onSelect: (mode: Exclude<Mode, 'sheet'>) => void; onDismiss: () => void }) {
+  const insets = useSafeAreaInsets();
+  return <View style={styles.overlay} accessibilityViewIsModal><Pressable style={StyleSheet.absoluteFill} onPress={onDismiss} accessibilityRole="button" accessibilityLabel={t('actions.close')} /><View style={[styles.sheet, { paddingBottom: Math.max(theme.spacing.lg, insets.bottom) }]}><SheetHeader title={t('actions.title')} onClose={onDismiss} /><Action onPress={() => onSelect('manual')} icon="create-outline" title={t('actions.manualInvoice')} subtitle={t('actions.manualInvoiceHint')} /><Action onPress={() => onSelect('import')} icon="cloud-upload-outline" title={t('actions.importInvoice')} subtitle={t('actions.importInvoiceHint')} /></View></View>;
 }
 
-const styles = StyleSheet.create({ overlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: theme.colors.overlay }, sheet: { backgroundColor: theme.colors.surface, borderTopLeftRadius: theme.radius.large, borderTopRightRadius: theme.radius.large, padding: theme.spacing.xl, gap: theme.spacing.md }, title: { color: theme.colors.textPrimary, fontSize: 20, fontWeight: '800', marginBottom: theme.spacing.xs }, action: { minHeight: 60, flexDirection: 'row', alignItems: 'center', gap: theme.spacing.md, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: theme.colors.borderSubtle }, icon: { width: 40, height: 40, borderRadius: 20, backgroundColor: theme.colors.accentSoft, alignItems: 'center', justifyContent: 'center' }, actionText: { flex: 1, color: theme.colors.textPrimary, fontSize: 16, fontWeight: '800' } });
+function Action({ onPress, icon, title, subtitle }: { onPress: () => void; icon: keyof typeof Ionicons.glyphMap; title: string; subtitle: string }) {
+  return <Pressable style={({ pressed }) => [styles.action, pressed && styles.actionPressed]} onPress={onPress} accessibilityRole="button"><View style={styles.icon}><Ionicons name={icon} size={22} color={theme.colors.primary} /></View><View style={styles.copy}><Text style={styles.actionText}>{title}</Text><Text style={styles.actionSubtitle}>{subtitle}</Text></View><Ionicons name="chevron-forward" size={19} color={theme.colors.textMuted} /></Pressable>;
+}
+
+const styles = createThemeStyles({ overlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: theme.colors.overlay }, sheet: { backgroundColor: theme.colors.surface, borderTopLeftRadius: theme.radius.large, borderTopRightRadius: theme.radius.large, padding: theme.spacing.xl, gap: theme.spacing.xs }, action: { minHeight: 76, flexDirection: 'row', alignItems: 'center', gap: theme.spacing.md, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: theme.colors.borderSubtle, paddingVertical: theme.spacing.sm }, actionPressed: { backgroundColor: theme.colors.surfaceSecondary }, icon: { width: 44, height: 44, borderRadius: 22, backgroundColor: theme.colors.accentSoft, alignItems: 'center', justifyContent: 'center' }, copy: { flex: 1 }, actionText: { color: theme.colors.textPrimary, fontSize: 16, fontWeight: '700' }, actionSubtitle: { color: theme.colors.textSecondary, marginTop: 3, fontSize: 13 } });

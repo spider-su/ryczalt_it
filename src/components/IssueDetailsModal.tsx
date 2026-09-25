@@ -4,7 +4,7 @@ import { AccountingIssue, Invoice } from '../model/accounting';
 import { issuePresentation } from '../presentation/accounting';
 import { resolveIssueAction } from '../presentation/issueResolution';
 import { t } from '../i18n';
-import { theme } from '../theme/theme';
+import { createThemeStyles, theme } from '../theme/theme';
 import { SheetHeader } from './ui';
 
 export function IssueDetailsModal({ issue, documents, onClose, onDocument, onCalculate, calculating = false, calculationError = false, isDemo = false }: { issue: AccountingIssue | null; documents: Invoice[]; onClose: () => void; onDocument: (document: Invoice) => void; onCalculate?: () => void; calculating?: boolean; calculationError?: boolean; isDemo?: boolean }) {
@@ -16,7 +16,7 @@ export function IssueDetailsModal({ issue, documents, onClose, onDocument, onCal
   return <Modal visible transparent animationType="slide" onRequestClose={onClose}><SafeAreaView style={styles.overlay}><View style={styles.sheet}><SheetHeader title={t('home.issueDetails')} onClose={onClose} back /><ScrollView contentContainerStyle={styles.content}><Text style={styles.title}>{presentation.title}</Text><Text style={styles.body}>{presentation.body}</Text>{dirtyCalculation && isDemo ? <Text style={styles.notice}>{t('home.demoCalculateUnavailable')}</Text> : null}{dirtyCalculation && !isDemo && onCalculate ? <><Pressable disabled={calculating} onPress={onCalculate} style={({ pressed }) => [styles.action, pressed && styles.pressed, calculating && styles.disabled]} accessibilityRole="button"><Text style={styles.actionLabel}>{calculating ? t('home.calculating') : t('home.calculate')}</Text><Text style={styles.actionArrow}>›</Text></Pressable>{calculationError ? <Text style={styles.error}>{t('home.calculateFailure')}</Text> : null}</> : null}{action.kind === 'UNKNOWN' && !dirtyCalculation ? <Text style={styles.notice}>{t('home.actionUnavailable')}</Text> : null}{canOpenInvoice ? <Pressable onPress={() => onDocument(action.invoice)} style={({ pressed }) => [styles.action, pressed && styles.pressed]} accessibilityRole="button" accessibilityLabel={t('home.checkDocument')}><Text style={styles.actionLabel}>{t('home.checkDocument')}</Text><Text style={styles.actionArrow}>›</Text></Pressable> : null}</ScrollView></View></SafeAreaView></Modal>;
 }
 
-const styles = StyleSheet.create({
+const styles = createThemeStyles({
   overlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: theme.colors.overlay },
   sheet: { maxHeight: '88%', backgroundColor: theme.colors.surface, borderTopLeftRadius: theme.radius.large, borderTopRightRadius: theme.radius.large, padding: theme.spacing.xl },
   content: { paddingBottom: theme.spacing.xl },

@@ -2,7 +2,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Invoice } from '../model/accounting';
 import { formatMoneyWithoutCurrency } from '../utils/money';
-import { theme } from '../theme/theme';
+import { createThemeStyles, theme } from '../theme/theme';
 
 type Props = {
   items: Invoice[];
@@ -47,7 +47,7 @@ export function AccountingListCard({ items, kind, onItemPress }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = createThemeStyles({
   card: {
     overflow: 'hidden',
     backgroundColor: theme.colors.surface,

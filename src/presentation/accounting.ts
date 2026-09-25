@@ -1,5 +1,6 @@
 import { AccountingIssue, AccountingPeriod, Invoice, Obligation } from '../model/accounting';
-import { t } from '../i18n';
+import { formatCurrency, paymentStatusLabel, t } from '../i18n';
+import { invoiceClassificationLabel } from './invoiceList';
 
 export type PresentationStatus = 'resolved' | 'informational' | 'settlement_pending' | 'calculations_pending' | 'requires_action' | 'setup_required' | 'error' | 'processing' | 'unknown';
 
@@ -25,9 +26,17 @@ export function calculationsReady(
   obligations: Pick<Obligation, 'title'>[] = []
 ): boolean {
   const readyStatuses = new Set(['CURRENT', 'CALCULATED', 'FROZEN']);
-  if (calculations.length === 0 || !calculations.every((calculation) => readyStatuses.has(String(calculation.status ?? '').trim().toUpperCase()))) return false;
-  const calculatedTypes = new Set(calculations.map((calculation) => String(calculation.type ?? '').trim().toUpperCase()));
-  return obligations.every((obligation) => calculatedTypes.has(String(obligation.title ?? '').trim().toUpperCase()));
+  if (calculations.length === 0) return false;
+  // The API can include historical STALE rows alongside a current calculation
+  // for the same type. Readiness is determined by whether each payable type has
+  // a usable current result, not whether every historical row is current.
+  const requiredTypes = obligations.length
+    ? [...new Set(obligations.map((obligation) => String(obligation.title ?? '').trim().toUpperCase()))]
+    : [...new Set(calculations.map((calculation) => String(calculation.type ?? '').trim().toUpperCase()))];
+  return requiredTypes.every((requiredType) => {
+    return calculations.some((calculation) => String(calculation.type ?? '').trim().toUpperCase() === requiredType
+      && readyStatuses.has(String(calculation.status ?? '').trim().toUpperCase()));
+  });
 }
 
 export function statusForMonth(month: Pick<AccountingPeriod, 'completeness' | 'status' | 'issues' | 'allowedActions' | 'calculations'> & { obligations: Pick<Obligation, 'title'>[]; settlement: Pick<AccountingPeriod['settlement'], 'fullySettled'> }): PresentationStatus {
@@ -108,7 +117,7 @@ export function issuePresentation(issue: AccountingIssue): {
 }
 
 export function statusForPayment(payment: Obligation): PresentationStatus {
-  const status = String(payment.status ?? '').trim().toUpperCase();
+  const status = paymentStatusForDisplay(payment);
   if (status === 'PAID' || status === 'OVERPAID') return 'resolved';
   if (status === 'OVERDUE') return 'error';
   if (status === 'NOT_DUE') return 'informational';
@@ -116,8 +125,58 @@ export function statusForPayment(payment: Obligation): PresentationStatus {
   return 'unknown';
 }
 
+export function paymentStatusForDisplay(payment: Pick<Obligation, 'status' | 'dueDate'>, today = localToday()): string {
+  const status = String(payment.status ?? '').trim().toUpperCase();
+  const dueDate = payment.dueDate;
+  if (['OPEN', 'DUE', 'PARTIALLY_PAID'].includes(status) && dueDate && /^\d{4}-\d{2}-\d{2}$/.test(dueDate) && dueDate < today) return 'OVERDUE';
+  return status;
+}
+
+export function obligationStatusText(payment: Obligation, today?: string): string {
+  const status = paymentStatusForDisplay(payment, today);
+  const partiallyPaid = String(payment.status ?? '').trim().toUpperCase() === 'PARTIALLY_PAID';
+  const label = paymentStatusLabel(status);
+  return partiallyPaid ? `${label} (${formatCurrency(payment.outstandingAmount.amount)} ${t('settlements.remainingShort')})` : label;
+}
+
+function localToday(): string {
+  const date = new Date();
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+}
+
+export function outstandingObligationsTotal(payments: Obligation[]): string {
+  const eligible = payments.filter((payment) => ['OPEN', 'DUE', 'OVERDUE', 'PARTIALLY_PAID'].includes(String(payment.status ?? '').trim().toUpperCase()));
+  const decimals = eligible.map((payment) => payment.outstandingAmount.amount).filter((value): value is string => typeof value === 'string' && /^\d+(?:\.\d+)?$/.test(value));
+  const scale = Math.max(0, ...decimals.map((value) => value.split('.')[1]?.length ?? 0));
+  const total = decimals.reduce((sum, value) => {
+    const [whole = '0', fraction = ''] = value.split('.');
+    return sum + BigInt(whole) * 10n ** BigInt(scale) + BigInt((fraction + '0'.repeat(scale)).slice(0, scale) || '0');
+  }, 0n);
+  if (scale === 0) return total.toString();
+  const digits = total.toString().padStart(scale + 1, '0');
+  return `${digits.slice(0, -scale)}.${digits.slice(-scale)}`;
+}
+
+export function outstandingObligationsMoney(payments: Obligation[]): { amount: string; currency: string | null } {
+  const eligible = payments.filter((payment) => ['OPEN', 'DUE', 'OVERDUE', 'PARTIALLY_PAID'].includes(String(payment.status ?? '').trim().toUpperCase()));
+  const currencies = [...new Set(eligible.map((payment) => payment.outstandingAmount.currency || payment.amount.currency).filter((value): value is string => Boolean(value)))];
+  return { amount: outstandingObligationsTotal(payments), currency: currencies.length === 1 ? currencies[0]! : null };
+}
+
+export function invoiceReviewPresentation(invoices: Pick<Invoice, 'approvalStatus'>[]): { labelKey: string; state: 'success' | 'attention' | 'unknown' } | null {
+  const statuses = invoices.map((invoice) => invoice.approvalStatus?.trim().toUpperCase() ?? '');
+  if (statuses.length === 0) return null;
+  if (statuses.includes('NEEDS_REVIEW')) return { labelKey: 'settlements.reviewNeeded', state: 'attention' };
+  if (statuses.every((status) => status === 'APPROVED')) return { labelKey: 'settlements.reviewComplete', state: 'success' };
+  return { labelKey: 'common.unknown', state: 'unknown' };
+}
+
+export function homeInvoiceDirection(group: 'income' | 'costs'): 'SALE' | 'PURCHASE' {
+  return group === 'income' ? 'SALE' : 'PURCHASE';
+}
+
 export function isUpcomingPayment(payment: Pick<Obligation, 'status'>): boolean {
-  return ['OPEN', 'PARTIALLY_PAID', 'DUE'].includes(String(payment.status ?? '').trim().toUpperCase());
+  return ['OPEN', 'PARTIALLY_PAID', 'DUE', 'OVERDUE'].includes(String(payment.status ?? '').trim().toUpperCase());
 }
 
 export function isPaymentHistoryItem(payment: Pick<Obligation, 'status'>): boolean {
@@ -139,16 +198,18 @@ export function invoiceStatusTone(status: string | null | undefined): StatusTone
 export function matchesInvoice(line: Invoice, query: string): boolean {
   const needle = query.trim().toLowerCase();
   if (!needle) return true;
-  return [line.counterparty, line.documentNumber, line.taxIdentifier, line.title, line.subtitle]
-    .filter(Boolean).some((value) => value!.toLowerCase().includes(needle));
+  const values = [line.counterparty, line.legalName, line.alias, line.documentNumber, line.taxIdentifier, line.title, line.subtitle, line.category, invoiceClassificationLabel(line.direction, line.category)].filter(Boolean) as string[];
+  const normalizedNeedle = needle.replace(/[\s_-]/g, '');
+  return values.some((value) => value.toLowerCase().includes(needle) || value.toLowerCase().replace(/[\s_-]/g, '').includes(normalizedNeedle));
 }
 
-export type InvoicePaymentFilter = 'ALL' | 'PAID' | 'UNPAID' | 'NOT_REQUIRED';
+export type InvoicePaymentFilter = 'ALL' | 'PAID' | 'PARTIALLY_PAID' | 'UNPAID' | 'NOT_REQUIRED';
 export function invoicePaymentMatches(line: Invoice, filter: InvoicePaymentFilter): boolean {
   if (filter === 'ALL') return true;
   const status = line.paymentStatus?.trim().toUpperCase();
   if (filter === 'PAID') return ['MATCHED', 'MANUALLY_CONFIRMED'].includes(status ?? '');
-  if (filter === 'UNPAID') return ['UNMATCHED', 'PARTIALLY_MATCHED'].includes(status ?? '');
+  if (filter === 'PARTIALLY_PAID') return status === 'PARTIALLY_MATCHED';
+  if (filter === 'UNPAID') return status === 'UNMATCHED';
   return status === 'NOT_REQUIRED';
 }
 

@@ -2,7 +2,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Obligation } from '../model/accounting';
 import { formatMoneyWithoutCurrency } from '../utils/money';
-import { theme } from '../theme/theme';
+import { createThemeStyles, theme } from '../theme/theme';
 
 export function PaymentCard({ items, onItemPress }: { items: Obligation[]; onItemPress?: (item: Obligation) => void }) {
   return (
@@ -33,7 +33,7 @@ export function PaymentCard({ items, onItemPress }: { items: Obligation[]; onIte
   );
 }
 
-const styles = StyleSheet.create({
+const styles = createThemeStyles({
   card: {
     overflow: 'hidden',
     backgroundColor: theme.colors.surface,

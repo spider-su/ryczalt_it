@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { Invoice } from '../model/accounting';
-import { groupInvoicesByMonth, invoiceApprovalPresentation, invoiceCounterpartyLabel, invoiceSourcePresentation, receivedInvoiceGroups } from './invoiceList';
+import { canMarkInvoiceManuallyPaid, groupInvoicesByMonth, invoiceApprovalMatches, invoiceApprovalPresentation, invoiceClassificationLabel, invoiceCounterpartyLabel, invoicePaymentPresentation, invoiceSourceMatches, invoiceSourcePresentation, receivedInvoiceGroups } from './invoiceList';
+import { matchesInvoice, invoicePaymentMatches } from './accounting';
 
 function invoice(id: string, issueDate: string | null): Invoice {
   return {
@@ -47,6 +48,37 @@ describe('invoice list presentation', () => {
   it('does not create an approval badge from payment state alone', () => {
     const paidOnly = { ...invoice('paid-only', '2026-03-01'), paymentStatus: 'PAID' };
     expect(invoiceApprovalPresentation(paidOnly.approvalStatus, paidOnly.approvalSource)).toBeNull();
+  });
+
+  it('maps known invoice classifications by direction and safely hides unknown identifiers', () => {
+    expect(invoiceClassificationLabel('SALE', 'PL_SERVICE')).toBe('Usługa krajowa');
+    expect(invoiceClassificationLabel('SALE', 'EU_SERVICE')).toBe('Usługa UE');
+    expect(invoiceClassificationLabel('PURCHASE', 'VEHICLE_FUEL')).toBe('Paliwo');
+    expect(invoiceClassificationLabel('PURCHASE', 'ACCOUNTING_SERVICE')).toBe('Księgowość');
+    expect(invoiceClassificationLabel('PURCHASE', 'FUTURE_INTERNAL_CODE')).toBe('Brak danych');
+    expect(invoiceClassificationLabel('PURCHASE', null)).toBeNull();
+  });
+
+  it('keeps approval, payment and source as independent invoice dimensions', () => {
+    const item = { ...invoice('cross-state', '2026-03-01'), direction: 'SALE' as const, approvalStatus: 'APPROVED', approvalSource: 'COUNTERPARTY_RULE', paymentStatus: 'UNMATCHED', sourceType: 'KSEF', taxIdentifier: '1234567890' };
+    expect(invoiceApprovalMatches(item, 'APPROVED')).toBe(true);
+    expect(invoicePaymentPresentation(item.paymentStatus)).toMatchObject({ labelKey: 'common.unpaid', tone: 'warning' });
+    expect(invoicePaymentMatches(item, 'UNPAID')).toBe(true);
+    expect(invoicePaymentMatches({ ...item, paymentStatus: 'PARTIALLY_MATCHED' }, 'PARTIALLY_PAID')).toBe(true);
+    expect(invoicePaymentPresentation(null)).toBeNull();
+    expect(invoiceSourceMatches(item, 'KSEF')).toBe(true);
+    expect(invoiceSourceMatches(item, 'UPLOAD')).toBe(false);
+    expect(matchesInvoice(item, '1234567890')).toBe(true);
+    expect(matchesInvoice({ ...item, category: 'EU_SERVICE' }, 'EU service')).toBe(true);
+    expect(matchesInvoice({ ...item, direction: 'PURCHASE', category: 'VEHICLE_FUEL' }, 'Paliwo')).toBe(true);
+  });
+
+  it('blocks manual paid confirmation for already paid or payment-not-required invoices', () => {
+    expect(canMarkInvoiceManuallyPaid('MATCHED')).toBe(false);
+    expect(canMarkInvoiceManuallyPaid('NOT_REQUIRED')).toBe(false);
+    expect(canMarkInvoiceManuallyPaid('MANUALLY_CONFIRMED')).toBe(false);
+    expect(canMarkInvoiceManuallyPaid('PARTIALLY_MATCHED')).toBe(true);
+    expect(canMarkInvoiceManuallyPaid('UNMATCHED')).toBe(true);
   });
 
   it('uses the KSeF treatment only when the source type explicitly identifies KSeF', () => {

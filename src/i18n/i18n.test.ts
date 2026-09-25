@@ -4,6 +4,7 @@ import {
   paymentStatusKey, paymentVerificationLabel, periodActionLabel, periodStatusLabel,
   setActiveLocale, t, translationsByLocale
 } from './index';
+import { formatMoneyWithCurrencyCode } from '../utils/money';
 
 afterEach(() => setActiveLocale('pl'));
 
@@ -41,7 +42,8 @@ describe('canonical localized presentation', () => {
     setActiveLocale('en');
     expect(normalizeSpace(formatCurrency('406.50', 'PLN'))).toBe('PLN 406');
     expect(normalizeSpace(formatCurrency('406.50', 'EUR'))).toBe('€406');
-    expect(normalizeSpace(formatCurrency('1234567.89', 'PLN'))).toBe('PLN 1,234,567');
+    expect(normalizeSpace(formatCurrency('1234567.89', 'PLN'))).toBe('PLN 1 234 567');
+    expect(normalizeSpace(formatCurrency('7538.00'))).toBe('7 538');
     expect(formatCurrency(null)).toBe('Amount unavailable');
   });
 
@@ -73,5 +75,16 @@ describe('canonical localized presentation', () => {
     expect(completenessStatusLabel('COMPLETE')).toBe('Kompletne');
     expect(periodActionLabel('REOPEN')).toBe('Otwórz ponownie');
     expect(periodStatusLabel('FUTURE')).toBe('Brak danych');
+  });
+
+  it('localizes the new invoice classification and compact filter labels', () => {
+    expect(formatMoneyWithCurrencyCode({ amount: '32287.00', currency: 'PLN' })).toBe('32 287 PLN');
+    expect(t('invoices.classification.plService')).toBe('Usługa krajowa');
+    expect(t('common.apply')).toBe('Zastosuj');
+    setActiveLocale('en');
+    expect(t('invoices.classification.plService')).toBe('PL service');
+    expect(t('invoices.filterTitle')).toBe('Filter invoices');
+    expect(t('settlements.completedPeriod')).toBe('All obligations paid');
+    expect(formatMoneyWithCurrencyCode({ amount: '7661.00', currency: 'EUR' })).toBe('7 661 EUR');
   });
 });

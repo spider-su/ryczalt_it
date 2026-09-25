@@ -1,7 +1,7 @@
 import { AccountingApi } from '../api/accountingApi';
-import { mapCounterparty, mapInvoices, mapPaymentHistory, mapPeriod } from '../api/mappers/accountingMapper';
+import { mapCounterparty, mapCounterpartyRule, mapInvoices, mapPaymentHistory, mapPeriod } from '../api/mappers/accountingMapper';
 import type { AccountingRepository } from './accountingRepository';
-import type { AccountingPeriod, Counterparty, Invoice, PaymentHistoryLine } from '../model/accounting';
+import type { AccountingPeriod, Counterparty, CounterpartyRule, Invoice, PaymentHistoryLine } from '../model/accounting';
 import { currentLocalAccountingMonth, isAccountingMonthAllowed, MIN_ACCOUNTING_MONTH } from '../utils/calendar';
 
 export class ApiAccountingRepository implements AccountingRepository {
@@ -17,8 +17,11 @@ export class ApiAccountingRepository implements AccountingRepository {
   async getCounterpartyInvoices(counterpartyId: string): Promise<Invoice[]> { return mapInvoices(await this.api.getCounterpartyInvoices(this.profileId, counterpartyId)); }
   async markInvoiceManuallyPaid(invoiceId: string, paidDate: string, note?: string): Promise<void> { return this.api.markInvoiceManuallyPaid(this.profileId, invoiceId, paidDate, note); }
   async clearInvoiceManualPayment(invoiceId: string): Promise<void> { return this.api.clearInvoiceManualPayment(this.profileId, invoiceId); }
+  async markObligationManuallyPaid(month: string, obligationId: string, paidDate: string, note?: string): Promise<void> { return this.api.markObligationManuallyPaid(this.profileId, month, obligationId, paidDate, note); }
+  async clearObligationManualPayment(month: string, obligationId: string): Promise<void> { return this.api.clearObligationManualPayment(this.profileId, month, obligationId); }
   async getPaymentHistory(month: string, type?: string): Promise<PaymentHistoryLine[]> { return mapPaymentHistory(await this.api.getPayments(this.profileId, month, month, type)); }
   async getCounterparties(): Promise<Counterparty[]> { return (await this.api.getCounterparties(this.profileId)).map(mapCounterparty); }
+  async getCounterpartyRules(counterpartyId: string): Promise<CounterpartyRule[]> { return (await this.api.getCounterpartyRules(this.profileId, counterpartyId)).map(mapCounterpartyRule); }
   async calculatePeriod(month: string): Promise<void> { await this.api.calculate(this.profileId, month); }
   async performPeriodAction(month: string, action: 'FREEZE' | 'REOPEN'): Promise<void> { if (action === 'FREEZE') return this.api.freeze(this.profileId, month); return this.api.reopen(this.profileId, month); }
   getCurrentMonth(): Promise<AccountingPeriod> { return this.getMonth(currentLocalAccountingMonth()); }

@@ -6,7 +6,7 @@ import { createAccountingRepository } from '../api/config';
 import { useAccountingMonth } from '../navigation/AccountingMonthContext';
 import { useLocale } from '../i18n/LocaleContext';
 import { t } from '../i18n';
-import { theme } from '../theme/theme';
+import { createThemeStyles, theme, useTheme } from '../theme/theme';
 import { ErrorState, LoadingState, PrimaryButton, SegmentedControl, SettingsGroup, SettingsRow, SheetHeader, SupportingText } from '../components/ui';
 import { DEFAULT_NOTIFICATION_PREFERENCES, getNotificationPreferences, permissionStatus, requestPermission, reconcilePaymentReminders, saveNotificationPreferences, cancelAllProfileReminders, type NotificationPreferences } from '../notifications/notificationService';
 import * as Notifications from 'expo-notifications';
@@ -14,6 +14,7 @@ import { REMINDER_LEAD_DAYS, type ReminderLeadDays } from '../notifications/paym
 import { notificationSettingsLoadState } from '../presentation/notificationSettings';
 
 export function NotificationSettingsScreen({ visible, onClose }: { visible: boolean; onClose: () => void }) {
+  useTheme();
   const { profileId } = useAuth();
   const { locale } = useLocale();
   const { month } = useAccountingMonth();
@@ -54,4 +55,4 @@ export function NotificationSettingsScreen({ visible, onClose }: { visible: bool
   return <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}><View style={styles.overlay}><SafeAreaView style={styles.sheet}><ScrollView contentContainerStyle={styles.content}><SheetHeader title={t('notifications.title')} onClose={onClose} />{loadState === 'loading' ? <LoadingState /> : loadState === 'error' ? <ErrorState title={t('notifications.loadError')} onRetry={() => setRetry((value) => value + 1)} /> : <><SupportingText>{t('notifications.description')}</SupportingText><SettingsGroup><SettingsRow title={t('notifications.paymentReminders')} description={t('notifications.paymentRemindersHint')} last><Switch value={draft.enabled} onValueChange={(enabled) => { setPermissionRevoked(false); setDraft((value) => ({ ...value, enabled })); }} disabled={saving} accessibilityLabel={t('notifications.paymentReminders')} accessibilityState={{ checked: draft.enabled, disabled: saving }} /></SettingsRow></SettingsGroup>{permissionRevoked ? <Text style={styles.error}>{t('notifications.permissionRevoked')}</Text> : null}<Text style={styles.section}>{t('notifications.leadTime')}</Text><SegmentedControl options={leadOptions} selected={String(draft.leadDays)} onSelect={(value) => setDraft((current) => ({ ...current, leadDays: Number(value) as ReminderLeadDays }))} />{saveError ? <Text style={styles.error}>{t('notifications.error')}</Text> : null}<PrimaryButton label={saving ? t('common.loading') : t('common.save')} onPress={() => { void save(); }} disabled={saving} /></>}</ScrollView></SafeAreaView></View></Modal>;
 }
 
-const styles = StyleSheet.create({ overlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: theme.colors.overlay }, sheet: { maxHeight: '90%', backgroundColor: theme.colors.surface, borderTopLeftRadius: theme.radius.large, borderTopRightRadius: theme.radius.large }, content: { padding: theme.spacing.xl, paddingBottom: theme.spacing.xxxl }, section: { color: theme.colors.textPrimary, fontSize: theme.typography.rowTitle, fontWeight: '600', marginTop: theme.spacing.xl, marginBottom: theme.spacing.sm }, error: { color: theme.colors.danger, lineHeight: 20, marginTop: theme.spacing.lg } });
+const styles = createThemeStyles({ overlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: theme.colors.overlay }, sheet: { maxHeight: '90%', backgroundColor: theme.colors.surface, borderTopLeftRadius: theme.radius.large, borderTopRightRadius: theme.radius.large }, content: { padding: theme.spacing.xl, paddingBottom: theme.spacing.xxxl }, section: { color: theme.colors.textPrimary, fontSize: theme.typography.rowTitle, fontWeight: '600', marginTop: theme.spacing.xl, marginBottom: theme.spacing.sm }, error: { color: theme.colors.danger, lineHeight: 20, marginTop: theme.spacing.lg } });

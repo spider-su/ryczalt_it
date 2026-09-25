@@ -8,6 +8,7 @@ describe('canonical accounting API paths', () => {
     expect(accountingPaths.payments(7)).toBe('/api/profiles/7/accounting/payments');
     expect(accountingPaths.counterpartyInvoices(7, 3)).toBe('/api/profiles/7/accounting/invoices?counterpartyId=3');
     expect(accountingPaths.manualPaid(7, 42)).toBe('/api/profiles/7/accounting/invoices/42/manual-paid');
+    expect(accountingPaths.obligationManualPaid(7, '2026-02', 10)).toBe('/api/profiles/7/accounting/periods/2026-02/obligations/10/manual-paid');
     expect(accountingPaths.recognizeInvoice(7)).toBe('/api/profiles/7/accounting/invoices/recognize');
   });
   it('exposes period commands and counterparty rules without legacy aliases', () => {
