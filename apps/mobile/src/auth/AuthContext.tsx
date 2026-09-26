@@ -18,6 +18,7 @@ import {
   setDemoMode,
 } from "../api/config";
 import { AUTH_REQUEST_TIMEOUT_MS, HttpClient } from "../api/client";
+import { rotateAccountingSession } from "../api/sessionState";
 import { authErrorForFailure, type AuthErrorCode } from "./authErrors";
 import {
   profileIdentityFromResponse,
@@ -35,6 +36,7 @@ import {
   biometricLoginAvailable,
   BIOMETRIC_ENABLED_KEY,
 } from "./biometric";
+import { onboardingApi, type OnboardingState } from "../api/onboardingApi";
 
 const TOKEN_KEY = "investory.authToken";
 const PROFILE_ID_KEY = "investory.accountingProfileId";
@@ -42,10 +44,14 @@ const LOGIN_PATH =
   process.env.EXPO_PUBLIC_AUTH_LOGIN_PATH ?? "/api/v1/auth/login";
 const CURRENT_PROFILE_PATH = "/api/v1/auth/me";
 const INVITATION_ACCEPT_PATH = "/api/v1/auth/invitations";
+let webSessionToken: string | null = null;
 function publicAuthClient(): HttpClient {
   return new HttpClient({
     baseUrl: requireApiBaseUrl(),
     timeoutMs: AUTH_REQUEST_TIMEOUT_MS,
+    credentials: Platform.OS === "web" ? "include" : undefined,
+    defaultHeaders:
+      Platform.OS === "web" ? { "X-Investory-Client": "web" } : undefined,
   });
 }
 type AuthContextValue = {
@@ -56,6 +62,9 @@ type AuthContextValue = {
   error: AuthErrorCode | null;
   biometricAvailable: boolean;
   biometricEnabled: boolean;
+  onboardingState: OnboardingState | null;
+  onboardingLoading: boolean;
+  refreshOnboarding: () => Promise<void>;
   signIn: (email: string, password: string) => Promise<void>;
   activateAccount: (token: string, password: string) => Promise<void>;
   unlockWithBiometrics: () => Promise<boolean>;
@@ -69,22 +78,31 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 // SecureStore is native-only. Expo web uses the existing browser-backed
 // AsyncStorage adapter so local development can exercise the same session flow.
 const sessionStore = {
-  get: (key: string) =>
-    Platform.OS === "web"
-      ? AsyncStorage.getItem(key)
-      : SecureStore.getItemAsync(key),
+  get: async (key: string, options?: SecureStore.SecureStoreOptions) => {
+    if (Platform.OS !== "web") return SecureStore.getItemAsync(key, options);
+    if (key === TOKEN_KEY) return webSessionToken ?? AsyncStorage.getItem(key);
+    return AsyncStorage.getItem(key);
+  },
   set: (
     key: string,
     value: string,
     options?: SecureStore.SecureStoreOptions,
-  ) =>
-    Platform.OS === "web"
-      ? AsyncStorage.setItem(key, value)
-      : SecureStore.setItemAsync(key, value, options),
-  delete: (key: string) =>
-    Platform.OS === "web"
-      ? AsyncStorage.removeItem(key)
-      : SecureStore.deleteItemAsync(key),
+  ) => {
+    if (Platform.OS !== "web")
+      return SecureStore.setItemAsync(key, value, options);
+    if (key === TOKEN_KEY) {
+      webSessionToken = value;
+      return value === DEMO_SESSION_TOKEN
+        ? AsyncStorage.setItem(key, value)
+        : AsyncStorage.removeItem(key);
+    }
+    return AsyncStorage.setItem(key, value);
+  },
+  delete: (key: string) => {
+    if (Platform.OS !== "web") return SecureStore.deleteItemAsync(key);
+    if (key === TOKEN_KEY) webSessionToken = null;
+    return AsyncStorage.removeItem(key);
+  },
 };
 
 export function AuthProvider({ children }: PropsWithChildren) {
@@ -97,7 +115,11 @@ export function AuthProvider({ children }: PropsWithChildren) {
   const [error, setError] = useState<AuthErrorCode | null>(null);
   const [biometricAvailable, setBiometricAvailable] = useState(false);
   const [biometricEnabled, setBiometricEnabled] = useState(false);
+  const [onboardingState, setOnboardingState] =
+    useState<OnboardingState | null>(null);
+  const [onboardingLoading, setOnboardingLoading] = useState(false);
   const invalidateSession = useCallback(async () => {
+    rotateAccountingSession();
     const activeProfileId = profileIdRef.current;
     if (activeProfileId != null)
       await cancelAllProfileReminders(activeProfileId).catch(() => undefined);
@@ -109,6 +131,8 @@ export function AuthProvider({ children }: PropsWithChildren) {
     setAccountingProfileId(null);
     setToken(null);
     setProfileId(null);
+    setOnboardingState(null);
+    setOnboardingLoading(false);
   }, []);
   async function resolveProfile(nextToken: string): Promise<ProfileIdentity> {
     try {
@@ -134,15 +158,49 @@ export function AuthProvider({ children }: PropsWithChildren) {
   useEffect(() => {
     let cancelled = false;
     async function restore() {
+      let protectedCredentialRead = false;
+      let biometricEnabledOnDevice = false;
       try {
-        const biometricEnabledOnDevice =
+        biometricEnabledOnDevice =
+          Platform.OS !== "web" &&
           (await sessionStore.get(BIOMETRIC_ENABLED_KEY)) === "true";
+        const storedValue = await sessionStore.get(TOKEN_KEY);
         if (
-          biometricEnabledOnDevice &&
-          !(await authenticateForBiometricLogin())
-        )
+          Platform.OS === "web" &&
+          storedValue &&
+          !isDemoSession(storedValue)
+        ) {
+          await sessionStore.delete(TOKEN_KEY);
+        }
+        if (
+          Platform.OS === "web" &&
+          (!storedValue || !isDemoSession(storedValue))
+        ) {
+          try {
+            const profile = await resolveProfile("");
+            if (cancelled) return;
+            setDemoMode(false);
+            setIsDemo(false);
+            setAccountingAuthToken(null);
+            setAccountingProfileId(profile.id);
+            setToken(null);
+            setProfileId(profile.id);
+          } catch (reason) {
+            if (!(
+              reason instanceof Error &&
+              reason.message === "invalid_credentials"
+            ))
+              throw reason;
+          }
           return;
-        const value = await sessionStore.get(TOKEN_KEY);
+        }
+        const value = await sessionStore.get(
+          TOKEN_KEY,
+          biometricEnabledOnDevice
+            ? { requireAuthentication: true }
+            : undefined,
+        );
+        protectedCredentialRead = true;
         if (!value) return;
         if (isDemoSession(value)) {
           if (cancelled) return;
@@ -165,6 +223,12 @@ export function AuthProvider({ children }: PropsWithChildren) {
         setProfileId(profile.id);
       } catch (reason) {
         if (!cancelled) {
+          if (biometricEnabledOnDevice && !protectedCredentialRead) {
+            await sessionStore
+              .delete(BIOMETRIC_ENABLED_KEY)
+              .catch(() => undefined);
+            setBiometricEnabled(false);
+          }
           await invalidateSession();
           setError(authErrorForFailure(reason));
         }
@@ -177,6 +241,26 @@ export function AuthProvider({ children }: PropsWithChildren) {
       cancelled = true;
     };
   }, [invalidateSession]);
+  const refreshOnboarding = useCallback(async () => {
+    if (profileId == null || !token || isDemo) {
+      setOnboardingState(
+        profileId == null
+          ? null
+          : { profileId, state: "COMPLETED", ksefState: "SKIPPED" },
+      );
+      setOnboardingLoading(false);
+      return;
+    }
+    setOnboardingLoading(true);
+    try {
+      setOnboardingState(await onboardingApi(token).get(profileId));
+    } finally {
+      setOnboardingLoading(false);
+    }
+  }, [isDemo, profileId, token]);
+  useEffect(() => {
+    void refreshOnboarding().catch(() => setOnboardingState(null));
+  }, [refreshOnboarding]);
   useEffect(() => {
     setAccountingAuthFailureHandler(() => {
       void invalidateSession();
@@ -184,7 +268,10 @@ export function AuthProvider({ children }: PropsWithChildren) {
     return () => setAccountingAuthFailureHandler(null);
   }, [invalidateSession]);
   async function signIn(email: string, password: string) {
+    rotateAccountingSession();
     setError(null);
+    await sessionStore.delete(BIOMETRIC_ENABLED_KEY);
+    setBiometricEnabled(false);
     setDemoMode(false);
     setIsDemo(false);
     try {
@@ -193,13 +280,14 @@ export function AuthProvider({ children }: PropsWithChildren) {
         accessToken?: string;
       }>(LOGIN_PATH, { email, password });
       const nextToken = body.token ?? body.accessToken;
-      if (!nextToken) throw new Error("invalid_response");
-      const profile = await resolveProfile(nextToken);
-      await sessionStore.set(TOKEN_KEY, nextToken);
+      if (Platform.OS !== "web" && !nextToken)
+        throw new Error("invalid_response");
+      const profile = await resolveProfile(nextToken ?? "");
+      if (Platform.OS !== "web") await sessionStore.set(TOKEN_KEY, nextToken!);
       await sessionStore.set(PROFILE_ID_KEY, String(profile.id));
-      setAccountingAuthToken(nextToken);
+      setAccountingAuthToken(nextToken ?? null);
       setAccountingProfileId(profile.id);
-      setToken(nextToken);
+      setToken(nextToken ?? null);
       setProfileId(profile.id);
     } catch (reason) {
       const code = authErrorForFailure(reason);
@@ -223,14 +311,14 @@ export function AuthProvider({ children }: PropsWithChildren) {
   }
   async function unlockWithBiometrics() {
     setError(null);
-    const value = await sessionStore.get(TOKEN_KEY);
-    if (
-      !value ||
-      isDemoSession(value) ||
-      !(await authenticateForBiometricLogin())
-    )
-      return false;
     try {
+      const biometricEnabledOnDevice =
+        (await sessionStore.get(BIOMETRIC_ENABLED_KEY)) === "true";
+      if (!biometricEnabledOnDevice) return false;
+      const value = await sessionStore.get(TOKEN_KEY, {
+        requireAuthentication: true,
+      });
+      if (!value || isDemoSession(value)) return false;
       const profile = await resolveProfile(value);
       await sessionStore.set(PROFILE_ID_KEY, String(profile.id));
       setAccountingAuthToken(value);
@@ -244,10 +332,17 @@ export function AuthProvider({ children }: PropsWithChildren) {
     }
   }
   async function enableBiometricLogin() {
-    if (!biometricAvailable || !(await authenticateForBiometricLogin()))
+    if (
+      !biometricAvailable ||
+      !token ||
+      isDemoSession(token) ||
+      !(await authenticateForBiometricLogin())
+    )
       return false;
-    if (token && !isDemoSession(token) && Platform.OS !== "web")
-      await sessionStore.set(TOKEN_KEY, token, { requireAuthentication: true });
+    if (Platform.OS !== "web")
+      await sessionStore.set(TOKEN_KEY, token, {
+        requireAuthentication: true,
+      });
     await sessionStore.set(BIOMETRIC_ENABLED_KEY, "true");
     setBiometricEnabled(true);
     return true;
@@ -257,6 +352,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
     setBiometricEnabled(false);
   }
   async function startDemo() {
+    rotateAccountingSession();
     resetDemoAccountingState();
     setError(null);
     await sessionStore.set(TOKEN_KEY, DEMO_SESSION_TOKEN);
@@ -269,6 +365,10 @@ export function AuthProvider({ children }: PropsWithChildren) {
     setProfileId(DEMO_PROFILE_ID);
   }
   async function signOut() {
+    if (Platform.OS === "web")
+      await publicAuthClient()
+        .postVoid("/api/v1/auth/logout")
+        .catch(() => undefined);
     await invalidateSession();
     await disableBiometricLogin();
   }
@@ -282,6 +382,9 @@ export function AuthProvider({ children }: PropsWithChildren) {
         error,
         biometricAvailable,
         biometricEnabled,
+        onboardingState,
+        onboardingLoading,
+        refreshOnboarding,
         signIn,
         activateAccount,
         unlockWithBiometrics,

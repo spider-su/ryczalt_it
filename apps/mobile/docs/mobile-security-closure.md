@@ -2,7 +2,7 @@
 
 ## Current decisions
 
-- `scripts/tmp/` is ignored and generated live API output is no longer tracked.
+- `apps/mobile/scripts/tmp/` is ignored and generated live API output is not tracked.
 - A historical `set-cookie` header was present in the removed live API output introduced by commit `8022d12`. Treat the associated server session as exposed and revoke/rotate it through the deployment or provider controls. Repository history was not rewritten.
 - The mobile client has no refresh-token endpoint to use. Authentication remains the backend's bearer-token `/api/v1/auth/login` and `/api/v1/auth/me` contract; an expired or invalid token returns the user to sign-in.
 - Native tokens remain in SecureStore. When the user explicitly enables biometrics, the native token is rewritten with `requireAuthentication`; restoration authenticates before reading the protected token. A cancelled or failed biometric prompt does not restore the session.

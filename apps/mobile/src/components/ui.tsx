@@ -57,9 +57,9 @@ export function SheetHeader({ title, onClose, back = false }: { title: string; o
   return <View style={styles.sheetHeader}><Text style={styles.sheetTitle}>{title}</Text><Pressable onPress={onClose} accessibilityRole="button" accessibilityLabel={back ? t('common.back') : t('common.close')} hitSlop={10} style={styles.closeButton}><Ionicons name={back ? 'chevron-back' : 'close'} size={24} color={theme.colors.textPrimary} /></Pressable></View>;
 }
 
-export function StatusBanner({ kind, title, body }: { kind: 'success' | 'info' | 'warning' | 'error' | 'unknown'; title: string; body?: string }) {
+export function StatusBanner({ kind, title, body, onDismiss, actionLabel, onAction }: { kind: 'success' | 'info' | 'warning' | 'error' | 'unknown'; title: string; body?: string; onDismiss?: () => void; actionLabel?: string; onAction?: () => void }) {
   const icon = kind === 'success' ? 'checkmark-circle-outline' : kind === 'error' ? 'alert-circle-outline' : kind === 'warning' ? 'warning-outline' : kind === 'unknown' ? 'help-circle-outline' : 'information-circle-outline';
-  return <View style={[styles.banner, styles[`banner_${kind}`]]}><Ionicons name={icon} size={24} color={bannerColors[kind]} /><View style={styles.bannerCopy}><Text style={styles.bannerTitle}>{title}</Text>{body ? <Text style={styles.bannerBody}>{body}</Text> : null}</View></View>;
+  return <View style={[styles.banner, styles[`banner_${kind}`]]}><Ionicons name={icon} size={24} color={bannerColors[kind]} /><View style={styles.bannerCopy}><Text style={styles.bannerTitle}>{title}</Text>{body ? <Text style={styles.bannerBody}>{body}</Text> : null}{onAction && actionLabel ? <Pressable onPress={onAction} accessibilityRole="button" style={styles.textButton}><Text style={styles.textButtonLabel}>{actionLabel}</Text></Pressable> : null}</View>{onDismiss ? <Pressable onPress={onDismiss} accessibilityRole="button" accessibilityLabel={t('common.close')} hitSlop={8}><Ionicons name="close" size={20} color={theme.colors.textSecondary} /></Pressable> : null}</View>;
 }
 
 export function EmptyState({ title, body, icon = 'file-tray-outline' }: { title: string; body?: string; icon?: keyof typeof Ionicons.glyphMap }) {

@@ -1,11 +1,11 @@
 # Ryczalt
 
-`ryczalt` is the active native accounting module for JDG/ryczałt functionality. The old
+`apps/backend` is the active native accounting application for JDG/ryczałt functionality. The old
 `modules/accounting` tree is outside the Maven runtime reactor and remains historical reference
 material until a separate cleanup decision.
 
 This README documents the active runtime boundary and migration state. Accounting rules and API
-contracts remain canonical in [`docs/domain/`](../../docs/domain/) and the accounting documentation.
+contracts are documented under [`docs/`](docs/) and the repository accounting documentation.
 
 ```text
 ryczalt    = active implementation
@@ -72,8 +72,8 @@ matching, and frozen-settlement protection. `RyczaltAccountingApi` and
 `RyczaltAccountingFacade` now own the native application boundary. Native REST uses that boundary.
 Native settlement and lifecycle operations run entirely on Ryczalt persistence. Frozen periods are load-only.
 
-The `modules/ryczalt` Maven dependency on `accounting` is removed. Reference/golden tables remain
-comparison evidence and are not imported as canonical facts.
+The former `ryczalt` Maven dependency on `accounting` was removed during extraction. Reference/golden
+tables remain comparison evidence and are not imported as canonical facts.
 
 Native source capability is incremental. `RyczaltFxRateService` reads persisted historical NBP facts
 before calling the reusable `NbpClient`; acquired rates are stored once with the provider reference.

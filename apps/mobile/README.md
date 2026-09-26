@@ -1,10 +1,10 @@
-# Investory Accounting Mobile
+# Ryczałt Mobile
 
-Expo + React Native + TypeScript client for the Investory Accounting mobile app.
+Expo + React Native + TypeScript client for the Ryczałt accounting product.
 
 ## Scope
 
-The app presents authoritative monthly accounting data from the Investory API and an explicit mock mode.
+The app presents authoritative monthly accounting data from the Ryczałt backend and an explicit mock mode.
 
 Implemented mobile surface:
 
@@ -113,7 +113,7 @@ src/
     money.ts
 ```
 
-## Investory API configuration
+## Backend API configuration
 
 The UI does not know where Accounting data comes from.
 
@@ -127,7 +127,7 @@ EXPO_PUBLIC_ACCOUNTING_MONTH=2025-01 \
 npx expo start --web
 ```
 
-To run Expo Web against the local Investory backend instead:
+To run Expo Web against the local backend instead:
 
 ```bash
 EXPO_PUBLIC_API_URL=http://localhost:8080 \
@@ -171,7 +171,7 @@ The backend must allow the Expo Web origin (`http://localhost:8081`) through its
 
 Known product state follows `backend code → mobile semantic presentation state → UI translation`. Backend human-readable fields remain optional detail and are not machine-translated. Canonical issue kinds and approval/payment enums are retained as codes; unknown values remain visible as unknown/attention states.
 
-The UI keeps canonical accounting calculations on Investory. `settlement.totalOutstanding` and summary values are displayed as authoritative backend values; the mobile app never adds tax components to derive settlement totals. Accounting API monetary responses must be decimal strings; the mapper rejects numeric, scientific, malformed, `NaN`, and `Infinity` values. Currency is preserved from the canonical response and is not injected globally.
+The UI keeps canonical accounting calculations on the backend. `settlement.totalOutstanding` and summary values are displayed as authoritative backend values; the mobile app never adds tax components to derive settlement totals. Accounting API monetary responses must be decimal strings; the mapper rejects numeric, scientific, malformed, `NaN`, and `Infinity` values. Currency is preserved from the canonical response and is not injected globally.
 
 The UI supports exactly `pl` and `en`. English uses `en-GB` formatting for a European financial presentation; tax jurisdiction remains Poland. Saved locale preference takes precedence over supported device English, with Polish as fallback. Locale changes affect presentation strings and formatting only: accounting month IDs, backend enums, tax periods, amounts, currencies, profile and mutation payload semantics remain unchanged. Backend human-readable display fields are not machine-translated; stable backend codes are required for complete future localization.
 
@@ -183,7 +183,7 @@ The repository remains replaceable:
 createAccountingRepository();
 ```
 
-Keep all canonical accounting calculations on the Investory backend. The mobile project should display server results and perform only presentation-level formatting.
+Keep all canonical accounting calculations on the Ryczałt backend. The mobile project should display server results and perform only presentation-level formatting.
 
 ## Validation
 

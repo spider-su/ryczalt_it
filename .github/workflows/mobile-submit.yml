@@ -17,13 +17,21 @@ jobs:
   submit:
     runs-on: ubuntu-latest
     environment: production
+    defaults:
+      run:
+        working-directory: apps/mobile
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 24
           cache: npm
+          cache-dependency-path: apps/mobile/package-lock.json
       - run: npm ci
-      - run: npx eas-cli submit --profile production --platform "${{ inputs.platform }}" --non-interactive
+      - uses: expo/expo-github-action@v9
+        with:
+          eas-version: 24.8.0
+          token: ${{ secrets.EXPO_TOKEN }}
+      - run: eas submit --profile production --platform "${{ inputs.platform }}" --non-interactive
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}

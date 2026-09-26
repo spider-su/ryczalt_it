@@ -32,7 +32,7 @@ cardinalities from the source rows, performs source-to-native and native-to-sour
 compares persisted monetary values with numeric equality. Run it with:
 
 ```text
-./mvnw -pl app -am -Dit.test=AccountingToRyczaltMigrationReconciliationIT verify
+mvn -B -f apps/backend/pom.xml -Dit.test=StandaloneMigrationTest test
 ```
 
 Stage 2 deliberately owns normalized calculator inputs rather than importing accounting DTOs or
@@ -68,11 +68,11 @@ No calculator calls NBP.
 The Stage 7 application boundary is split cleanly. `RyczaltAccountingApi` and
 `RyczaltAccountingFacade` own native query and lifecycle operations in the Ryczalt module.
 `RyczaltAccountingRestController` calls that API only. Legacy app controllers, adapters, and bridge
-have been removed. `modules/ryczalt` no longer depends on `modules/accounting`; historical legacy
-tables remain only for the later database cleanup.
+have been removed. The extracted backend has no dependency on the former Investory accounting
+module; historical legacy tables remain only for later database cleanup.
 
-The current endpoint and dependency inventory is maintained in
-`modules/ryczalt/docs/cutover-audit.md`. It distinguishes historical migration SQL from normal
+The historical endpoint and dependency inventory is maintained in
+`docs/backend/docs/cutover-audit.md`. It distinguishes migration SQL from normal
 runtime dependencies and is the source for the next implementation backlog.
 
 Stage 3 intentionally does not migrate `accounting_reference_*` or other comparison-only tables.

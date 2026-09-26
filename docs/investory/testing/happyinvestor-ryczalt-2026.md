@@ -10,13 +10,13 @@ continuous business story from January through July 2026.
 - Every operational month has `salesCorrections = 0`; the July correction from historical
   migration evidence is deliberately absent.
 
-Source facts live in
-`test-support/src/main/resources/happyinvestor/ryczalt/happyinvestor-ryczalt-2026.json` and are
-loaded by `HappyInvestorRyczaltFixtureLoader`. Expected calculation facts are stated separately in
-`HappyInvestorRyczalt2026Expected`; they are not produced by the calculators under test.
+The frozen Investory source baseline stored source facts in
+`test-support/src/main/resources/happyinvestor/ryczalt/happyinvestor-ryczalt-2026.json`. Expected
+calculation facts are stated separately in `HappyInvestorRyczalt2026Expected`; they are not produced
+by the calculators under test.
 
-The native database overlay is
-`test-support/src/main/resources/db/snapshot/happyinvestor-ryczalt.sql`. Snapshot generation loads
+The source baseline's native database overlay was
+`test-support/src/main/resources/db/snapshot/happyinvestor-ryczalt.sql`. Snapshot generation loaded
 it after the identity, whole-wealth, and broker overlays. Historical `accounting_reference_*` rows
-and `modules/ryczalt/src/test/resources/certification/2026/expected-results.json` remain migration
+and `apps/backend/src/test/resources/certification/2026/expected-results.json` remain migration
 certification evidence and are not operational expectations for this fixture.

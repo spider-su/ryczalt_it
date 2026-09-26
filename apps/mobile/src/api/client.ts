@@ -49,6 +49,8 @@ type HttpClientOptions = {
   fetchImpl?: typeof fetch;
   token?: string | null | (() => string | null);
   onUnauthorized?: () => void;
+  credentials?: RequestCredentials;
+  defaultHeaders?: Record<string, string>;
 };
 
 export type RequestOptions = { timeoutMs?: number; signal?: AbortSignal };
@@ -64,6 +66,8 @@ export class HttpClient {
   private readonly fetchImpl: typeof fetch;
   private readonly token: string | null | (() => string | null);
   private readonly onUnauthorized?: () => void;
+  private readonly credentials?: RequestCredentials;
+  private readonly defaultHeaders: Record<string, string>;
 
   constructor({
     baseUrl,
@@ -71,6 +75,8 @@ export class HttpClient {
     fetchImpl = fetch,
     token,
     onUnauthorized,
+    credentials,
+    defaultHeaders,
   }: HttpClientOptions) {
     if (!baseUrl || !/^https?:\/\//.test(baseUrl)) {
       throw new ConfigurationError(
@@ -83,6 +89,8 @@ export class HttpClient {
     this.fetchImpl = fetchImpl.bind(globalThis);
     this.token = token ?? null;
     this.onUnauthorized = onUnauthorized;
+    this.credentials = credentials;
+    this.defaultHeaders = defaultHeaders ?? {};
   }
 
   async get<T>(path: string, init: RequestInit = {}): Promise<T> {
@@ -191,9 +199,11 @@ export class HttpClient {
         method: init.method ?? "GET",
         headers: {
           Accept: "application/json",
+          ...this.defaultHeaders,
           ...(currentToken ? { Authorization: `Bearer ${currentToken}` } : {}),
           ...init.headers,
         },
+        credentials: this.credentials,
         signal: controller.signal,
       });
 

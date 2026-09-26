@@ -3,7 +3,7 @@
 This file is a content checklist, not a published legal notice. Replace the
 operator identity, contact details, retention periods, legal bases, and user
 rights process before publishing it at the public privacy URL in
-`docs/store-metadata.md`.
+`apps/mobile/docs/store-metadata.md`.
 
 Investory Accounting processes account and accounting information to provide
 the application, including authentication data, profile data, invoices,

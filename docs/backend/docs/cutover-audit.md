@@ -4,7 +4,7 @@ This document is retained only as historical migration evidence.
 
 The Accounting-to-Ryczalt cutover is complete in the active runtime:
 
-- `modules/ryczalt` is the active accounting implementation.
+- `apps/backend` is the active accounting implementation.
 - Active Web and REST paths use native Ryczalt contracts.
 - Legacy Accounting controllers, bridges, and mobile accounting routes are removed.
 - Bank CSV import, KSeF sync, invoice recognition/approval, counterparties/rules, native month inputs,

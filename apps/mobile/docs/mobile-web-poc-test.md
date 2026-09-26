@@ -9,13 +9,13 @@ screenshots containing financial data.
 API mode against the deployed backend:
 
 ```bash
-EXPO_PUBLIC_ACCOUNTING_DATA_SOURCE=api npm run web
+cd apps/mobile && EXPO_PUBLIC_ACCOUNTING_DATA_SOURCE=api npm run web
 ```
 
 API mode against a local backend:
 
 ```bash
-EXPO_PUBLIC_API_URL=http://localhost:8080 \
+cd apps/mobile && EXPO_PUBLIC_API_URL=http://localhost:8080 \
 EXPO_PUBLIC_ACCOUNTING_DATA_SOURCE=api \
 npm run web
 ```
@@ -23,7 +23,7 @@ npm run web
 Mock mode for UI-only checks:
 
 ```bash
-EXPO_PUBLIC_ACCOUNTING_DATA_SOURCE=mock \
+cd apps/mobile && EXPO_PUBLIC_ACCOUNTING_DATA_SOURCE=mock \
 EXPO_PUBLIC_ACCOUNTING_MONTH=2026-07 \
 npm run web
 ```

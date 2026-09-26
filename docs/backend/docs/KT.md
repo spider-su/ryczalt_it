@@ -67,7 +67,7 @@ evidence.
 ## 4. Database schema
 
 Schema is PostgreSQL, owned by Flyway. Production schema changes belong in
-`app/src/main/resources/sql/migration`.
+`apps/backend/src/main/resources/sql/migration`.
 
 Core Ryczalt tables:
 
@@ -85,9 +85,9 @@ Core Ryczalt tables:
 | `ryczalt_counterparty_rule` | Counterparty-specific accounting and payment rules. |
 | `ryczalt_invoice_candidate` | Uploaded/recognized invoice candidate before approval. |
 
-The first Ryczalt persistence migration is `V01.026__ryczalt_persistence.sql`. Later migrations add
-lifecycle history, payment matching, source identity, counterparties, candidate state, and approval
-integrity. Read the complete migration chain before changing an existing table.
+The standalone Flyway baseline and accounting migrations live in
+`apps/backend/src/main/resources/sql/migration`. Read the complete migration chain before changing
+an existing table.
 
 The old `accounting_*` tables remain during migration. They are reference/legacy evidence, not the
 new canonical Ryczalt source of truth.
@@ -96,14 +96,14 @@ new canonical Ryczalt source of truth.
 
 Important code locations:
 
-- `modules/ryczalt/src/main/java/.../domain`: records, enums, calculators, rules, checkers.
-- `modules/ryczalt/src/main/java/.../application`: use cases and `RyczaltAccountingApi`.
-- `modules/ryczalt/src/main/java/.../persistence`: JPA entities, repositories, persistence adapter.
+- `apps/backend/src/main/java/.../ryczalt/domain`: records, enums, calculators, rules, checkers.
+- `apps/backend/src/main/java/.../ryczalt/application`: use cases and `RyczaltAccountingFacade`.
+- `apps/backend/src/main/java/.../ryczalt/persistence`: JPA entities, repositories, persistence adapters.
 - Legacy migration/import code is removed from the active source tree. Historical migration SQL is
   retained only for the later database cleanup.
-- `app/src/main/java/.../ryczalt/web`: REST controllers and response DTOs.
-- `adapters/web-ui/src/main/java/.../ui/accounting`: server-rendered Web controller and UI contract.
-- `app/src/main/java/.../ui/accounting/InProcessRyczaltWebAccountingClient.java`: active native Web client; it calls native controllers and does not depend on the legacy bridge.
+- `apps/backend/src/main/java/.../ryczalt/web`: REST controllers and response DTOs.
+- `apps/customer-web/src/main/java/.../ui/accounting`: server-rendered Web controllers and UI contract.
+- `apps/customer-web/src/main/java/.../ui/accounting/RyczaltWebAccountingClient.java`: active customer Web client.
 
 Native REST base path:
 
@@ -240,29 +240,20 @@ The MVC controller should remain thin: read a Web contract, populate the model, 
 
 ## 8. Tests, CI, and rollout
 
-Use repository-local Maven caches in managed workspaces:
+Run backend tests from the repository root:
 
 ```bash
-MAVEN_USER_HOME=$PWD/.m2 \
-  ./mvnw -Dmaven.repo.local=$PWD/.m2/repository test
+mvn -B -f apps/backend/pom.xml test
 ```
 
 Useful focused checks:
 
 ```bash
-MAVEN_USER_HOME=$PWD/.m2 \
-  ./mvnw -Dmaven.repo.local=$PWD/.m2/repository \
-  -pl app,adapters/web-ui -am test
-
-MAVEN_USER_HOME=$PWD/.m2 \
-  ./mvnw -Dmaven.repo.local=$PWD/.m2/repository \
-  -pl app,adapters/web-ui -am spotless:check
+mvn -B -f apps/customer-web/pom.xml test
 ```
 
-Architecture rules are in `app/src/test/java/com/smartbox/investory/architecture/LayerDependencyTest.java`.
-Migration validation starts from an empty database; fast database tests use the committed snapshot at
-`test-support/src/main/resources/db/snapshot/schema.sql`. Update the snapshot when a migration changes
-the application-facing schema.
+`StandaloneMigrationTest` verifies Flyway migration from an empty database. Other database-backed tests
+run against PostgreSQL through Testcontainers.
 
 CI is defined in `.github/workflows/tests.yml`. The main stages are:
 
@@ -278,12 +269,11 @@ The native Web controller and native REST routes are the only active accounting 
 
 ## 9. First places to read
 
-1. `modules/ryczalt/README.md` — staged migration and capability matrix.
-2. `modules/ryczalt/src/main/java/.../application/RyczaltAccountingApi.java` — application boundary.
+1. `apps/backend/README.md` — backend setup and capability notes.
+2. `apps/backend/src/main/java/.../application/RyczaltAccountingFacade.java` — application boundary.
 3. `RyczaltAccountingFacade` and native persistence repositories — orchestration and storage.
-4. `app/.../ryczalt/web/RyczaltAccountingRestController.java` — active REST contract.
-5. `V01.026__ryczalt_persistence.sql` plus later `V01.027+` migrations — schema evolution.
-6. `docs/development/testing.md` — test ownership and database-test rules.
+4. `apps/backend/src/main/java/.../ryczalt/web/RyczaltAccountingRestController.java` — active REST contract.
+5. `apps/backend/src/main/resources/sql/migration` — schema evolution.
+6. `apps/backend/src/test/java` — backend test ownership and database-test rules.
 
-For investment semantics, read `docs/domain/portfolio-accounting.md`; it describes the separate
-brokerage accounting domain and should not be copied into Ryczalt tax calculations.
+Investment and retirement accounting are outside this repository's product scope.

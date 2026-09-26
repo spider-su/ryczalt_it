@@ -11,8 +11,8 @@ Make Ryczałt an independently deployable accounting product while preserving th
 
 ## Migrated in this branch
 
-- complete `modules/ryczalt` production source
-- complete `modules/ryczalt` unit tests and certification fixtures
+- accounting domain production source and tests under `apps/backend`
+- accounting certification fixtures under `apps/backend/src/test/resources`
 - accounting REST controllers and DTOs used by the mobile contract
 - standalone Ryczałt Flyway baseline plus accounting migrations
 - profile-scoped identity, membership and bearer-token authentication required by the existing mobile app
@@ -22,7 +22,7 @@ Make Ryczałt an independently deployable accounting product while preserving th
 - profile-scoped authorization boundary used by accounting REST endpoints
 - accounting-only Thymeleaf controllers/templates/styles/tests as `apps/customer-web`
 - accounting architecture, API, migration, calculation and test documentation
-- CI validation for backend, customer web and the existing mobile application
+- CI validation for backend, customer web and the mobile application in `apps/mobile`
 
 ## Intentionally not migrated
 
@@ -34,12 +34,12 @@ Make Ryczałt an independently deployable accounting product while preserving th
 - cross-domain tests whose purpose is to assert the Investory/accounting boundary
 - Google/OAuth login from Investory; the extracted backend keeps the mobile token-login contract only
 
-## Transitional repository layout
+## Repository layout
 
 - `apps/backend` — standalone accounting backend extraction
+- `apps/mobile` — Expo / React Native end-user application
 - `apps/customer-web` — customer accounting web seed
-- repository root — existing Expo mobile app, intentionally left in place during extraction to avoid mixing backend extraction with a mobile path/build migration
-- `apps/backoffice` — planned next-stage staff application; no fake implementation is introduced in this migration
+- `apps/backoffice` — reserved for the separate staff application; no fake implementation is introduced in this migration
 
 ## Validation completed
 
@@ -56,9 +56,8 @@ The extraction workflow and Mobile workflow are green on the current branch.
 2. define production bootstrap/onboarding for creation of the first Ryczałt profile and owner instead of relying on migrated data
 3. configure production secrets: `RYCZALT_TOKEN_SECRET`, `RYCZALT_INTEGRATION_MASTER_KEY`, database credentials and allowed web origins
 4. add deployment workflows/Cloud Run configuration for the standalone backend
-5. move the mobile app mechanically to `apps/mobile` after extraction is merged
-6. implement the separate reviewer/admin backoffice application
-7. only after production parity, remove accounting ownership from Investory in a separate PR
+5. implement the separate reviewer/admin backoffice application
+6. only after production parity, remove accounting ownership from Investory in a separate PR
 
 ## Cutover rule
 

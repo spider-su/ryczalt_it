@@ -25,4 +25,22 @@ class StandaloneMigrationTest {
       }
     }
   }
+
+  @Test
+  void releasedCoreSchemaUpgradesToTheLatestSchema() throws Exception {
+    try (var database = MigrationTestDatabase.open("standalone-upgrade")) {
+      MigrationTestDatabase.migrateTo(database, "01.000");
+      try (var connection = MigrationTestDatabase.connection(database);
+          var statement = connection.createStatement()) {
+        assertTrue(MigrationTestDatabase.exists(
+            statement, "SELECT 1 FROM information_schema.tables WHERE table_schema='investory' AND table_name='app_users'"));
+      }
+      MigrationTestDatabase.migrate(database);
+      try (var connection = MigrationTestDatabase.connection(database);
+          var statement = connection.createStatement()) {
+        assertTrue(MigrationTestDatabase.exists(
+            statement, "SELECT 1 FROM information_schema.tables WHERE table_schema='investory' AND table_name='ryczalt_invoice'"));
+      }
+    }
+  }
 }
