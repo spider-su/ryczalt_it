@@ -16,3 +16,4 @@
 # Generated mobile smoke-test output; never commit credentials or live data.
 /apps/mobile/scripts/tmp/
 **/target/
+/apps/backend/src/main/resources/application-local.yml
