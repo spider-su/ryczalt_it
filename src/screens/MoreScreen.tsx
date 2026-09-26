@@ -24,6 +24,8 @@ import { useAccountingMonth } from "../navigation/AccountingMonthContext";
 import { CounterpartiesScreen } from "./CounterpartiesScreen";
 import { NotificationSettingsScreen } from "./NotificationSettingsScreen";
 import { AccountingExportsScreen } from "./AccountingExportsScreen";
+import { OnboardingSettingsScreen } from "./OnboardingSettingsScreen";
+import { OnboardingScreen } from "./OnboardingScreen";
 import {
   KeyValueRow,
   ListGroup,
@@ -43,12 +45,17 @@ export function MoreScreen() {
     biometricEnabled,
     enableBiometricLogin,
     disableBiometricLogin,
+    onboardingState,
+    onboardingLoading,
+    refreshOnboarding,
   } = useAuth();
   const { locale, setLocale } = useLocale();
   const [settingsOpen, setSettingsOpen] = React.useState(false);
   const [counterpartiesOpen, setCounterpartiesOpen] = React.useState(false);
   const [notificationsOpen, setNotificationsOpen] = React.useState(false);
   const [exportsOpen, setExportsOpen] = React.useState(false);
+  const [onboardingOpen, setOnboardingOpen] = React.useState(false);
+  const [onboardingEditOpen, setOnboardingEditOpen] = React.useState(false);
   const [status, setStatus] = React.useState<AccountingPeriod | null>(null);
   const [statusLoading, setStatusLoading] = React.useState(true);
   const [statusError, setStatusError] = React.useState(false);
@@ -93,6 +100,11 @@ export function MoreScreen() {
       icon: "settings-outline",
       label: t("more.settings"),
       onPress: () => setSettingsOpen(true),
+    },
+    {
+      icon: "briefcase-outline",
+      label: t("settings.onboarding"),
+      onPress: () => setOnboardingOpen(true),
     },
     {
       icon: "finger-print-outline",
@@ -205,6 +217,30 @@ export function MoreScreen() {
         visible={exportsOpen}
         onClose={() => setExportsOpen(false)}
       />
+      <OnboardingSettingsScreen
+        visible={onboardingOpen}
+        state={onboardingState}
+        loading={onboardingLoading}
+        isDemo={isDemo}
+        onClose={() => setOnboardingOpen(false)}
+        onEdit={() => {
+          setOnboardingOpen(false);
+          setOnboardingEditOpen(true);
+        }}
+      />
+      <Modal
+        visible={onboardingEditOpen}
+        animationType="slide"
+        onRequestClose={() => setOnboardingEditOpen(false)}
+      >
+        <OnboardingScreen
+          initialState={onboardingState}
+          onComplete={async () => {
+            await refreshOnboarding();
+            setOnboardingEditOpen(false);
+          }}
+        />
+      </Modal>
     </SafeAreaView>
   );
 }
