@@ -10,6 +10,8 @@ import {
   mapTransactions,
 } from "../api/mappers/accountingMapper";
 import type {
+  AccountingExport,
+  AccountingExportKind,
   AccountingMonthParts,
   AccountingRepository,
 } from "./accountingRepository";
@@ -208,9 +210,40 @@ export class ApiAccountingRepository implements AccountingRepository {
     if (action === "FREEZE") return this.api.freeze(this.profileId, month);
     return this.api.reopen(this.profileId, month);
   }
+  async downloadExport(
+    month: string,
+    kind: AccountingExportKind,
+  ): Promise<AccountingExport> {
+    const response =
+      kind === "JPK"
+        ? await this.api.getJpk(this.profileId, month)
+        : await this.api.getZusDra(this.profileId, month);
+    return {
+      data: response.data,
+      fileName:
+        fileNameFromDisposition(response.contentDisposition) ??
+        `${kind === "JPK" ? "jpk" : "zus-dra"}_${month}.${kind === "JPK" ? "xml" : "pdf"}`,
+      mimeType:
+        response.contentType?.split(";", 1)[0] ||
+        (kind === "JPK" ? "application/xml" : "application/pdf"),
+    };
+  }
   getCurrentMonth(): Promise<AccountingPeriod> {
     return this.getMonth(currentLocalAccountingMonth());
   }
+}
+
+function fileNameFromDisposition(value: string | null): string | null {
+  if (!value) return null;
+  const encoded = value.match(/filename\*=UTF-8''([^;]+)/i)?.[1];
+  if (encoded) {
+    try {
+      return decodeURIComponent(encoded.replace(/^"|"$/g, ""));
+    } catch {
+      return encoded;
+    }
+  }
+  return value.match(/filename="?([^";]+)"?/i)?.[1] ?? null;
 }
 export class PartialAccountingError extends Error {
   readonly kind = "partial-accounting";

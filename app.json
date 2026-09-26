@@ -51,7 +51,8 @@
         }
       ],
       "expo-notifications",
-      "@sentry/react-native"
+      "@sentry/react-native",
+      "expo-sharing"
     ],
     "extra": {
       "eas": {

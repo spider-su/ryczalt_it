@@ -31,8 +31,10 @@ import {
   mapCostError,
   mapCostMutation,
   mapRecognizedCost,
+  findPreviousMonthInvoice,
   missingRequiredInput,
   normalizeManualDecimal,
+  previousAccountingMonth,
   validateManualCostDraft,
   type CostErrorState,
   type CostReview,
@@ -69,6 +71,9 @@ export function AddCostScreen({
   const [file, setFile] = useState<FileValue | null>(null);
   const [review, setReview] = useState<CostReview | null>(null);
   const [vatTreatment, setVatTreatment] = useState<string | null>(null);
+  const [vatDeductionRatio, setVatDeductionRatio] = useState<string | null>(
+    null,
+  );
   const [vatRate, setVatRate] = useState("");
   const [country, setCountry] = useState("");
   const [busy, setBusy] = useState(false);
@@ -78,6 +83,10 @@ export function AddCostScreen({
   const [done, setDone] = useState(false);
   const [doneMessage, setDoneMessage] = useState("cost.saved");
   const [duplicate, setDuplicate] = useState(false);
+  const [autofillBusy, setAutofillBusy] = useState(false);
+  const [autofillMessage, setAutofillMessage] = useState<
+    "none" | "error" | null
+  >(null);
   const [manualMode, setManualMode] = useState(false);
   const [manualError, setManualError] = useState<ManualCostDraftError | null>(
     null,
@@ -151,13 +160,73 @@ export function AddCostScreen({
       const next = mapRecognizedCost(candidate);
       setReview(next);
       setVatTreatment(null);
+      setVatDeductionRatio(null);
       setVatRate("");
       setCountry("");
+      setAutofillMessage(null);
       setError(next.state === "unsupported" ? "unsupported" : null);
     } catch (reason) {
       setError(mapCostError(reason));
     } finally {
       setBusy(false);
+    }
+  }
+  async function autofillPreviousMonth() {
+    if (autofillBusy || !review || review.candidate.counterpartyId == null)
+      return;
+    if (!api && !isDemoMode()) {
+      setAutofillMessage("error");
+      return;
+    }
+    setAutofillBusy(true);
+    setAutofillMessage(null);
+    try {
+      const candidate = review.candidate;
+      const month = previousAccountingMonth(
+        candidate.periodYear,
+        candidate.periodMonth,
+      );
+      const invoices = isDemoMode()
+        ? []
+        : await api!.getInvoices(requireAccountingProfileId(), month);
+      const previous = findPreviousMonthInvoice(invoices, candidate);
+      if (!previous) {
+        setAutofillMessage("none");
+        return;
+      }
+      setReview((current) =>
+        current
+          ? {
+              ...current,
+              candidate: {
+                ...current.candidate,
+                classification:
+                  previous.classification ?? current.candidate.classification,
+                vatTreatment:
+                  previous.vatTreatment ?? current.candidate.vatTreatment,
+                ryczaltRate:
+                  previous.ryczaltRate ?? current.candidate.ryczaltRate,
+                paymentVerificationPolicy:
+                  previous.paymentVerificationPolicy ??
+                  current.candidate.paymentVerificationPolicy,
+              },
+            }
+          : current,
+      );
+      setVatTreatment(
+        previous.classification ?? review.candidate.classification,
+      );
+      setVatDeductionRatio(previous.vatDeductionRatio ?? null);
+      setVatRate(previous.ryczaltRate ?? review.candidate.ryczaltRate ?? "");
+      setCountry(
+        previous.paymentVerificationPolicy ??
+          review.candidate.paymentVerificationPolicy ??
+          "",
+      );
+    } catch {
+      setAutofillMessage("error");
+    } finally {
+      setAutofillBusy(false);
     }
   }
   async function save() {
@@ -171,7 +240,11 @@ export function AddCostScreen({
       return setError("validation_required");
     const values = {
       classification: vatTreatment,
-      paymentVerificationPolicy: null,
+      vatTreatment: review.candidate.vatTreatment,
+      vatDeductionRatio,
+      ryczaltRate: vatRate.trim() || review.candidate.ryczaltRate,
+      paymentVerificationPolicy:
+        country.trim() || review.candidate.paymentVerificationPolicy,
     };
     if (missingRequiredInput(review.requiredInputs, values))
       return setError("validation_required");
@@ -346,6 +419,9 @@ export function AddCostScreen({
               onTreatment={setVatTreatment}
               onVatRate={setVatRate}
               onCountry={setCountry}
+              onAutofill={autofillPreviousMonth}
+              autofillBusy={autofillBusy}
+              autofillMessage={autofillMessage}
               onSave={save}
               busy={busy}
             />
@@ -355,7 +431,9 @@ export function AddCostScreen({
               {errorText(error)}
             </Text>
           )}
-          {manualMockEnabled ? <Button label={t("cost.enterManually")} onPress={showManual} /> : null}
+          {manualMockEnabled ? (
+            <Button label={t("cost.enterManually")} onPress={showManual} />
+          ) : null}
         </>
       )}
     </Shell>
@@ -371,6 +449,9 @@ function Review({
   onTreatment,
   onVatRate,
   onCountry,
+  onAutofill,
+  autofillBusy,
+  autofillMessage,
   onSave,
   busy,
 }: {
@@ -382,6 +463,9 @@ function Review({
   onTreatment: (value: string) => void;
   onVatRate: (value: string) => void;
   onCountry: (value: string) => void;
+  onAutofill: () => void;
+  autofillBusy: boolean;
+  autofillMessage: "none" | "error" | null;
   onSave: () => void;
   busy: boolean;
 }) {
@@ -425,6 +509,30 @@ function Review({
             : formatCurrency(review.amount, review.currency)
         }
       />
+      {review.candidate.counterpartyId != null &&
+        review.state !== "unsupported" &&
+        review.state !== "duplicate" && (
+          <>
+            <Pressable
+              style={[styles.secondaryButton, autofillBusy && styles.disabled]}
+              onPress={onAutofill}
+              disabled={autofillBusy}
+              accessibilityRole="button"
+            >
+              <Text style={styles.secondaryButtonText}>
+                {autofillBusy
+                  ? t("common.loading")
+                  : t("cost.autofillPreviousMonth")}
+              </Text>
+            </Pressable>
+            {autofillMessage === "none" && (
+              <Text style={styles.notice}>{t("cost.autofillNoMatch")}</Text>
+            )}
+            {autofillMessage === "error" && (
+              <Text style={styles.error}>{t("cost.autofillFailed")}</Text>
+            )}
+          </>
+        )}
       {review.state === "unsupported" ? (
         <Text style={styles.error}>{t("cost.unsupportedDirection")}</Text>
       ) : review.state === "duplicate" ? (
@@ -647,6 +755,17 @@ const styles = createThemeStyles({
     marginTop: theme.spacing.lg,
   },
   buttonText: { color: theme.colors.onAccent, fontWeight: "800", fontSize: 16 },
+  secondaryButton: {
+    minHeight: 48,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: theme.radius.control,
+    borderWidth: 1,
+    borderColor: theme.colors.accent,
+    paddingHorizontal: theme.spacing.lg,
+    marginTop: theme.spacing.lg,
+  },
+  secondaryButtonText: { color: theme.colors.accent, fontWeight: "800" },
   disabled: { opacity: 0.55 },
   error: {
     color: theme.colors.danger,

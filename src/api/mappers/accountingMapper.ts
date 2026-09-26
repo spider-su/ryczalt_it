@@ -1,32 +1,272 @@
-import type { AccountingIssueDto, AccountingPeriodDto, CalculationDto, CounterpartyDto, CounterpartyRuleDto, Decimal, InvoiceDto, ObligationDto, PaymentDto, ReconciliationDto, TransactionDto } from '../dto/accounting';
-import type { AccountingIssue, AccountingPeriod, Calculation, Counterparty, CounterpartyRule, Invoice, Money, Obligation, PaymentHistoryLine, Transaction } from '../../model/accounting';
+import type {
+  AccountingIssueDto,
+  AccountingPeriodDto,
+  CalculationDto,
+  CounterpartyDto,
+  CounterpartyRuleDto,
+  Decimal,
+  InvoiceDto,
+  ObligationDto,
+  PaymentDto,
+  ReconciliationDto,
+  TransactionDto,
+} from "../dto/accounting";
+import type {
+  AccountingIssue,
+  AccountingPeriod,
+  Calculation,
+  Counterparty,
+  CounterpartyRule,
+  Invoice,
+  Money,
+  Obligation,
+  PaymentHistoryLine,
+  PaymentInstruction,
+  Transaction,
+} from "../../model/accounting";
 
-export function decimalString(value: Decimal | null | undefined): string | null {
-  if (value == null || typeof value !== 'string' || !/^-?(?:0|[1-9]\d*)(?:\.\d+)?$/.test(value)) throw new Error('Accounting response contains an invalid decimal amount');
+export function decimalString(
+  value: Decimal | null | undefined,
+): string | null {
+  if (
+    value == null ||
+    typeof value !== "string" ||
+    !/^-?(?:0|[1-9]\d*)(?:\.\d+)?$/.test(value)
+  )
+    throw new Error("Accounting response contains an invalid decimal amount");
   return value;
 }
-function money(value: Decimal | null | undefined, currency?: string | null): Money { return { amount: value == null ? null : decimalString(value), currency: currency ?? null }; }
-function dateOnly(value: string | null | undefined): string | null { return value ? value.slice(0, 10) : null; }
+function money(
+  value: Decimal | null | undefined,
+  currency?: string | null,
+): Money {
+  return {
+    amount: value == null ? null : decimalString(value),
+    currency: currency ?? null,
+  };
+}
+function dateOnly(value: string | null | undefined): string | null {
+  return value ? value.slice(0, 10) : null;
+}
 
-export function mapDirection(type: string | null | undefined): Invoice['direction'] { const value = type?.toUpperCase(); if (['SALE', 'SALES', 'INCOME'].includes(value ?? '')) return 'SALE'; if (['PURCHASE', 'PURCHASES', 'COST', 'COSTS'].includes(value ?? '')) return 'PURCHASE'; return 'UNKNOWN'; }
+export function mapDirection(
+  type: string | null | undefined,
+): Invoice["direction"] {
+  const value = type?.toUpperCase();
+  if (["SALE", "SALES", "INCOME"].includes(value ?? "")) return "SALE";
+  if (["PURCHASE", "PURCHASES", "COST", "COSTS"].includes(value ?? ""))
+    return "PURCHASE";
+  return "UNKNOWN";
+}
 export function mapInvoice(invoice: InvoiceDto): Invoice {
-  const display = invoice.reference || 'Unknown invoice';
+  const display = invoice.reference || "Unknown invoice";
   const counterparty = invoice.counterparty;
-  return { id: String(invoice.id), title: counterparty?.alias || counterparty?.legalName || display, subtitle: [invoice.reference, dateOnly(invoice.issueDate), invoice.currency].filter(Boolean).join(' · '), amount: money(invoice.grossAmount, invoice.currency), direction: mapDirection(invoice.direction), counterparty: counterparty?.alias || counterparty?.legalName || null, legalName: counterparty?.legalName ?? null, alias: counterparty?.alias ?? null, taxIdentifier: counterparty?.taxIdentifier ?? null, documentNumber: invoice.reference, issueDate: dateOnly(invoice.issueDate ?? invoice.accountingDate), currency: invoice.currency, importStatus: null, approvalStatus: invoice.approvalStatus, approvalSource: invoice.approvalMethod, paymentVerificationPolicy: invoice.paymentVerificationPolicy, paymentStatus: invoice.paymentStatus, source: invoice.sourceReference, category: invoice.classification, sourceType: invoice.sourceType, documentKind: null, correctsInvoiceId: null, correctsInvoiceReference: null };
+  return {
+    id: String(invoice.id),
+    title: counterparty?.alias || counterparty?.legalName || display,
+    subtitle: [invoice.reference, dateOnly(invoice.issueDate), invoice.currency]
+      .filter(Boolean)
+      .join(" · "),
+    amount: money(invoice.grossAmount, invoice.currency),
+    direction: mapDirection(invoice.direction),
+    counterparty: counterparty?.alias || counterparty?.legalName || null,
+    legalName: counterparty?.legalName ?? null,
+    alias: counterparty?.alias ?? null,
+    taxIdentifier: counterparty?.taxIdentifier ?? null,
+    documentNumber: invoice.reference,
+    issueDate: dateOnly(invoice.issueDate ?? invoice.accountingDate),
+    currency: invoice.currency,
+    importStatus: null,
+    approvalStatus: invoice.approvalStatus,
+    approvalSource: invoice.approvalMethod,
+    paymentVerificationPolicy: invoice.paymentVerificationPolicy,
+    paymentStatus: invoice.paymentStatus,
+    source: invoice.sourceReference,
+    category: invoice.classification,
+    sourceType: invoice.sourceType,
+    documentKind: null,
+    correctsInvoiceId: null,
+    correctsInvoiceReference: null,
+  };
 }
-export function mapInvoices(invoices: InvoiceDto[]): Invoice[] { return invoices.map(mapInvoice); }
-export function mapTransaction(transaction: TransactionDto): Transaction { return { id: String(transaction.id), date: dateOnly(transaction.bookingDate), description: transaction.description || transaction.reference, amount: money(transaction.amount, transaction.currency), status: transaction.matchedAmount == null ? null : 'MATCHED' }; }
-export function mapTransactions(transactions: TransactionDto[]): Transaction[] { return transactions.map(mapTransaction); }
-export function mapObligation(obligation: ObligationDto, period = ''): Obligation { return { id: String(obligation.id), title: obligation.type, period, dueDate: dateOnly(obligation.dueDate), amount: money(obligation.expectedAmount, obligation.currency), paidAmount: money(obligation.paidAmount, obligation.currency), outstandingAmount: money(obligation.outstandingAmount, obligation.currency), status: obligation.status?.trim() || 'UNKNOWN' }; }
-export function mapObligations(obligations: ObligationDto[], period = ''): Obligation[] { return obligations.map((obligation) => mapObligation(obligation, period)); }
-export function mapCalculation(calculation: CalculationDto): Calculation { return { type: calculation.type || 'UNKNOWN', status: calculation.status || 'UNKNOWN', amount: money(calculation.amount) }; }
-export function mapPaymentHistory(payments: PaymentDto[]): PaymentHistoryLine[] { return payments.map((payment, index) => ({ id: `${payment.type}-${payment.period}-${index}`, title: payment.type, period: payment.period, dueDate: dateOnly(payment.dueDate), amount: money(payment.expectedAmount), paidAmount: money(payment.paidAmount), outstandingAmount: money(payment.outstandingAmount), status: payment.status?.trim() || 'UNKNOWN', paymentDate: dateOnly(payment.paymentDate) })); }
-export function mapIssue(issue: AccountingIssueDto): AccountingIssue { return { id: issue.id, code: issue.code || 'UNKNOWN_ISSUE', severity: issue.severity || 'UNKNOWN', kind: issue.kind || 'UNKNOWN', title: issue.title, message: issue.message, sourceReference: issue.sourceReference }; }
-export function mapIssues(issues: AccountingIssueDto[]): AccountingIssue[] { return issues.map(mapIssue); }
-export function mapReconciliation(summary: ReconciliationDto): AccountingPeriod['reconciliation'] { const state = summary.missingEvidenceCount > 0 ? 'missing_evidence' : summary.mismatchCount > 0 ? 'mismatch' : summary.settledCount === summary.rowCount ? 'healthy' : 'unknown'; return { ...summary, state }; }
-export function mapPeriod(period: AccountingPeriodDto, invoices: InvoiceDto[] = [], transactions: TransactionDto[] = [], obligations: ObligationDto[] = [], issues: AccountingIssueDto[] = []): AccountingPeriod {
-  if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(period.month)) throw new Error('Accounting response contains an invalid month');
-  return { id: period.month, status: period.status || 'UNKNOWN', summary: { revenue: money(period.summary.revenue), ryczalt: money(period.summary.ryczalt), vat: money(period.summary.vat), zus: money(period.summary.zus) }, documents: period.documents, settlement: { ...period.settlement, totalExpected: money(period.settlement.totalExpected), totalPaid: money(period.settlement.totalPaid), totalOutstanding: money(period.settlement.totalOutstanding) }, reconciliation: mapReconciliation(period.reconciliation), completeness: period.completeness, calculations: (period.calculations ?? []).map(mapCalculation), allowedActions: [...(period.allowedActions ?? [])], invoices: mapInvoices(invoices), transactions: mapTransactions(transactions), obligations: mapObligations(obligations, period.month), issues: mapIssues(issues) };
+export function mapInvoices(invoices: InvoiceDto[]): Invoice[] {
+  return invoices.map(mapInvoice);
 }
-export function mapCounterparty(value: CounterpartyDto): Counterparty { const legalName = value.legalName; const alias = value.alias ?? null; return { id: String(value.id), legalName, alias, displayName: value.displayName || alias || legalName, taxIdentifier: value.taxIdentifier, country: value.country, ruleCount: value.ruleCount ?? 0, invoiceCount: value.invoiceCount ?? 0 }; }
-export function mapCounterpartyRule(value: CounterpartyRuleDto): CounterpartyRule { return { id: String(value.id), name: value.name, sourceType: value.sourceType, documentType: value.documentType, serviceKey: value.serviceKey, classification: value.classification, vatTreatment: value.vatTreatment, vatDeductionRatio: value.vatDeductionRatio == null ? null : decimalString(value.vatDeductionRatio), ryczaltRate: value.ryczaltRate == null ? null : decimalString(value.ryczaltRate), autoApprove: value.autoApprove, paymentVerificationPolicy: value.paymentVerificationPolicy }; }
+export function mapTransaction(transaction: TransactionDto): Transaction {
+  return {
+    id: String(transaction.id),
+    date: dateOnly(transaction.bookingDate),
+    description: transaction.description || transaction.reference,
+    amount: money(transaction.amount, transaction.currency),
+    status: transaction.matchedAmount == null ? null : "MATCHED",
+  };
+}
+export function mapTransactions(transactions: TransactionDto[]): Transaction[] {
+  return transactions.map(mapTransaction);
+}
+function mapPaymentInstruction(
+  value: ObligationDto["paymentInstruction"],
+): PaymentInstruction | null {
+  if (
+    !value ||
+    !["TAX", "ZUS", "STANDARD"].includes(
+      value.kind?.trim().toUpperCase() ?? "",
+    ) ||
+    !value.recipientName?.trim() ||
+    !value.accountNumber?.trim() ||
+    !value.title?.trim()
+  )
+    return null;
+  return {
+    kind: value.kind.trim().toUpperCase() as PaymentInstruction["kind"],
+    recipientName: value.recipientName.trim(),
+    accountNumber: value.accountNumber.trim(),
+    amount: money(value.amount, value.currency),
+    title: value.title.trim(),
+    qrPayload: value.qrPayload?.trim() || null,
+    taxForm: value.taxForm?.trim() || null,
+    taxPeriod: value.taxPeriod?.trim() || null,
+    validUntil: dateOnly(value.validUntil),
+  };
+}
+export function mapObligation(
+  obligation: ObligationDto,
+  period = "",
+): Obligation {
+  return {
+    id: String(obligation.id),
+    title: obligation.type,
+    period,
+    dueDate: dateOnly(obligation.dueDate),
+    amount: money(obligation.expectedAmount, obligation.currency),
+    paidAmount: money(obligation.paidAmount, obligation.currency),
+    outstandingAmount: money(obligation.outstandingAmount, obligation.currency),
+    status: obligation.status?.trim() || "UNKNOWN",
+    paymentInstruction: mapPaymentInstruction(obligation.paymentInstruction),
+  };
+}
+export function mapObligations(
+  obligations: ObligationDto[],
+  period = "",
+): Obligation[] {
+  return obligations.map((obligation) => mapObligation(obligation, period));
+}
+export function mapCalculation(calculation: CalculationDto): Calculation {
+  return {
+    type: calculation.type || "UNKNOWN",
+    status: calculation.status || "UNKNOWN",
+    amount: money(calculation.amount),
+  };
+}
+export function mapPaymentHistory(
+  payments: PaymentDto[],
+): PaymentHistoryLine[] {
+  return payments.map((payment, index) => ({
+    id: `${payment.type}-${payment.period}-${index}`,
+    title: payment.type,
+    period: payment.period,
+    dueDate: dateOnly(payment.dueDate),
+    amount: money(payment.expectedAmount),
+    paidAmount: money(payment.paidAmount),
+    outstandingAmount: money(payment.outstandingAmount),
+    status: payment.status?.trim() || "UNKNOWN",
+    paymentDate: dateOnly(payment.paymentDate),
+  }));
+}
+export function mapIssue(issue: AccountingIssueDto): AccountingIssue {
+  return {
+    id: issue.id,
+    code: issue.code || "UNKNOWN_ISSUE",
+    severity: issue.severity || "UNKNOWN",
+    kind: issue.kind || "UNKNOWN",
+    title: issue.title,
+    message: issue.message,
+    sourceReference: issue.sourceReference,
+  };
+}
+export function mapIssues(issues: AccountingIssueDto[]): AccountingIssue[] {
+  return issues.map(mapIssue);
+}
+export function mapReconciliation(
+  summary: ReconciliationDto,
+): AccountingPeriod["reconciliation"] {
+  const state =
+    summary.missingEvidenceCount > 0
+      ? "missing_evidence"
+      : summary.mismatchCount > 0
+        ? "mismatch"
+        : summary.settledCount === summary.rowCount
+          ? "healthy"
+          : "unknown";
+  return { ...summary, state };
+}
+export function mapPeriod(
+  period: AccountingPeriodDto,
+  invoices: InvoiceDto[] = [],
+  transactions: TransactionDto[] = [],
+  obligations: ObligationDto[] = [],
+  issues: AccountingIssueDto[] = [],
+): AccountingPeriod {
+  if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(period.month))
+    throw new Error("Accounting response contains an invalid month");
+  return {
+    id: period.month,
+    status: period.status || "UNKNOWN",
+    summary: {
+      revenue: money(period.summary.revenue),
+      ryczalt: money(period.summary.ryczalt),
+      vat: money(period.summary.vat),
+      zus: money(period.summary.zus),
+    },
+    documents: period.documents,
+    settlement: {
+      ...period.settlement,
+      totalExpected: money(period.settlement.totalExpected),
+      totalPaid: money(period.settlement.totalPaid),
+      totalOutstanding: money(period.settlement.totalOutstanding),
+    },
+    reconciliation: mapReconciliation(period.reconciliation),
+    completeness: period.completeness,
+    calculations: (period.calculations ?? []).map(mapCalculation),
+    allowedActions: [...(period.allowedActions ?? [])],
+    invoices: mapInvoices(invoices),
+    transactions: mapTransactions(transactions),
+    obligations: mapObligations(obligations, period.month),
+    issues: mapIssues(issues),
+  };
+}
+export function mapCounterparty(value: CounterpartyDto): Counterparty {
+  const legalName = value.legalName;
+  const alias = value.alias ?? null;
+  return {
+    id: String(value.id),
+    legalName,
+    alias,
+    displayName: value.displayName || alias || legalName,
+    taxIdentifier: value.taxIdentifier,
+    country: value.country,
+    ruleCount: value.ruleCount ?? 0,
+    invoiceCount: value.invoiceCount ?? 0,
+  };
+}
+export function mapCounterpartyRule(
+  value: CounterpartyRuleDto,
+): CounterpartyRule {
+  return {
+    id: String(value.id),
+    name: value.name,
+    sourceType: value.sourceType,
+    documentType: value.documentType,
+    serviceKey: value.serviceKey,
+    classification: value.classification,
+    vatTreatment: value.vatTreatment,
+    vatDeductionRatio:
+      value.vatDeductionRatio == null
+        ? null
+        : decimalString(value.vatDeductionRatio),
+    ryczaltRate:
+      value.ryczaltRate == null ? null : decimalString(value.ryczaltRate),
+    autoApprove: value.autoApprove,
+    paymentVerificationPolicy: value.paymentVerificationPolicy,
+  };
+}

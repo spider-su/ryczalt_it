@@ -8,6 +8,7 @@ import {
   currentLocalAccountingMonth,
 } from "../utils/calendar";
 import { DEMO_ACCOUNTING_MONTH } from "../auth/demoSession";
+import { Platform } from "react-native";
 
 export const APP_ENV = process.env.EXPO_PUBLIC_APP_ENV ?? "development";
 export const API_BASE_URL = (process.env.EXPO_PUBLIC_API_URL ?? "")
@@ -87,6 +88,7 @@ export function createAccountingRepository(): AccountingRepository {
         baseUrl: requireApiBaseUrl(),
         token: () => authToken,
         onUnauthorized: () => authFailureHandler?.(),
+        credentials: Platform.OS === "web" ? "include" : undefined,
       }),
     ),
     profileId,
@@ -103,6 +105,7 @@ export function createAccountingApi(): AccountingApi {
       baseUrl: requireApiBaseUrl(),
       token: () => authToken,
       onUnauthorized: () => authFailureHandler?.(),
+      credentials: Platform.OS === "web" ? "include" : undefined,
     }),
   );
 }

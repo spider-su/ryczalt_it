@@ -1,4 +1,13 @@
-import type { AccountingIssue, AccountingPeriod, Counterparty, CounterpartyRule, Invoice, Obligation, PaymentHistoryLine, Transaction } from '../model/accounting';
+import type {
+  AccountingIssue,
+  AccountingPeriod,
+  Counterparty,
+  CounterpartyRule,
+  Invoice,
+  Obligation,
+  PaymentHistoryLine,
+  Transaction,
+} from "../model/accounting";
 
 export type AccountingMonthParts = {
   period: AccountingPeriod | null;
@@ -6,7 +15,19 @@ export type AccountingMonthParts = {
   transactions: Transaction[] | null;
   obligations: Obligation[] | null;
   issues: AccountingIssue[] | null;
-  failures: Partial<Record<'period' | 'invoices' | 'transactions' | 'obligations' | 'issues', unknown>>;
+  failures: Partial<
+    Record<
+      "period" | "invoices" | "transactions" | "obligations" | "issues",
+      unknown
+    >
+  >;
+};
+
+export type AccountingExportKind = "JPK" | "ZUS_DRA";
+export type AccountingExport = {
+  data: ArrayBuffer;
+  fileName: string;
+  mimeType: string;
 };
 
 export interface AccountingRepository {
@@ -15,13 +36,35 @@ export interface AccountingRepository {
   getMonthParts(month: string): Promise<AccountingMonthParts>;
   getInvoicesForRange(month: string, months: number): Promise<Invoice[]>;
   getCounterpartyInvoices(counterpartyId: string): Promise<Invoice[]>;
-  markInvoiceManuallyPaid(invoiceId: string, paidDate: string, note?: string): Promise<void>;
+  markInvoiceManuallyPaid(
+    invoiceId: string,
+    paidDate: string,
+    note?: string,
+  ): Promise<void>;
   clearInvoiceManualPayment(invoiceId: string): Promise<void>;
-  markObligationManuallyPaid(month: string, obligationId: string, paidDate: string, note?: string): Promise<void>;
-  clearObligationManualPayment(month: string, obligationId: string): Promise<void>;
-  getPaymentHistory(month: string, type?: string): Promise<PaymentHistoryLine[]>;
+  markObligationManuallyPaid(
+    month: string,
+    obligationId: string,
+    paidDate: string,
+    note?: string,
+  ): Promise<void>;
+  clearObligationManualPayment(
+    month: string,
+    obligationId: string,
+  ): Promise<void>;
+  getPaymentHistory(
+    month: string,
+    type?: string,
+  ): Promise<PaymentHistoryLine[]>;
   getCounterparties(): Promise<Counterparty[]>;
   getCounterpartyRules(counterpartyId: string): Promise<CounterpartyRule[]>;
   calculatePeriod(month: string): Promise<void>;
-  performPeriodAction(month: string, action: 'FREEZE' | 'REOPEN'): Promise<void>;
+  performPeriodAction(
+    month: string,
+    action: "FREEZE" | "REOPEN",
+  ): Promise<void>;
+  downloadExport(
+    month: string,
+    kind: AccountingExportKind,
+  ): Promise<AccountingExport>;
 }

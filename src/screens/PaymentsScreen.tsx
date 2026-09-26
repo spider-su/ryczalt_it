@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { createAccountingRepository } from '../api/config';
+import { ApiError } from '../api/client';
 import { AccountingPeriod, PaymentHistoryLine, Obligation } from '../model/accounting';
 import { formatDate, formatMonth, paymentLabel, t } from '../i18n';
 import { formatMoneyWithCurrencyCode } from '../utils/money';
@@ -10,11 +11,12 @@ import { createThemeStyles, theme, useTheme } from '../theme/theme';
 import { useAccountingMonth } from '../navigation/AccountingMonthContext';
 import { MonthSelector } from '../components/MonthSelector';
 import { useLocale } from '../i18n/LocaleContext';
-import { ErrorState, FilterButton, ListGroup, LoadingState, PageHeader, Section, SegmentedControl, SelectionList, SheetHeader, StatusBanner } from '../components/ui';
+import { ErrorState, FilterButton, ListGroup, LoadingState, PageHeader, Section, SegmentedControl, SelectionList, SheetHeader } from '../components/ui';
 import { AccountingStatusSection } from '../components/AccountingStatusSection';
 import { useAuth } from '../auth/AuthContext';
 import { getNotificationPreferences, reconcilePaymentReminders } from '../notifications/notificationService';
 import { ObligationDetailsModal } from '../components/ObligationDetailsModal';
+import { PaymentFeedback, type PaymentFeedbackState } from '../components/PaymentFeedback';
 
 type Filter = 'ALL' | 'RYCZALT' | 'VAT' | 'ZUS';
 type StatusFilter = 'ALL' | 'PAID' | 'UNPAID' | 'PARTIALLY_PAID' | 'OVERDUE';
@@ -38,10 +40,11 @@ export function PaymentsScreen() {
   const [selected, setSelected] = useState<Obligation | null>(null);
   const [manualPaymentBusyId, setManualPaymentBusyId] = useState<string | null>(null);
   const [accountingPeriod, setAccountingPeriod] = useState<AccountingPeriod | null>(null);
-  const [paymentFeedback, setPaymentFeedback] = useState(false);
+  const [paymentFeedback, setPaymentFeedback] = useState<PaymentFeedbackState | null>(null);
   const { month, refreshVersion, refreshAccounting } = useAccountingMonth();
 
   useEffect(() => {
+    setPaymentFeedback(null);
     let active = true;
     setObligationsLoading(true); setObligationsError(false); setPayments([]); setAccountingPeriod(null);
     repository.getMonth(month).then((value) => {
@@ -61,12 +64,47 @@ export function PaymentsScreen() {
 
   async function markObligationManuallyPaid(payment: Obligation) {
     setManualPaymentBusyId(payment.id);
+    setPaymentFeedback(null);
     try {
       await repository.markObligationManuallyPaid(month, payment.id, localDateToday(), 'MOBILE_MANUAL_PAYMENT');
-      await repository.getMonth(month);
-      setPaymentFeedback(true);
+    } catch (reason) {
+      if (reason instanceof ApiError && reason.kind === 'timeout') {
+        setPaymentFeedback({ outcome: 'uncertain', refresh: 'pending' });
+        await refreshAuthoritativePaymentState();
+      } else {
+        setPaymentFeedback({ outcome: 'failure', refresh: 'not_started' });
+      }
+      setManualPaymentBusyId(null);
+      throw reason;
+    }
+    try {
+      const updated = await repository.getMonthParts(month);
+      if (!updated.obligations) {
+        setPaymentFeedback({ outcome: 'success', refresh: 'failed' });
+      } else {
+        setPayments(updated.obligations);
+        if (updated.period) setAccountingPeriod(updated.period);
+        setPaymentFeedback({ outcome: 'success', refresh: 'success' });
+      }
       refreshAccounting();
+    } catch {
+      setPaymentFeedback({ outcome: 'success', refresh: 'failed' });
     } finally { setManualPaymentBusyId(null); }
+  }
+
+  async function refreshAuthoritativePaymentState(): Promise<void> {
+    try {
+      const updated = await repository.getMonthParts(month);
+      if (updated.obligations) {
+        setPayments(updated.obligations);
+        if (updated.period) setAccountingPeriod(updated.period);
+        setPaymentFeedback({ outcome: 'uncertain', refresh: 'success' });
+      } else {
+        setPaymentFeedback({ outcome: 'uncertain', refresh: 'failed' });
+      }
+    } catch {
+      setPaymentFeedback({ outcome: 'uncertain', refresh: 'failed' });
+    }
   }
 
   const visible = payments.filter((item) => isUpcomingPayment(item) && (filter === 'ALL' || item.title.toUpperCase() === filter) && matchesStatusFilter(item, statusFilter));
@@ -86,7 +124,7 @@ export function PaymentsScreen() {
       {historyLoading ? <LoadingState /> : historyError ? <ErrorState title={t('settlements.historyError')} onRetry={() => setHistoryRetry((value) => value + 1)} /> : visibleHistory.length === 0 ? <Text style={styles.note}>{t('settlements.noHistory')}</Text> : <ListGroup>{visibleHistory.map((payment, index) => <PaymentRow key={`${payment.id}-${index}`} payment={payment} last={index === visibleHistory.length - 1} amountKind="total" onPress={() => setSelected(payment)} />)}</ListGroup>}
     </Section>
     <AccountingStatusSection period={accountingPeriod} />
-  </ScrollView>{paymentFeedback ? <StatusBanner kind="success" title={t('settlements.manualPaidSuccess')} body={t('settlements.manualPaidRefresh')} /> : null}<PaymentFilterSheet visible={filterSheet} selected={statusFilter} onSelect={setStatusFilter} onClose={() => setFilterSheet(false)} /><ObligationDetailsModal item={selected} busy={manualPaymentBusyId === selected?.id} onClose={() => setSelected(null)} onMarkManuallyPaid={markObligationManuallyPaid} /></SafeAreaView>;
+  </ScrollView>{paymentFeedback ? <PaymentFeedback state={paymentFeedback} onDismiss={() => setPaymentFeedback(null)} onRefresh={refreshAuthoritativePaymentState} /> : null}<PaymentFilterSheet visible={filterSheet} selected={statusFilter} onSelect={setStatusFilter} onClose={() => setFilterSheet(false)} /><ObligationDetailsModal item={selected} busy={manualPaymentBusyId === selected?.id} onClose={() => setSelected(null)} onMarkManuallyPaid={markObligationManuallyPaid} /></SafeAreaView>;
 }
 
 function matchesStatusFilter(payment: Pick<Obligation, 'status' | 'dueDate'>, filter: StatusFilter): boolean {

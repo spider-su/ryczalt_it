@@ -40,4 +40,19 @@ describe('ApiAccountingRepository', () => {
     expect(parts.invoices).toHaveLength(1);
     expect(parts.failures.period).toBeInstanceOf(Error);
   });
+
+  it('completes with a full failure result when every month request fails', async () => {
+    const failure = new Error('offline');
+    const api = {
+      getPeriod: vi.fn(async () => { throw failure; }),
+      getInvoices: vi.fn(async () => { throw failure; }),
+      getTransactions: vi.fn(async () => { throw failure; }),
+      getObligations: vi.fn(async () => { throw failure; }),
+      getIssues: vi.fn(async () => { throw failure; })
+    };
+    const parts = await new ApiAccountingRepository(api as never, 1).getMonthParts('2026-09');
+    expect(parts.period).toBeNull();
+    expect(parts.invoices).toBeNull();
+    expect(Object.keys(parts.failures)).toHaveLength(5);
+  });
 });

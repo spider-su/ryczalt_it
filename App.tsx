@@ -17,6 +17,7 @@ import { t } from './src/i18n';
 import { ThemeProvider, useTheme, theme } from './src/theme/theme';
 import { WebAppMetadata } from './src/components/WebAppMetadata';
 import { NetworkStatusBanner } from './src/components/NetworkStatusBanner';
+import { OnboardingScreen } from './src/screens/OnboardingScreen';
 import { captureAppException, initializeCrashMonitoring } from './src/monitoring/sentry';
 
 initializeCrashMonitoring();
@@ -69,7 +70,7 @@ class AppErrorBoundary extends Component<PropsWithChildren, { failed: boolean }>
 
 let pendingPaymentNavigationProfileId: number | null = null;
 function AppContent() {
-  const { token, profileId, isDemo, loading } = useAuth();
+  const { token, profileId, isDemo, loading, onboardingState, onboardingLoading, refreshOnboarding } = useAuth();
   const { ready: localeReady } = useLocale();
   const { mode } = useTheme();
   useEffect(() => {
@@ -90,7 +91,7 @@ function AppContent() {
       .catch(() => undefined);
     return () => subscription.remove();
   }, [loading, localeReady, profileId, token, isDemo]);
-  if (loading || !localeReady)
+  if (loading || !localeReady || onboardingLoading)
     return (
       <SafeAreaView style={{ flex: 1, backgroundColor: theme.colors.background }}>
         <View
@@ -113,6 +114,8 @@ function AppContent() {
         <AuthScreen />
       </>
     );
+  if (profileId != null && onboardingState && onboardingState.state !== 'COMPLETED')
+    return <><NetworkStatusBanner /><OnboardingScreen onComplete={refreshOnboarding} /></>;
   return (
     <>
       <NetworkStatusBanner />

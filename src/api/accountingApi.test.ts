@@ -40,4 +40,12 @@ describe('canonical AccountingApi', () => {
     expect(client.postForm).toHaveBeenCalledWith('/api/profiles/42/accounting/invoices/recognize', expect.any(FormData), { timeoutMs: 120_000 });
     expect(client.post).toHaveBeenCalledWith('/api/profiles/42/accounting/invoices', { candidateKey: 'candidate-1', approve: true });
   });
+  it('requests JPK and ZUS DRA as binary period exports', async () => {
+    const client = { getBinary: vi.fn(async () => ({ data: new ArrayBuffer(0), contentType: 'application/xml', contentDisposition: null })) };
+    const api = new AccountingApi(client as never);
+    await api.getJpk(7, '2026-08');
+    await api.getZusDra(7, '2026-08');
+    expect(client.getBinary).toHaveBeenNthCalledWith(1, '/api/profiles/7/accounting/periods/2026-08/jpk', { timeoutMs: 120_000 });
+    expect(client.getBinary).toHaveBeenNthCalledWith(2, '/api/profiles/7/accounting/periods/2026-08/zus-dra', { timeoutMs: 120_000 });
+  });
 });

@@ -1,6 +1,7 @@
 import {
   CALCULATION_REQUEST_TIMEOUT_MS,
   HttpClient,
+  type BinaryResponse,
   UPLOAD_REQUEST_TIMEOUT_MS,
 } from "./client";
 import { accountingPaths } from "./accountingPaths";
@@ -174,6 +175,16 @@ export class AccountingApi {
   reopen(profileId: number, month: string): Promise<void> {
     return this.client.postVoid(accountingPaths.reopen(profileId, month), {
       reason: "Requested from mobile client",
+    });
+  }
+  getJpk(profileId: number, month: string): Promise<BinaryResponse> {
+    return this.client.getBinary(accountingPaths.jpk(profileId, month), {
+      timeoutMs: UPLOAD_REQUEST_TIMEOUT_MS,
+    });
+  }
+  getZusDra(profileId: number, month: string): Promise<BinaryResponse> {
+    return this.client.getBinary(accountingPaths.zusDra(profileId, month), {
+      timeoutMs: UPLOAD_REQUEST_TIMEOUT_MS,
     });
   }
 }

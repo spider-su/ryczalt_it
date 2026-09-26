@@ -1,10 +1,11 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
 import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { AccountingPeriod, Obligation } from '../model/accounting';
 import { createAccountingRepository } from '../api/config';
+import { ApiError } from '../api/client';
 import { formatDate, paymentLabel, periodActionLabel, t } from '../i18n';
 import { formatMoneyWithCurrencyCode } from '../utils/money';
 import { createThemeStyles, theme, useTheme } from '../theme/theme';
@@ -13,6 +14,7 @@ import { useAccountingMonth } from '../navigation/AccountingMonthContext';
 import { MonthSelector } from '../components/MonthSelector';
 import { useLocale } from '../i18n/LocaleContext';
 import { ErrorState, ListGroup, LoadingState, Section, StatusBanner } from '../components/ui';
+import { PaymentFeedback, type PaymentFeedbackState } from '../components/PaymentFeedback';
 import { DocumentDetailsModal } from '../components/DocumentDetailsModal';
 import { ObligationDetailsModal } from '../components/ObligationDetailsModal';
 import { IssueDetailsModal } from '../components/IssueDetailsModal';
@@ -32,45 +34,76 @@ export function HomeScreen({ navigation }: Props) {
   const [selectedObligation, setSelectedObligation] = useState<Obligation | null>(null);
   const [error, setError] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [loadedMonth, setLoadedMonth] = useState<string | null>(null);
+  const loadedMonthRef = useRef<string | null>(null);
   const [actionBusy, setActionBusy] = useState<string | null>(null);
   const [retry, setRetry] = useState(0);
   const [manualPaymentBusyId, setManualPaymentBusyId] = useState<string | null>(null);
   const repository = useMemo(() => createAccountingRepository(), []);
   const { month: monthId, refreshVersion, refreshAccounting } = useAccountingMonth();
-  const { isDemo } = useAuth();
+  const { isDemo, profileId } = useAuth();
   const [calculationBusy, setCalculationBusy] = useState(false);
   const [calculationError, setCalculationError] = useState(false);
-  const [paymentFeedback, setPaymentFeedback] = useState<'success' | 'error' | 'uncertain' | null>(null);
+  const [paymentFeedback, setPaymentFeedback] = useState<PaymentFeedbackState | null>(null);
 
   useEffect(() => {
     let active = true;
+    if (loadedMonthRef.current !== monthId) {
+      setParts(null);
+      setLoadedMonth(null);
+      loadedMonthRef.current = null;
+      setPaymentFeedback(null);
+    }
     setRefreshing(true);
-    repository.getMonthParts(monthId).then((value) => { if (!active) return; setParts(value); setError(!value.period && Object.keys(value.failures).length === 5); }).catch(() => active && setError(true)).finally(() => active && setRefreshing(false));
+    setError(false);
+    repository.getMonthParts(monthId).then((value) => { if (!active) return; setParts(value); setLoadedMonth(monthId); loadedMonthRef.current = monthId; setError(!value.period); }).catch(() => active && setError(true)).finally(() => active && setRefreshing(false));
     return () => { active = false; };
-  }, [repository, monthId, retry, refreshVersion]);
+  }, [repository, monthId, profileId, isDemo, retry, refreshVersion]);
 
   function reload() { setRetry((value) => value + 1); }
 
   async function markObligationManuallyPaid(payment: Obligation) {
     setManualPaymentBusyId(payment.id);
+    setPaymentFeedback(null);
     try {
       await repository.markObligationManuallyPaid(monthId, payment.id, localDateToday(), 'MOBILE_MANUAL_PAYMENT');
-      const updated = await repository.getMonthParts(monthId);
-      setParts(updated);
-      setSelectedObligation(null);
-      setPaymentFeedback('success');
-      refreshAccounting();
     } catch (reason) {
-      setPaymentFeedback(reason instanceof Error && /timeout|timed out/i.test(reason.message) ? 'uncertain' : 'error');
-      reload();
+      if (reason instanceof ApiError && reason.kind === 'timeout') {
+        setPaymentFeedback({ outcome: 'uncertain', refresh: 'pending' });
+        try {
+          const updated = await repository.getMonthParts(monthId);
+          if (updated.obligations) setParts((current) => updated.period ? updated : current ? { ...current, obligations: updated.obligations } : current);
+          setPaymentFeedback({ outcome: 'uncertain', refresh: updated.obligations ? 'success' : 'failed' });
+        } catch {
+          setPaymentFeedback({ outcome: 'uncertain', refresh: 'failed' });
+        }
+      } else {
+        setPaymentFeedback({ outcome: 'failure', refresh: 'not_started' });
+      }
+      setManualPaymentBusyId(null);
       throw reason;
+    }
+    try {
+      const updated = await repository.getMonthParts(monthId);
+      if (!updated.obligations) {
+        setPaymentFeedback({ outcome: 'success', refresh: 'failed' });
+      } else {
+        setParts((current) => updated.period ? updated : current ? { ...current, obligations: updated.obligations } : updated);
+        setPaymentFeedback({ outcome: 'success', refresh: 'success' });
+      }
+      setSelectedObligation(null);
+      refreshAccounting();
+    } catch {
+      setPaymentFeedback({ outcome: 'success', refresh: 'failed' });
+      setSelectedObligation(null);
     } finally {
       setManualPaymentBusyId(null);
     }
   }
 
   if (error) return <SafeAreaView style={styles.safe}><ErrorState title={t('common.unavailable')} onRetry={() => { setError(false); reload(); }} /></SafeAreaView>;
-  if (!parts?.period) return <SafeAreaView style={styles.safe}><LoadingState /></SafeAreaView>;
+  if (!parts?.period && !refreshing) return <SafeAreaView style={styles.safe}><ErrorState title={t('common.unavailable')} onRetry={() => { setError(false); reload(); }} /></SafeAreaView>;
+  if (!parts?.period || loadedMonth !== monthId) return <SafeAreaView style={styles.safe}><LoadingState /></SafeAreaView>;
   const month = parts.period;
 
   const monthlyStatus = statusForMonth(month);
@@ -87,7 +120,7 @@ export function HomeScreen({ navigation }: Props) {
 
   return <SafeAreaView style={styles.safe}><ScrollView refreshControl={<RefreshControl refreshing={refreshing} onRefresh={reload} />} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
     <MonthSelector loading={refreshing} />
-    {paymentFeedback ? <StatusBanner kind={paymentFeedback === 'success' ? 'success' : 'warning'} title={t(paymentFeedback === 'success' ? 'settlements.manualPaidSuccess' : paymentFeedback === 'uncertain' ? 'settlements.manualPaidUncertain' : 'settlements.manualPaidFailure')} body={t('settlements.manualPaidRefresh')} /> : null}
+    {paymentFeedback ? <PaymentFeedback state={paymentFeedback} onDismiss={() => setPaymentFeedback(null)} onRefresh={reload} /> : null}
     {parts.obligations == null ? <Section title={t('home.payments')}><ErrorState title={t('home.sectionUnavailable')} onRetry={reload} /></Section> : paymentsReady ? <Section title={allPaymentsPaid ? t('common.paid') : t('home.payments')} trailing={outstandingTotal && outstandingTotal.amount !== '0' ? <Text style={styles.totalInline} numberOfLines={1} adjustsFontSizeToFit>{formatMoneyWithCurrencyCode(outstandingTotal)}{outstandingTotal.currency ? '' : ` ${t('common.unknown')}`}</Text> : null}><ListGroup>{month.obligations.length ? month.obligations.map((payment, index) => <PaymentRow key={`${payment.id}-${index}`} payment={payment} last={index === month.obligations.length - 1} onPress={() => setSelectedObligation(payment)} />) : <Text style={styles.unavailable}>{t('home.noPayments')}</Text>}</ListGroup></Section> : <Section title={t('home.payments')}><ErrorState title={t('home.sectionUnavailable')} onRetry={reload} /></Section>}
 
     {dirtyCalculationIssue ? <Pressable onPress={() => setSelectedIssue(dirtyCalculationIssue)} accessibilityRole="button" accessibilityLabel={`${t(issuePresentation(dirtyCalculationIssue).title)}. ${t('home.issueDetails')}`}><StatusBanner kind="warning" title={issuePresentation(dirtyCalculationIssue).title} body={issuePresentation(dirtyCalculationIssue).body} /></Pressable> : ['calculations_pending', 'processing', 'unknown'].includes(monthlyStatus) ? <StatusBanner kind={bannerKind} title={t(statusCopy.title)} body={t(statusCopy.body)} /> : null}
@@ -150,6 +183,7 @@ function PaymentRow({ payment, last, onPress }: { payment: Obligation; last: boo
 }
 
 function localDateToday(): string { const date = new Date(); return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`; }
+
 
 function paymentTone(status: ReturnType<typeof statusForPayment>): string {
   if (status === 'resolved') return theme.colors.success;

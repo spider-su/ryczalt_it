@@ -1,4 +1,5 @@
 import { isNetworkOffline } from "./networkState";
+import { currentSessionEpoch, registerSessionRequest } from "./sessionState";
 
 export class ConfigurationError extends Error {
   constructor(
@@ -49,9 +50,17 @@ type HttpClientOptions = {
   fetchImpl?: typeof fetch;
   token?: string | null | (() => string | null);
   onUnauthorized?: () => void;
+  credentials?: RequestCredentials;
+  defaultHeaders?: HeadersInit;
 };
 
 export type RequestOptions = { timeoutMs?: number; signal?: AbortSignal };
+
+export type BinaryResponse = {
+  data: ArrayBuffer;
+  contentType: string | null;
+  contentDisposition: string | null;
+};
 
 export const DEFAULT_REQUEST_TIMEOUT_MS = 20_000;
 export const AUTH_REQUEST_TIMEOUT_MS = 20_000;
@@ -64,6 +73,8 @@ export class HttpClient {
   private readonly fetchImpl: typeof fetch;
   private readonly token: string | null | (() => string | null);
   private readonly onUnauthorized?: () => void;
+  private readonly credentials?: RequestCredentials;
+  private readonly defaultHeaders?: HeadersInit;
 
   constructor({
     baseUrl,
@@ -71,6 +82,8 @@ export class HttpClient {
     fetchImpl = fetch,
     token,
     onUnauthorized,
+    credentials,
+    defaultHeaders,
   }: HttpClientOptions) {
     if (!baseUrl || !/^https?:\/\//.test(baseUrl)) {
       throw new ConfigurationError(
@@ -83,10 +96,25 @@ export class HttpClient {
     this.fetchImpl = fetchImpl.bind(globalThis);
     this.token = token ?? null;
     this.onUnauthorized = onUnauthorized;
+    this.credentials = credentials;
+    this.defaultHeaders = defaultHeaders;
   }
 
   async get<T>(path: string, init: RequestInit = {}): Promise<T> {
     return this.request<T>(path, init);
+  }
+
+  async getBinary(
+    path: string,
+    options?: RequestOptions,
+  ): Promise<BinaryResponse> {
+    return this.request<BinaryResponse>(
+      path,
+      { method: "GET", signal: options?.signal },
+      false,
+      options?.timeoutMs,
+      "binary",
+    );
   }
 
   async post<T>(path: string, body: unknown): Promise<T> {
@@ -158,8 +186,11 @@ export class HttpClient {
     init: RequestInit,
     expectJson = true,
     timeoutMs = this.timeoutMs,
+    responseType: "json" | "binary" = "json",
   ): Promise<T> {
     const controller = new AbortController();
+    const requestEpoch = currentSessionEpoch();
+    const unregisterSessionRequest = registerSessionRequest(controller);
     let timedOut = false;
     const timeout = setTimeout(() => {
       timedOut = true;
@@ -191,11 +222,21 @@ export class HttpClient {
         method: init.method ?? "GET",
         headers: {
           Accept: "application/json",
+          ...this.defaultHeaders,
+          ...browserCsrfHeader(),
           ...(currentToken ? { Authorization: `Bearer ${currentToken}` } : {}),
           ...init.headers,
         },
+        ...(this.credentials ? { credentials: this.credentials } : {}),
         signal: controller.signal,
       });
+      if (requestEpoch !== currentSessionEpoch())
+        throw new ApiError(
+          "Investory API request belongs to an expired session",
+          undefined,
+          undefined,
+          "cancelled",
+        );
 
       if (!response.ok) {
         const problemMessage = await this.readProblemMessage(response);
@@ -242,6 +283,13 @@ export class HttpClient {
         );
       }
 
+      if (responseType === "binary") {
+        return {
+          data: await response.arrayBuffer(),
+          contentType: response.headers.get("content-type"),
+          contentDisposition: response.headers.get("content-disposition"),
+        } as T;
+      }
       if (!expectJson || response.status === 204) return undefined as T;
       try {
         return (await response.json()) as T;
@@ -278,6 +326,7 @@ export class HttpClient {
     } finally {
       clearTimeout(timeout);
       externalSignal?.removeEventListener("abort", abortFromCaller);
+      unregisterSessionRequest();
     }
   }
 
@@ -304,4 +353,11 @@ function isAbortError(error: unknown): boolean {
   if (!error || typeof error !== "object") return false;
   const name = (error as { name?: unknown }).name;
   return name === "AbortError";
+}
+
+function browserCsrfHeader(): Record<string, string> {
+  if (typeof document === "undefined") return {};
+  const match = document.cookie.match(/(?:^|;\s*)XSRF-TOKEN=([^;]*)/);
+  if (!match?.[1]) return {};
+  return { "X-XSRF-TOKEN": decodeURIComponent(match[1]) };
 }
