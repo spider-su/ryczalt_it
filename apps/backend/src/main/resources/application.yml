@@ -1,0 +1,22 @@
+spring:
+  application:
+    name: ryczalt-backend
+  datasource:
+    url: ${DATABASE_URL:jdbc:postgresql://localhost:5432/ryczalt}
+    username: ${DATABASE_USER:ryczalt}
+    password: ${DATABASE_PASSWORD:ryczalt}
+  flyway:
+    locations: classpath:sql/migration
+
+server:
+  port: ${PORT:8080}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+
+app:
+  security:
+    profile-ownership-required: true
