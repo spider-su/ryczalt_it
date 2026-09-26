@@ -4,6 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useIsFocused, useNavigation } from '@react-navigation/native';
 import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import { t } from '../i18n';
+import { ACCOUNTING_DATA_SOURCE, isDemoMode } from '../api/config';
 import { createThemeStyles, theme, useTheme } from '../theme/theme';
 import { AddCostScreen } from '../actions/cost/AddCostScreen';
 import { useLocale } from '../i18n/LocaleContext';
@@ -22,12 +23,12 @@ export function ActionLauncherScreen() {
   useEffect(() => { if (focused) setMode('sheet'); }, [focused]);
   if (!focused) return null;
   const dismiss = () => { if (navigation.canGoBack()) navigation.goBack(); else navigation.navigate('Home'); };
-  return mode !== 'sheet' ? <AddCostScreen initialMode={mode === 'manual' ? 'manual' : 'file'} onBack={() => setMode('sheet')} /> : <ActionSheet onSelect={setMode} onDismiss={dismiss} />;
+  return mode !== 'sheet' ? <AddCostScreen initialMode={mode === 'manual' ? 'manual' : 'file'} onBack={() => setMode('sheet')} /> : <ActionSheet manualEnabled={isDemoMode() || ACCOUNTING_DATA_SOURCE === 'mock'} onSelect={setMode} onDismiss={dismiss} />;
 }
 
-function ActionSheet({ onSelect, onDismiss }: { onSelect: (mode: Exclude<Mode, 'sheet'>) => void; onDismiss: () => void }) {
+function ActionSheet({ manualEnabled, onSelect, onDismiss }: { manualEnabled: boolean; onSelect: (mode: Exclude<Mode, 'sheet'>) => void; onDismiss: () => void }) {
   const insets = useSafeAreaInsets();
-  return <View style={styles.overlay} accessibilityViewIsModal><Pressable style={StyleSheet.absoluteFill} onPress={onDismiss} accessibilityRole="button" accessibilityLabel={t('actions.close')} /><View style={[styles.sheet, { paddingBottom: Math.max(theme.spacing.lg, insets.bottom) }]}><SheetHeader title={t('actions.title')} onClose={onDismiss} /><Action onPress={() => onSelect('manual')} icon="create-outline" title={t('actions.manualInvoice')} subtitle={t('actions.manualInvoiceHint')} /><Action onPress={() => onSelect('import')} icon="cloud-upload-outline" title={t('actions.importInvoice')} subtitle={t('actions.importInvoiceHint')} /></View></View>;
+  return <View style={styles.overlay} accessibilityViewIsModal><Pressable style={StyleSheet.absoluteFill} onPress={onDismiss} accessibilityRole="button" accessibilityLabel={t('actions.close')} /><View style={[styles.sheet, { paddingBottom: Math.max(theme.spacing.lg, insets.bottom) }]}><SheetHeader title={t('actions.title')} onClose={onDismiss} />{manualEnabled ? <Action onPress={() => onSelect('manual')} icon="create-outline" title={t('actions.manualInvoice')} subtitle={t('actions.manualInvoiceHint')} /> : null}<Action onPress={() => onSelect('import')} icon="cloud-upload-outline" title={t('actions.importInvoice')} subtitle={t('actions.importInvoiceHint')} /></View></View>;
 }
 
 function Action({ onPress, icon, title, subtitle }: { onPress: () => void; icon: keyof typeof Ionicons.glyphMap; title: string; subtitle: string }) {

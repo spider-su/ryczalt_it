@@ -8,6 +8,11 @@ const mockCounterparties: Counterparty[] = [{ id: 'bp-1', legalName: 'BP Europa'
 const demoInvoices: Invoice[] = [...accounting2026Invoices];
 const demoManualObligations = new Set<string>();
 
+export function resetDemoAccountingState(): void {
+  demoInvoices.splice(0, demoInvoices.length, ...accounting2026Invoices);
+  demoManualObligations.clear();
+}
+
 function currentDemoObligations(month: string) {
   const period = accounting2026Periods.find((item) => item.id === month);
   return (period?.obligations ?? []).map((obligation) => demoManualObligations.has(`${month}:${obligation.id}`)
@@ -75,6 +80,10 @@ export class MockAccountingRepository implements AccountingRepository {
     const totalOutstanding = sumDemoMoney(obligations.map((item) => item.outstandingAmount.amount));
     const paidCount = obligations.filter((item) => ['PAID', 'OVERPAID'].includes(item.status)).length;
     return { ...period, documents: { ...period.documents, invoiceCount: invoices.length }, invoices, obligations, settlement: { ...period.settlement, paidCount, outstandingCount: obligations.length - paidCount, totalPaid: { ...period.settlement.totalPaid, amount: totalPaid }, totalOutstanding: { ...period.settlement.totalOutstanding, amount: totalOutstanding }, fullySettled: obligations.length > 0 && totalOutstanding === '0.00' } };
+  }
+  async getMonthParts(month: string) {
+    const value = await this.getMonth(month);
+    return { period: value, invoices: value.invoices, transactions: value.transactions, obligations: value.obligations, issues: value.issues, failures: {} };
   }
   async getInvoicesForRange(month: string, months: number): Promise<Invoice[]> {
     const [year = 2026, monthNumber = 9] = month.split('-').map(Number);

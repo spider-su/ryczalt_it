@@ -1,8 +1,18 @@
-import type { AccountingPeriod, Counterparty, CounterpartyRule, Invoice, PaymentHistoryLine } from '../model/accounting';
+import type { AccountingIssue, AccountingPeriod, Counterparty, CounterpartyRule, Invoice, Obligation, PaymentHistoryLine, Transaction } from '../model/accounting';
+
+export type AccountingMonthParts = {
+  period: AccountingPeriod | null;
+  invoices: Invoice[] | null;
+  transactions: Transaction[] | null;
+  obligations: Obligation[] | null;
+  issues: AccountingIssue[] | null;
+  failures: Partial<Record<'period' | 'invoices' | 'transactions' | 'obligations' | 'issues', unknown>>;
+};
 
 export interface AccountingRepository {
   getPeriods(): Promise<unknown[]>;
   getMonth(month: string): Promise<AccountingPeriod>;
+  getMonthParts(month: string): Promise<AccountingMonthParts>;
   getInvoicesForRange(month: string, months: number): Promise<Invoice[]>;
   getCounterpartyInvoices(counterpartyId: string): Promise<Invoice[]>;
   markInvoiceManuallyPaid(invoiceId: string, paidDate: string, note?: string): Promise<void>;

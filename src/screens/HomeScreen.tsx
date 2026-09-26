@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { AccountingPeriod, Obligation } from '../model/accounting';
 import { createAccountingRepository } from '../api/config';
@@ -18,6 +18,7 @@ import { ObligationDetailsModal } from '../components/ObligationDetailsModal';
 import { IssueDetailsModal } from '../components/IssueDetailsModal';
 import { invoiceClassificationLabel, invoiceCounterpartyLabel, invoicePaymentPresentation, receivedInvoiceGroups } from '../presentation/invoiceList';
 import { useAuth } from '../auth/AuthContext';
+import type { AccountingMonthParts } from '../data/accountingRepository';
 import type { AppTabParamList } from '../navigation/AppNavigator';
 import { obligationStatusText, outstandingObligationsMoney, homeInvoiceDirection, paymentStatusForDisplay } from '../presentation/accounting';
 
@@ -25,11 +26,12 @@ type Props = BottomTabScreenProps<AppTabParamList, 'Home'>;
 export function HomeScreen({ navigation }: Props) {
   useTheme();
   useLocale();
-  const [month, setMonth] = useState<AccountingPeriod | null>(null);
+  const [parts, setParts] = useState<AccountingMonthParts | null>(null);
   const [selectedIssue, setSelectedIssue] = useState<AccountingPeriod['issues'][number] | null>(null);
   const [selectedDocument, setSelectedDocument] = useState<AccountingPeriod['invoices'][number] | null>(null);
   const [selectedObligation, setSelectedObligation] = useState<Obligation | null>(null);
   const [error, setError] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const [actionBusy, setActionBusy] = useState<string | null>(null);
   const [retry, setRetry] = useState(0);
   const [manualPaymentBusyId, setManualPaymentBusyId] = useState<string | null>(null);
@@ -38,27 +40,38 @@ export function HomeScreen({ navigation }: Props) {
   const { isDemo } = useAuth();
   const [calculationBusy, setCalculationBusy] = useState(false);
   const [calculationError, setCalculationError] = useState(false);
+  const [paymentFeedback, setPaymentFeedback] = useState<'success' | 'error' | 'uncertain' | null>(null);
 
   useEffect(() => {
     let active = true;
-    setMonth(null);
-    setError(false);
-    repository.getMonth(monthId).then((value) => active && setMonth(value)).catch(() => active && setError(true));
+    setRefreshing(true);
+    repository.getMonthParts(monthId).then((value) => { if (!active) return; setParts(value); setError(!value.period && Object.keys(value.failures).length === 5); }).catch(() => active && setError(true)).finally(() => active && setRefreshing(false));
     return () => { active = false; };
   }, [repository, monthId, retry, refreshVersion]);
+
+  function reload() { setRetry((value) => value + 1); }
 
   async function markObligationManuallyPaid(payment: Obligation) {
     setManualPaymentBusyId(payment.id);
     try {
-      await repository.markObligationManuallyPaid(monthId, payment.id, localDateToday(), 'Paid manually from mobile app');
+      await repository.markObligationManuallyPaid(monthId, payment.id, localDateToday(), 'MOBILE_MANUAL_PAYMENT');
+      const updated = await repository.getMonthParts(monthId);
+      setParts(updated);
+      setSelectedObligation(null);
+      setPaymentFeedback('success');
       refreshAccounting();
+    } catch (reason) {
+      setPaymentFeedback(reason instanceof Error && /timeout|timed out/i.test(reason.message) ? 'uncertain' : 'error');
+      reload();
+      throw reason;
     } finally {
       setManualPaymentBusyId(null);
     }
   }
 
-  if (error) return <SafeAreaView style={styles.safe}><ErrorState title={t('common.unavailable')} onRetry={() => { setError(false); setMonth(null); setRetry((value) => value + 1); }} /></SafeAreaView>;
-  if (!month) return <SafeAreaView style={styles.safe}><LoadingState /></SafeAreaView>;
+  if (error) return <SafeAreaView style={styles.safe}><ErrorState title={t('common.unavailable')} onRetry={() => { setError(false); reload(); }} /></SafeAreaView>;
+  if (!parts?.period) return <SafeAreaView style={styles.safe}><LoadingState /></SafeAreaView>;
+  const month = parts.period;
 
   const monthlyStatus = statusForMonth(month);
   const documents = month.invoices;
@@ -72,13 +85,14 @@ export function HomeScreen({ navigation }: Props) {
   const paymentsReady = calculationsReady(month.calculations, month.obligations) || month.settlement.fullySettled;
   const outstandingTotal = allPaymentsPaid ? null : outstandingObligationsMoney(month.obligations);
 
-  return <SafeAreaView style={styles.safe}><ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-    <MonthSelector loading={!month} />
-    {paymentsReady ? <Section title={allPaymentsPaid ? t('common.paid') : t('home.payments')} trailing={outstandingTotal && outstandingTotal.amount !== '0' ? <Text style={styles.totalInline} numberOfLines={1} adjustsFontSizeToFit>{formatMoneyWithCurrencyCode(outstandingTotal)}{outstandingTotal.currency ? '' : ` ${t('common.unknown')}`}</Text> : null}><ListGroup>{month.obligations.length ? month.obligations.map((payment, index) => <PaymentRow key={`${payment.id}-${index}`} payment={payment} last={index === month.obligations.length - 1} onPress={() => setSelectedObligation(payment)} />) : <Text style={styles.unavailable}>{t('home.noPayments')}</Text>}</ListGroup></Section> : null}
+  return <SafeAreaView style={styles.safe}><ScrollView refreshControl={<RefreshControl refreshing={refreshing} onRefresh={reload} />} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+    <MonthSelector loading={refreshing} />
+    {paymentFeedback ? <StatusBanner kind={paymentFeedback === 'success' ? 'success' : 'warning'} title={t(paymentFeedback === 'success' ? 'settlements.manualPaidSuccess' : paymentFeedback === 'uncertain' ? 'settlements.manualPaidUncertain' : 'settlements.manualPaidFailure')} body={t('settlements.manualPaidRefresh')} /> : null}
+    {parts.obligations == null ? <Section title={t('home.payments')}><ErrorState title={t('home.sectionUnavailable')} onRetry={reload} /></Section> : paymentsReady ? <Section title={allPaymentsPaid ? t('common.paid') : t('home.payments')} trailing={outstandingTotal && outstandingTotal.amount !== '0' ? <Text style={styles.totalInline} numberOfLines={1} adjustsFontSizeToFit>{formatMoneyWithCurrencyCode(outstandingTotal)}{outstandingTotal.currency ? '' : ` ${t('common.unknown')}`}</Text> : null}><ListGroup>{month.obligations.length ? month.obligations.map((payment, index) => <PaymentRow key={`${payment.id}-${index}`} payment={payment} last={index === month.obligations.length - 1} onPress={() => setSelectedObligation(payment)} />) : <Text style={styles.unavailable}>{t('home.noPayments')}</Text>}</ListGroup></Section> : <Section title={t('home.payments')}><ErrorState title={t('home.sectionUnavailable')} onRetry={reload} /></Section>}
 
     {dirtyCalculationIssue ? <Pressable onPress={() => setSelectedIssue(dirtyCalculationIssue)} accessibilityRole="button" accessibilityLabel={`${t(issuePresentation(dirtyCalculationIssue).title)}. ${t('home.issueDetails')}`}><StatusBanner kind="warning" title={issuePresentation(dirtyCalculationIssue).title} body={issuePresentation(dirtyCalculationIssue).body} /></Pressable> : ['calculations_pending', 'processing', 'unknown'].includes(monthlyStatus) ? <StatusBanner kind={bannerKind} title={t(statusCopy.title)} body={t(statusCopy.body)} /> : null}
 
-    {received.income.length + received.costs.length > 0 ? <Section title={t('home.invoices')}>
+    {parts.invoices == null ? <Section title={t('home.invoices')}><ErrorState title={t('home.sectionUnavailable')} onRetry={reload} /></Section> : received.income.length + received.costs.length > 0 ? <Section title={t('home.invoices')}>
       {received.income.length > 0 ? <ReceivedInvoiceGroup title={t('home.incomeInvoices')} invoices={received.income} onSelect={setSelectedDocument} onViewAll={() => navigation.navigate('Documents', { direction: homeInvoiceDirection('income') })} /> : null}
       {received.costs.length > 0 ? <ReceivedInvoiceGroup title={t('home.costBills')} invoices={received.costs} onSelect={setSelectedDocument} onViewAll={() => navigation.navigate('Documents', { direction: homeInvoiceDirection('costs') })} /> : null}
     </Section> : null}

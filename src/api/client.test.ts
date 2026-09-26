@@ -59,10 +59,16 @@ describe('HttpClient authentication lifecycle', () => {
     await expect(client.get('/accounting')).rejects.toMatchObject({ kind });
   });
 
-  it('reports an aborted request as a timeout', async () => {
-    const fetchImpl = vi.fn(async () => { throw new DOMException('aborted', 'AbortError'); });
-    const client = new HttpClient({ baseUrl: 'https://example.test', fetchImpl });
+  it('reports an internally aborted request as a timeout without requiring DOMException', async () => {
+    const originalDomException = globalThis.DOMException;
+    Object.defineProperty(globalThis, 'DOMException', { value: undefined, configurable: true });
+    const fetchImpl = vi.fn(async (_input: RequestInfo | URL, init?: RequestInit) => { await new Promise<void>((resolve) => init?.signal?.addEventListener('abort', () => resolve(), { once: true })); throw { name: 'AbortError' }; });
+    const client = new HttpClient({ baseUrl: 'https://example.test', fetchImpl, timeoutMs: 1 });
 
-    await expect(client.get('/accounting')).rejects.toMatchObject({ message: 'Investory API request timed out', kind: 'response' });
+    try {
+      await expect(client.get('/accounting')).rejects.toMatchObject({ message: 'Investory API request timed out', kind: 'timeout' });
+    } finally {
+      Object.defineProperty(globalThis, 'DOMException', { value: originalDomException, configurable: true });
+    }
   });
 });

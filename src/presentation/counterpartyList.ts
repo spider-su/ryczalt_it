@@ -1,5 +1,5 @@
 import type { Counterparty } from '../model/accounting';
-import { t, toIntlLocale } from '../i18n';
+import { getActiveLocale, t } from '../i18n';
 
 function normalizeText(value: string): string {
   return value.normalize('NFKC').trim().replace(/\s+/g, ' ').toLowerCase();
@@ -38,6 +38,15 @@ export function counterpartyTaxIdentifier(item: Counterparty): string {
 }
 
 export function counterpartyInvoiceCount(count: number): string {
-  const pluralCategory = new Intl.PluralRules(toIntlLocale()).select(count);
+  const pluralCategory = invoiceCountPluralCategory(count, getActiveLocale());
   return `${count} ${t(`counterparties.invoiceCount.${pluralCategory}`)}`;
+}
+
+function invoiceCountPluralCategory(count: number, locale: 'pl' | 'en'): 'one' | 'few' | 'many' | 'other' {
+  if (locale === 'en') return count === 1 ? 'one' : 'other';
+  if (count === 1) return 'one';
+  const lastTwoDigits = Math.abs(count) % 100;
+  const lastDigit = lastTwoDigits % 10;
+  if (lastDigit >= 2 && lastDigit <= 4 && (lastTwoDigits < 12 || lastTwoDigits > 14)) return 'few';
+  return 'many';
 }

@@ -11,7 +11,7 @@ set -uo pipefail
 #   INVESTORY_BASE_URL   default: Cloud Run test env
 #   INVESTORY_PROFILE_ID default: 1
 #   INVESTORY_MONTH      default: current YYYY-MM
-#   E2E_REPORT_DIR       default: ./tmp/e2e-live-api
+#   E2E_REPORT_DIR       default: ./scripts/tmp/e2e-live-api
 #
 # Example:
 #   INVESTORY_TEST_USER='alex.kotik' \
@@ -30,7 +30,7 @@ USER="${INVESTORY_TEST_USER:-}"
 PASSWORD="${INVESTORY_TEST_PASSWORD:-}"
 PROFILE_ID="${INVESTORY_PROFILE_ID:-1}"
 MONTH="${INVESTORY_MONTH:-$(date +%Y-%m)}"
-REPORT_DIR="${E2E_REPORT_DIR:-./tmp/e2e-live-api}"
+REPORT_DIR="${E2E_REPORT_DIR:-./scripts/tmp/e2e-live-api}"
 
 PASS=0
 FAIL=0

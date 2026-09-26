@@ -117,9 +117,11 @@ src/
 
 The UI does not know where Accounting data comes from.
 
-By default, the app uses the deployed Investory backend:
+API mode requires an explicit `EXPO_PUBLIC_API_URL`; the app never silently falls back to a deployed production backend. Demo/mock mode does not require an API URL.
 
 ```bash
+EXPO_PUBLIC_APP_ENV=development \
+EXPO_PUBLIC_API_URL=https://your-development-api.example \
 EXPO_PUBLIC_ACCOUNTING_DATA_SOURCE=api \
 EXPO_PUBLIC_ACCOUNTING_MONTH=2025-01 \
 npx expo start --web
@@ -134,8 +136,12 @@ EXPO_PUBLIC_ACCOUNTING_MONTH=2025-01 \
 npx expo start --web
 ```
 
-`EXPO_PUBLIC_API_URL` overrides the deployed default. Expo reads `EXPO_PUBLIC_*`
-variables when the development server starts, so restart Expo after changing one.
+Expo reads `EXPO_PUBLIC_*` variables when the development server starts, so restart
+Expo after changing one.
+
+EAS preview and production profiles set `EXPO_PUBLIC_APP_ENV` explicitly. Configure
+the matching `EXPO_PUBLIC_API_URL` in the EAS environment before building; a missing
+URL is a configuration error rather than a production fallback.
 
 `EXPO_PUBLIC_ACCOUNTING_MONTH` selects the `YYYY-MM` month used by Home. The default data source is `api`; use `EXPO_PUBLIC_ACCOUNTING_DATA_SOURCE=mock` for the bundled July 2026 fixture.
 

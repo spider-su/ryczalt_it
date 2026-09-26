@@ -9,9 +9,11 @@
     "ios": "expo run:ios",
     "web": "expo start --web",
     "assets:brand": "node scripts/generate-brand-icons.mjs",
+    "lint": "eslint App.tsx src",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "ci": "npm run typecheck && npm test"
+    "format:check": "prettier --check src/api/client.ts src/api/accountingApi.ts src/api/config.ts src/auth/authErrors.ts src/auth/AuthContext.tsx src/data/apiAccountingRepository.ts",
+    "ci": "npm run typecheck && npm run lint && npm run format:check && npm test"
   },
   "dependencies": {
     "@expo/vector-icons": "^15.0.2",
@@ -24,6 +26,7 @@
     "expo-font": "~57.0.4",
     "expo-local-authentication": "~57.0.3",
     "expo-navigation-bar": "~57.0.2",
+    "expo-network": "~57.0.2",
     "expo-notifications": "~57.0.21",
     "expo-secure-store": "~57.0.4",
     "expo-splash-screen": "~57.0.9",
@@ -37,10 +40,15 @@
     "react-native-web": "^0.21.2"
   },
   "devDependencies": {
+    "@eslint/js": "^10.0.1",
     "@testing-library/react": "^16.3.3",
     "@types/react": "~19.2.4",
+    "eslint": "^10.11.0",
+    "eslint-plugin-react-hooks": "^7.1.1",
     "jsdom": "^30.1.1",
+    "prettier": "^3.9.9",
     "typescript": "~6.0.3",
+    "typescript-eslint": "^8.70.1",
     "vitest": "^5.0.1"
   }
 }

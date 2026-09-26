@@ -10,7 +10,7 @@ import { createThemeStyles, theme, useTheme } from '../theme/theme';
 import { useAccountingMonth } from '../navigation/AccountingMonthContext';
 import { MonthSelector } from '../components/MonthSelector';
 import { useLocale } from '../i18n/LocaleContext';
-import { ErrorState, FilterButton, ListGroup, LoadingState, PageHeader, Section, SegmentedControl, SelectionList, SheetHeader } from '../components/ui';
+import { ErrorState, FilterButton, ListGroup, LoadingState, PageHeader, Section, SegmentedControl, SelectionList, SheetHeader, StatusBanner } from '../components/ui';
 import { AccountingStatusSection } from '../components/AccountingStatusSection';
 import { useAuth } from '../auth/AuthContext';
 import { getNotificationPreferences, reconcilePaymentReminders } from '../notifications/notificationService';
@@ -38,6 +38,7 @@ export function PaymentsScreen() {
   const [selected, setSelected] = useState<Obligation | null>(null);
   const [manualPaymentBusyId, setManualPaymentBusyId] = useState<string | null>(null);
   const [accountingPeriod, setAccountingPeriod] = useState<AccountingPeriod | null>(null);
+  const [paymentFeedback, setPaymentFeedback] = useState(false);
   const { month, refreshVersion, refreshAccounting } = useAccountingMonth();
 
   useEffect(() => {
@@ -61,7 +62,9 @@ export function PaymentsScreen() {
   async function markObligationManuallyPaid(payment: Obligation) {
     setManualPaymentBusyId(payment.id);
     try {
-      await repository.markObligationManuallyPaid(month, payment.id, localDateToday(), 'Paid manually from mobile app');
+      await repository.markObligationManuallyPaid(month, payment.id, localDateToday(), 'MOBILE_MANUAL_PAYMENT');
+      await repository.getMonth(month);
+      setPaymentFeedback(true);
       refreshAccounting();
     } finally { setManualPaymentBusyId(null); }
   }
@@ -83,7 +86,7 @@ export function PaymentsScreen() {
       {historyLoading ? <LoadingState /> : historyError ? <ErrorState title={t('settlements.historyError')} onRetry={() => setHistoryRetry((value) => value + 1)} /> : visibleHistory.length === 0 ? <Text style={styles.note}>{t('settlements.noHistory')}</Text> : <ListGroup>{visibleHistory.map((payment, index) => <PaymentRow key={`${payment.id}-${index}`} payment={payment} last={index === visibleHistory.length - 1} amountKind="total" onPress={() => setSelected(payment)} />)}</ListGroup>}
     </Section>
     <AccountingStatusSection period={accountingPeriod} />
-  </ScrollView><PaymentFilterSheet visible={filterSheet} selected={statusFilter} onSelect={setStatusFilter} onClose={() => setFilterSheet(false)} /><ObligationDetailsModal item={selected} busy={manualPaymentBusyId === selected?.id} onClose={() => setSelected(null)} onMarkManuallyPaid={markObligationManuallyPaid} /></SafeAreaView>;
+  </ScrollView>{paymentFeedback ? <StatusBanner kind="success" title={t('settlements.manualPaidSuccess')} body={t('settlements.manualPaidRefresh')} /> : null}<PaymentFilterSheet visible={filterSheet} selected={statusFilter} onSelect={setStatusFilter} onClose={() => setFilterSheet(false)} /><ObligationDetailsModal item={selected} busy={manualPaymentBusyId === selected?.id} onClose={() => setSelected(null)} onMarkManuallyPaid={markObligationManuallyPaid} /></SafeAreaView>;
 }
 
 function matchesStatusFilter(payment: Pick<Obligation, 'status' | 'dueDate'>, filter: StatusFilter): boolean {

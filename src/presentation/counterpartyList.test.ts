@@ -47,5 +47,7 @@ describe('counterparty list presentation', () => {
     expect(counterpartyInvoiceCount(1)).toBe('1 faktura');
     expect(counterpartyInvoiceCount(2)).toBe('2 faktury');
     expect(counterpartyInvoiceCount(5)).toBe('5 faktur');
+    expect(counterpartyInvoiceCount(12)).toBe('12 faktur');
+    expect(counterpartyInvoiceCount(22)).toBe('22 faktury');
   });
 });

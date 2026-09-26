@@ -22,7 +22,7 @@ describe('canonical AccountingApi', () => {
     const client = { postEmpty: vi.fn(async () => ({})) };
     const api = new AccountingApi(client as never);
     await api.calculate(42, '2026-09');
-    expect(client.postEmpty).toHaveBeenCalledWith('/api/profiles/42/accounting/periods/2026-09/calculate');
+    expect(client.postEmpty).toHaveBeenCalledWith('/api/profiles/42/accounting/periods/2026-09/calculate', { timeoutMs: 180_000 });
   });
   it('marks obligations manually paid and supports clearing the manual mark', async () => {
     const client = { postVoid: vi.fn(async () => undefined), delete: vi.fn(async () => undefined) };
@@ -37,7 +37,7 @@ describe('canonical AccountingApi', () => {
     const api = new AccountingApi(client as never);
     await api.recognizeInvoice(42, { uri: 'file://invoice.pdf', name: 'invoice.pdf', type: 'application/pdf' });
     await api.createInvoice(42, { candidateKey: 'candidate-1', approve: true });
-    expect(client.postForm).toHaveBeenCalledWith('/api/profiles/42/accounting/invoices/recognize', expect.any(FormData));
+    expect(client.postForm).toHaveBeenCalledWith('/api/profiles/42/accounting/invoices/recognize', expect.any(FormData), { timeoutMs: 120_000 });
     expect(client.post).toHaveBeenCalledWith('/api/profiles/42/accounting/invoices', { candidateKey: 'candidate-1', approve: true });
   });
 });

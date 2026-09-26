@@ -10,3 +10,6 @@
 *:Zone.Identifier
 .playwright-mcp/
 /android/
+
+# Generated live API smoke-test output; never commit credentials or live data.
+/scripts/tmp/
