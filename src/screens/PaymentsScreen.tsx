@@ -79,10 +79,10 @@ export function PaymentsScreen() {
       <SegmentedControl options={filterOptions} selected={filter} onSelect={setFilter} />
       {obligationsLoading ? <LoadingState /> : obligationsError ? <ErrorState title={t('common.unavailable')} onRetry={() => setObligationsRetry((value) => value + 1)} /> : visible.length === 0 ? <Text style={styles.empty}>{allPaid ? t('settlements.completedPeriod') : t('settlements.noPayments')}</Text> : <ListGroup>{visible.map((payment, index) => <PaymentRow key={`${payment.id}-${index}`} payment={payment} last={index === visible.length - 1} amountKind="outstanding" onPress={() => setSelected(payment)} />)}</ListGroup>}
     </Section>
-    <AccountingStatusSection period={accountingPeriod} />
     <Section title={t('settlements.history')} tone="secondary">
       {historyLoading ? <LoadingState /> : historyError ? <ErrorState title={t('settlements.historyError')} onRetry={() => setHistoryRetry((value) => value + 1)} /> : visibleHistory.length === 0 ? <Text style={styles.note}>{t('settlements.noHistory')}</Text> : <ListGroup>{visibleHistory.map((payment, index) => <PaymentRow key={`${payment.id}-${index}`} payment={payment} last={index === visibleHistory.length - 1} amountKind="total" onPress={() => setSelected(payment)} />)}</ListGroup>}
     </Section>
+    <AccountingStatusSection period={accountingPeriod} />
   </ScrollView><PaymentFilterSheet visible={filterSheet} selected={statusFilter} onSelect={setStatusFilter} onClose={() => setFilterSheet(false)} /><ObligationDetailsModal item={selected} busy={manualPaymentBusyId === selected?.id} onClose={() => setSelected(null)} onMarkManuallyPaid={markObligationManuallyPaid} /></SafeAreaView>;
 }
 

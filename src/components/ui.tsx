@@ -27,10 +27,10 @@ export function Section({ title, children, description, tone = 'primary', traili
 
 export function ListGroup({ children, style }: { children: ReactNode; style?: object }) { return <View style={[styles.listGroup, style]}>{children}</View>; }
 
-export function ListRow({ title, subtitle, value, icon, onPress, last = false, accessibilityLabel }: { title: string; subtitle?: string; value?: string; icon?: keyof typeof Ionicons.glyphMap; onPress?: () => void; last?: boolean; accessibilityLabel?: string }) {
-  const content = <><View style={styles.listRowCopy}>{icon ? <Ionicons name={icon} size={20} color={theme.colors.textSecondary} style={styles.listRowIcon} /> : null}<View style={styles.listRowText}><Text style={styles.rowTitle}>{title}</Text>{subtitle ? <Text style={styles.rowSubtitle}>{subtitle}</Text> : null}</View></View>{value ? <Text style={styles.rowValue}>{value}</Text> : null}{onPress ? <Ionicons name="chevron-forward" size={18} color={theme.colors.textMuted} /> : null}</>;
+export function ListRow({ title, subtitle, value, icon, onPress, last = false, accessibilityLabel, disabled = false, disabledLabel }: { title: string; subtitle?: string; value?: string; icon?: keyof typeof Ionicons.glyphMap; onPress?: () => void; last?: boolean; accessibilityLabel?: string; disabled?: boolean; disabledLabel?: string }) {
+  const content = <><View style={styles.listRowCopy}>{icon ? <Ionicons name={icon} size={20} color={theme.colors.textSecondary} style={styles.listRowIcon} /> : null}<View style={styles.listRowText}><Text style={[styles.rowTitle, disabled && styles.disabledRowText]}>{title}</Text>{subtitle ? <Text style={styles.rowSubtitle}>{subtitle}</Text> : null}</View></View>{value ? <Text style={styles.rowValue}>{value}</Text> : null}{disabledLabel ? <Text style={styles.disabledRowLabel}>{disabledLabel}</Text> : null}{onPress && !disabled ? <Ionicons name="chevron-forward" size={18} color={theme.colors.textMuted} /> : null}</>;
   const rowStyle = [styles.listRow, !last && styles.listDivider];
-  return onPress ? <Pressable onPress={onPress} accessibilityRole="button" accessibilityLabel={accessibilityLabel ?? title} style={({ pressed }) => [rowStyle, pressed && styles.rowPressed]}>{content}</Pressable> : <View accessibilityLabel={accessibilityLabel ?? title} style={rowStyle}>{content}</View>;
+  return onPress || disabled ? <Pressable onPress={onPress} disabled={disabled || !onPress} accessibilityRole="button" accessibilityLabel={accessibilityLabel ?? title} accessibilityState={{ disabled: disabled || !onPress }} style={({ pressed }) => [rowStyle, disabled && styles.disabledRow, pressed && !disabled && styles.rowPressed]}>{content}</Pressable> : <View accessibilityLabel={accessibilityLabel ?? title} style={rowStyle}>{content}</View>;
 }
 
 export function KeyValueRow({ label, value, state }: { label: string; value: string; state?: 'success' | 'attention' | 'pending' | 'error' | 'unknown' }) {
@@ -116,6 +116,9 @@ const styles = createThemeStyles({
   rowTitle: { color: theme.colors.textPrimary, fontSize: theme.typography.rowTitle, fontWeight: '600' },
   rowSubtitle: { color: theme.colors.textSecondary, fontSize: theme.typography.supporting, lineHeight: 18, marginTop: theme.spacing.xs },
   rowValue: { color: theme.colors.textPrimary, fontSize: theme.typography.body, fontWeight: '700', textAlign: 'right', flexShrink: 1 },
+  disabledRow: { backgroundColor: theme.colors.surfaceSecondary },
+  disabledRowText: { color: theme.colors.textMuted },
+  disabledRowLabel: { color: theme.colors.textMuted, backgroundColor: theme.colors.canvas, borderRadius: theme.radius.sm, overflow: 'hidden', fontSize: theme.typography.caption, fontWeight: '700', paddingHorizontal: theme.spacing.sm, paddingVertical: theme.spacing.xs },
   keyValueRow: { minHeight: 52, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: theme.spacing.md, paddingHorizontal: theme.spacing.lg, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: theme.colors.divider },
   keyLabel: { color: theme.colors.textSecondary, fontSize: theme.typography.supporting },
   keyValue: { color: theme.colors.textPrimary, fontSize: theme.typography.status, fontWeight: '600', textAlign: 'right', flexShrink: 1 },

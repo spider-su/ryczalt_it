@@ -36,15 +36,15 @@ export function MoreScreen() {
     return () => { active = false; };
   }, [repository, month, refreshVersion]);
 
-  const rows: [keyof typeof Ionicons.glyphMap, string, (() => void)?][] = [
-    ['business-outline', t('more.counterparties'), () => setCounterpartiesOpen(true)],
-    ['settings-outline', t('more.settings'), () => setSettingsOpen(true)],
-    ['notifications-outline', t('more.notifications'), () => setNotificationsOpen(true)],
-    ['download-outline', t('more.reports')],
-    ['help-circle-outline', t('more.help')]
+  const rows: { icon: keyof typeof Ionicons.glyphMap; label: string; onPress?: () => void; disabled?: boolean }[] = [
+    { icon: 'business-outline', label: t('more.counterparties'), onPress: () => setCounterpartiesOpen(true) },
+    { icon: 'settings-outline', label: t('more.settings'), onPress: () => setSettingsOpen(true) },
+    { icon: 'notifications-outline', label: t('more.notifications'), onPress: () => setNotificationsOpen(true) },
+    { icon: 'download-outline', label: t('more.reports'), disabled: true },
+    { icon: 'help-circle-outline', label: t('more.help'), disabled: true }
   ];
 
-  return <SafeAreaView style={styles.safe}><ScrollView contentContainerStyle={styles.content}><PageHeader title={t('more.title')} />{isDemo ? <View style={styles.demoBanner}><Ionicons name="flask-outline" size={20} color={theme.colors.primary} /><View style={styles.demoCopy}><Text style={styles.demoTitle}>{t('more.demoProfile')}</Text><Text style={styles.demoDescription}>{t('more.demoDescription')}</Text></View></View> : null}<ListGroup>{rows.map(([icon, label, onPress], index) => <ListRow key={label} icon={icon} title={label} onPress={onPress} last={index === rows.length - 1} />)}</ListGroup>
+  return <SafeAreaView style={styles.safe}><ScrollView contentContainerStyle={styles.content}><PageHeader title={t('more.title')} />{isDemo ? <View style={styles.demoBanner}><Ionicons name="flask-outline" size={20} color={theme.colors.primary} /><View style={styles.demoCopy}><Text style={styles.demoTitle}>{t('more.demoProfile')}</Text><Text style={styles.demoDescription}>{t('more.demoDescription')}</Text></View></View> : null}<ListGroup>{rows.map((row, index) => <ListRow key={row.label} icon={row.icon} title={row.label} onPress={row.onPress} disabled={row.disabled} disabledLabel={row.disabled ? t('more.comingSoon') : undefined} last={index === rows.length - 1} />)}</ListGroup>
     <Section title={t('more.health')}>{statusLoading ? <LoadingState /> : statusError ? <ErrorState title={t('more.healthUnavailable')} /> : <ListGroup><KeyValueRow label={formatMonth(month)} value={completenessStatusLabel(status?.completeness.status)} state={completenessTone} /></ListGroup>}</Section>
     <Pressable style={({ pressed }) => [styles.signOut, pressed && styles.signOutPressed]} onPress={signOut} accessibilityRole="button" accessibilityLabel={t('more.signOut')}><Ionicons name="log-out-outline" size={21} color={theme.colors.danger} /><Text style={styles.signOutText}>{t('more.signOut')}</Text></Pressable>
   </ScrollView><SettingsModal visible={settingsOpen} locale={locale} onClose={() => setSettingsOpen(false)} onLocale={setLocale} /><CounterpartiesScreen visible={counterpartiesOpen} onClose={() => setCounterpartiesOpen(false)} /><NotificationSettingsScreen visible={notificationsOpen} onClose={() => setNotificationsOpen(false)} /></SafeAreaView>;
