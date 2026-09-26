@@ -110,7 +110,11 @@ function formatExactDecimal(amount: string, currency?: string | null): string | 
     ? new Intl.NumberFormat(locale, { style: 'currency', currency, minimumFractionDigits: displayDigits, maximumFractionDigits: displayDigits })
     : new Intl.NumberFormat(locale, { minimumFractionDigits: displayDigits, maximumFractionDigits: displayDigits });
   const groupedInteger = BigInt(parts.integer).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
-  const template = formatter.formatToParts(BigInt(parts.negative ? -1 : 1));
+  // Hermes on Android does not consistently support BigInt values in
+  // Intl.NumberFormat.formatToParts. Use a small numeric sentinel only to
+  // obtain the locale's currency/sign layout, then replace its integer part
+  // with the exact string calculated above.
+  const template = formatter.formatToParts(parts.negative ? -1 : 1);
   return template.map((part) => part.type === 'integer'
     ? groupedInteger
     : part.value).join('');
