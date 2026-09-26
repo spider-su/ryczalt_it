@@ -1,0 +1,40 @@
+name: Customer Web CI
+
+on:
+  pull_request:
+    paths:
+      - "apps/customer-web/**"
+      - ".github/workflows/customer-web-ci.yml"
+  push:
+    branches: [develop, main]
+    paths:
+      - "apps/customer-web/**"
+      - ".github/workflows/customer-web-ci.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: customer-web-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    working-directory: apps/customer-web
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "25"
+          cache: maven
+          cache-dependency-path: apps/customer-web/pom.xml
+      - name: Verify customer web and context tests
+        run: mvn -B verify
+      - name: Build customer web container
+        run: docker build --tag ryczalt-customer-web:${{ github.sha }} .

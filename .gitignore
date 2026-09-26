@@ -2,14 +2,18 @@
 /node_modules/
 /dist/
 /.expo/
-
-.expo/
-*:Zone.Identifier
-
-.expo/
+/android/
+/ios/
+/scripts/tmp/
+/apps/mobile/node_modules/
+/apps/mobile/dist/
+/apps/mobile/.expo/
+/apps/mobile/android/
+/apps/mobile/ios/
 *:Zone.Identifier
 .playwright-mcp/
-/android/
 
-# Generated live API smoke-test output; never commit credentials or live data.
-/scripts/tmp/
+# Generated mobile smoke-test output; never commit credentials or live data.
+/apps/mobile/scripts/tmp/
+**/target/
+/apps/backend/src/main/resources/application-local.yml
