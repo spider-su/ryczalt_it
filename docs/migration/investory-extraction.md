@@ -2,63 +2,77 @@
 
 ## Goal
 
-Make Ryczałt an independently deployable accounting product while preserving the current accounting behavior from Investory.
+Move accounting ownership out of Investory and establish Ryczałt as an independent product.
+
+Investory remains the separate investment/retirement product.
 
 ## Frozen source baselines
 
-- Investory accounting/backend/web source: `spider-su/investory@20ef753723ab73f1dbe7fed2a9b0fb6df3a3394f` (`develop`)
-- Mobile base: `spider-su/ryczalt_it@de38e0b4dd0ab83d58e7db44a2bb5176cffb0eb3` (`develop`)
+- Investory accounting/backend/web source: `spider-su/investory@20ef753723ab73f1dbe7fed2a9b0fb6df3a3394f`
+- Ryczałt mobile base: `spider-su/ryczalt_it@de38e0b4dd0ab83d58e7db44a2bb5176cffb0eb3`
 
-## Migrated in this branch
+## Migrated ownership
 
-- accounting domain production source and tests under `apps/backend`
-- accounting certification fixtures under `apps/backend/src/test/resources`
-- accounting REST controllers and DTOs used by the mobile contract
-- standalone Ryczałt Flyway baseline plus accounting migrations
-- profile-scoped identity, membership and bearer-token authentication required by the existing mobile app
-- invitation acceptance used by the existing mobile activation flow
-- KSeF, bank, NBP and ZUS adapter code required by the accounting domain
-- minimal managed-integration persistence/configuration required by KSeF
-- profile-scoped authorization boundary used by accounting REST endpoints
-- accounting-only Thymeleaf controllers/templates/styles/tests as `apps/customer-web`
-- accounting architecture, API, migration, calculation and test documentation
-- CI validation for backend, customer web and the mobile application in `apps/mobile`
+Ryczałt now owns:
+
+- accounting domain code and tests
+- accounting REST API
+- accounting persistence/migrations
+- KSeF/bank/NBP/ZUS accounting adapters
+- identity/profile boundary required by current product flows
+- mobile end-user application
+- accounting-only customer web seed
+- accounting architecture/API/testing documentation
+
+## Product repository layout
+
+- `apps/backend`
+- `apps/mobile`
+- `apps/customer-web`
+- `apps/backoffice`
+- `docs/`
 
 ## Intentionally not migrated
 
-- investment portfolio domain
+- portfolio/investment domain
 - retirement and long-term planning
-- broker imports and investment dashboards
-- unrelated integration plugins/jobs
-- Investory-wide profile/reporting UI
-- cross-domain tests whose purpose is to assert the Investory/accounting boundary
-- Google/OAuth login from Investory; the extracted backend keeps the mobile token-login contract only
+- broker investment imports
+- investment dashboards
+- unrelated Investory integrations
+- Investory-wide reporting/profile UI
 
-## Repository layout
+## Current extraction principle
 
-- `apps/backend` — standalone accounting backend extraction
-- `apps/mobile` — Expo / React Native end-user application
-- `apps/customer-web` — customer accounting web seed
-- `apps/backoffice` — reserved for the separate staff application; no fake implementation is introduced in this migration
+Preserve accounting behavior first; rename/refactor historical package names later.
 
-## Validation completed
+Do not delete accounting implementation from Investory until:
 
-- `mvn -B -f apps/backend/pom.xml test`
-- `mvn -B -f apps/customer-web/pom.xml test`
-- standalone empty PostgreSQL migration test
-- existing Mobile GitHub Actions workflow
+1. standalone migrations are verified
+2. standalone backend builds and deploys
+3. mobile works against the standalone backend
+4. accounting parity is confirmed
+5. rollback is documented
 
-The extraction workflow and Mobile workflow are green on the current branch.
+## Next product stages
 
-## Known follow-ups before production cutover
+Extraction is not the end-state roadmap.
 
-1. replace the customer-web in-process boundary with an HTTP implementation against `apps/backend`, or deliberately defer customer web deployment to its planned stage
-2. define production bootstrap/onboarding for creation of the first Ryczałt profile and owner instead of relying on migrated data
-3. configure production secrets: `RYCZALT_TOKEN_SECRET`, `RYCZALT_INTEGRATION_MASTER_KEY`, database credentials and allowed web origins
-4. add deployment workflows/Cloud Run configuration for the standalone backend
-5. implement the separate reviewer/admin backoffice application
-6. only after production parity, remove accounting ownership from Investory in a separate PR
+After build/deployment stabilization:
+
+1. automated NIP-based onboarding
+2. optional KSeF setup
+3. first-use readiness
+4. historical accounting bootstrap
+5. detailed customer web
+6. reviewer/admin backoffice
+7. payment/reconciliation hardening
+
+See [roadmap](../product/roadmap.md).
+
+## Legacy documentation
+
+`docs/investory/` contains documents copied during extraction. They are retained for reference and migration parity. They must not override current Ryczałt product/architecture decisions.
 
 ## Cutover rule
 
-The source Investory repository is not modified by this branch. Deletion/cutover happens only after parity and standalone deployment are proven.
+The Investory source repository is not modified by this documentation PR. Accounting removal from Investory belongs to a later verified cutover PR.
