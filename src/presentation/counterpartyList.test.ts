@@ -50,4 +50,12 @@ describe('counterparty list presentation', () => {
     expect(counterpartyInvoiceCount(12)).toBe('12 faktur');
     expect(counterpartyInvoiceCount(22)).toBe('22 faktury');
   });
+
+  it('does not crash when the backend omits or corrupts the invoice count', () => {
+    setActiveLocale('en');
+    expect(counterpartyInvoiceCount(undefined)).toBe('Invoice count unavailable');
+    expect(counterpartyInvoiceCount(null)).toBe('Invoice count unavailable');
+    expect(counterpartyInvoiceCount(Number.NaN)).toBe('Invoice count unavailable');
+    expect(counterpartyInvoiceCount(-1)).toBe('Invoice count unavailable');
+  });
 });

@@ -37,9 +37,11 @@ export function counterpartyTaxIdentifier(item: Counterparty): string {
   return `${t(isPolish ? 'counterparties.nip' : 'counterparties.taxId')} ${identifier}`;
 }
 
-export function counterpartyInvoiceCount(count: number): string {
-  const pluralCategory = invoiceCountPluralCategory(count, getActiveLocale());
-  return `${count} ${t(`counterparties.invoiceCount.${pluralCategory}`)}`;
+export function counterpartyInvoiceCount(count: number | null | undefined): string {
+  if (typeof count !== 'number' || !Number.isFinite(count) || count < 0) return t('counterparties.invoiceCountUnavailable');
+  const normalizedCount = Math.trunc(count);
+  const pluralCategory = invoiceCountPluralCategory(normalizedCount, getActiveLocale());
+  return `${normalizedCount} ${t(`counterparties.invoiceCount.${pluralCategory}`)}`;
 }
 
 function invoiceCountPluralCategory(count: number, locale: 'pl' | 'en'): 'one' | 'few' | 'many' | 'other' {

@@ -297,6 +297,7 @@ const translations = {
         many: 'faktur',
         other: 'faktur'
       },
+      invoiceCountUnavailable: 'Liczba faktur niedostępna',
       error: 'Nie udało się pobrać kontrahentów.',
       historyError: 'Nie udało się pobrać historii faktur.',
       noInvoices: 'Brak faktur dla tego kontrahenta.',
@@ -716,6 +717,7 @@ const translations = {
         many: 'invoices',
         other: 'invoices'
       },
+      invoiceCountUnavailable: 'Invoice count unavailable',
       error: 'We could not load counterparties.',
       historyError: 'We could not load invoice history.',
       noInvoices: 'No invoices for this counterparty.',
