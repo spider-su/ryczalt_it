@@ -1,7 +1,41 @@
 # Ryczałt backend
 
-Standalone Spring Boot backend extracted from `spider-su/investory@develop`.
+Standalone Spring Boot backend for the Ryczałt product.
 
-This application owns the Ryczałt accounting domain, persistence, REST API and accounting-specific integrations. During extraction package names are intentionally preserved to keep behavior and tests stable. Product/package renaming is a later refactor after parity is established.
+## Responsibility
 
-Source of truth for the extraction plan: `docs/migration/investory-extraction.md`.
+The backend is authoritative for:
+
+- company/accounting profiles
+- invoices and counterparties
+- PIT / ryczałt calculations
+- VAT accounting state
+- ZUS calculations
+- obligations and payment state
+- accounting completeness
+- KSeF and accounting integrations
+- authorization and audit history
+
+Customer applications must not reproduce these calculations independently.
+
+## Current supported profile
+
+- JDG
+- ryczałt 12%
+- monthly PIT
+- active VAT
+- monthly VAT
+- optional KSeF
+
+Unsupported combinations must be rejected by backend validation rather than silently normalized.
+
+## Migration status
+
+The code was extracted from `spider-su/investory@develop`. Package names may still contain historical Investory naming during the parity phase. Renaming is separate from behavioral extraction.
+
+See:
+
+- [product strategy](../../docs/product/strategy.md)
+- [onboarding](../../docs/product/onboarding.md)
+- [migration plan](../../docs/migration/investory-extraction.md)
+- [release baseline](../../docs/operations/release-baseline.md)

@@ -1,49 +1,164 @@
 # Ryczałt Platform Baseline v0.1
 
-## Repository layout
+This baseline is a gate before major product expansion.
 
-The deployable applications live under `apps/`:
+## Goal
 
-- `apps/backend` — Spring Boot API and database migrations
-- `apps/mobile` — Expo / React Native application
-- `apps/customer-web` — Spring Boot / Thymeleaf customer web
-- `apps/backoffice` — reserved for the future staff application
+Every application must be independently buildable and deployable, and `main` must remain releasable.
 
-Each application has its own validation working directory and path-scoped GitHub Actions
-workflow. Root-level mobile commands are intentionally not used by CI.
+## Application boundaries
 
-## Validation and build model
+- `apps/backend` — Spring Boot API and migrations
+- `apps/mobile` — Expo / React Native
+- `apps/customer-web` — detailed customer web
+- `apps/backoffice` — staff application when implementation begins
 
-- `backend-ci.yml` runs Maven verify, including unit, context, integration, and empty/upgrade
-  migration tests, then builds a SHA-tagged local Docker image.
-- `customer-web-ci.yml` runs Maven verify and builds the customer-web container.
-- `mobile-ci.yml` runs npm installation, typecheck, lint, format check, unit tests, and Expo Doctor.
-- `mobile-build.yml` creates an Android preview artifact on `develop` and a production candidate
-  on `main`; the EAS CLI is pinned to `24.8.0`.
-- `mobile-submit.yml` is manual and is the only store-submission workflow.
+## CI vs CD
 
-PR workflows validate only. Deployment credentials and target infrastructure are intentionally
-not embedded in this repository. When DEV/STAGING deployment is added, it must promote the exact
-image tagged with the commit SHA rather than rebuilding source or using `latest`.
+PRs validate only.
 
-## Runtime identity and rollback
+Target environment model:
 
-The backend exposes `gitSha`, `version`, and `buildTime` under `/actuator/info` from the
-`RYCZALT_GIT_SHA`, `RYCZALT_BUILD_VERSION`, and `RYCZALT_BUILD_TIME` environment variables.
-Deployments should set those values from the immutable artifact metadata.
+```text
+PR
+  -> tests/build
 
-Rollback is a deployment of the previous image SHA/revision. Database changes must remain
-backward-compatible across the application rollout; add and backfill before removing obsolete
-columns. After the first production release, released Flyway migrations are immutable—add a new
-migration instead of editing an old one.
+develop
+  -> build immutable artifact
+  -> DEV deployment
 
-## Environment contract
+main
+  -> build immutable release candidate
+  -> STAGING
 
-DEV, STAGING, and PROD require separate databases, secrets, backend URLs, allowed origins, and
-KSeF modes. DEV and STAGING use test KSeF credentials and fixture accounts; PROD uses production
-KSeF credentials and real user data. Preview mobile builds must receive an explicit DEV or test
-API URL and must never inherit the production URL implicitly.
+manual approval
+  -> PROD
+```
 
-Branch protection and deployment environments remain repository-host configuration: require the
-affected app checks on `develop` and `main`, require pull requests, and keep production deploy
-approval manual until the first release has completed its rollback drill.
+Do not rebuild source between validation and production promotion.
+
+## Required validation
+
+### Backend
+
+- Maven verify
+- unit tests
+- integration tests
+- Spring context startup
+- empty PostgreSQL migration test
+- upgrade-from-previous-release migration test
+- Docker image build
+
+### Mobile
+
+- `npm ci`
+- typecheck
+- lint/format checks
+- unit tests
+- Expo Doctor
+- preview/release build when explicitly requested by the release workflow
+
+### Customer web
+
+- Maven verify
+- context/startup test
+- Docker image build
+
+### Backoffice
+
+Add equivalent application-specific checks when code is introduced.
+
+## Immutable artifacts
+
+Backend and web images should be identified by commit SHA or release version.
+
+Example:
+
+```text
+ryczalt-backend:<git-sha>
+```
+
+Never promote a mutable `latest` tag as the deployment identity.
+
+Expose build identity through health/info metadata where practical:
+
+- Git SHA
+- application version
+- build time
+
+## Database migrations
+
+Before first standalone production release, extraction baselines may still be corrected deliberately.
+
+After first production release:
+
+- released Flyway migrations are immutable
+- schema changes are additive/backward-compatible first
+- destructive cleanup happens only after compatible application rollout
+- both clean install and previous-release upgrade are tested
+
+## Environments
+
+Maintain separate DEV, STAGING and PROD values for:
+
+- database
+- secrets
+- API URL
+- allowed origins
+- KSeF environment/credentials
+- fixture/test accounts
+
+Preview/mobile development must never silently fall back to production API configuration.
+
+## Secrets
+
+Keep outside Git:
+
+- token signing secrets
+- KSeF credentials/certificates
+- integration encryption key
+- DB credentials
+- Expo token
+- store credentials
+
+## Smoke tests after deployment
+
+At minimum:
+
+- health
+- readiness
+- authentication with a dedicated non-personal test identity
+- `/api/v1/auth/me`
+- one accounting-period read
+
+Do not use personal production data for automated smoke tests.
+
+## Rollback
+
+Application rollback = deploy the previous known-good immutable image/revision.
+
+Database design must permit this through backward-compatible migration sequencing.
+
+Document and rehearse rollback before first production release.
+
+## Branch protection
+
+Require PRs and relevant app checks on `develop` and `main`.
+
+Use path-scoped workflows so unrelated applications are not rebuilt unnecessarily.
+
+Production promotion and mobile store submission remain explicit/manual until the release process has completed a successful rollback drill.
+
+## Baseline exit criteria
+
+Do not call the delivery platform stable until:
+
+- repository paths are final
+- backend, mobile and customer web build independently
+- migrations pass clean + upgrade paths
+- Docker images build reproducibly
+- DEV deploy works
+- smoke tests pass
+- mobile preview points to DEV/test backend explicitly
+- no runtime dependency on Investory remains
+- rollback procedure is documented and proven
