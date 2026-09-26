@@ -12,7 +12,7 @@
 
 - `npm ci`: PASS.
 - `npx expo-doctor`: PASS — 21/21 checks.
-- `npm run ci`: PASS — 18 test files, 73 tests after final hardening.
+- `npm run ci`: PASS — 24 test files, 91 tests.
 - Typecheck: PASS.
 - `git diff --check`: PASS.
 - `npx expo config --type public`: PASS.
@@ -25,11 +25,11 @@
 - App name: `Investory Accounting`.
 - Android package: `pl.investory.accounting`.
 - iOS bundle identifier: `pl.investory.accounting`.
-- Expo SDK: `~57.0.24`.
+- Expo SDK: `~57.0.25`.
 - Notifications plugin: configured.
 - EAS owner/project ID: present in `app.json`.
 - `eas.json`: present; development, preview, and production profiles are
-  configured and unchanged.
+  configured.
 - Android preview build status: prior attempts completed checkout, dependency
   install, CI, EAS authentication, keystore selection, upload, and fingerprint
   generation, then were rejected by the Android monthly build quota.

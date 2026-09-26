@@ -16,6 +16,9 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { t } from './src/i18n';
 import { ThemeProvider, useTheme, theme } from './src/theme/theme';
 import { WebAppMetadata } from './src/components/WebAppMetadata';
+import { captureAppException, initializeCrashMonitoring } from './src/monitoring/sentry';
+
+initializeCrashMonitoring();
 
 export default function App() {
   return <AppErrorBoundary><SafeAreaProvider><ThemeProvider><LocaleProvider><AuthProvider><WebAppMetadata /><AppContent /></AuthProvider></LocaleProvider></ThemeProvider></SafeAreaProvider></AppErrorBoundary>;
@@ -24,7 +27,10 @@ export default function App() {
 class AppErrorBoundary extends Component<PropsWithChildren, { failed: boolean }> {
   state = { failed: false };
   static getDerivedStateFromError(): { failed: boolean } { return { failed: true }; }
-  componentDidCatch(error: Error, info: ErrorInfo) { if (__DEV__) console.error('Investory UI error', error.message, info.componentStack); }
+  componentDidCatch(error: Error, info: ErrorInfo) {
+    captureAppException(error, { componentStack: info.componentStack });
+    if (__DEV__) console.error('Investory UI error', error.message, info.componentStack);
+  }
   render() {
     if (this.state.failed) return <SafeAreaProvider><Text style={{ flex: 1, textAlign: 'center', textAlignVertical: 'center', padding: 24 }}>Investory could not display this screen. Please restart the app.</Text></SafeAreaProvider>;
     return this.props.children;

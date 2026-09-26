@@ -6,11 +6,6 @@
     "orientation": "portrait",
     "userInterfaceStyle": "automatic",
     "icon": "assets/brand/app-icon.png",
-    "splash": {
-      "image": "assets/brand/splash.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#F5F7FC"
-    },
     "assetBundlePatterns": [
       "**/*"
     ],
@@ -39,10 +34,24 @@
     },
     "plugins": [
       "expo-system-ui",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/brand/splash.png",
+          "resizeMode": "contain",
+          "backgroundColor": "#F5F7FC"
+        }
+      ],
       "expo-font",
       "expo-secure-store",
-      ["expo-local-authentication", { "faceIDPermission": "Allow Investory Accounting to use Face ID to unlock your account." }],
-      "expo-notifications"
+      [
+        "expo-local-authentication",
+        {
+          "faceIDPermission": "Allow Investory Accounting to use Face ID to unlock your account."
+        }
+      ],
+      "expo-notifications",
+      "@sentry/react-native"
     ],
     "extra": {
       "eas": {

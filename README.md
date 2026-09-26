@@ -69,9 +69,14 @@ npx eas-cli build --profile production --platform all
 npx eas-cli submit --profile production --platform all
 ```
 
-The repository contains the Expo owner (`spider-su`), project slug (`investory-accounting`) and EAS project ID. `EXPO_TOKEN`, Expo account authentication and signing credentials remain external CI/account configuration. Do not commit generated `android/` or `ios/` directories unless the project moves to a bare workflow. A successful cloud EAS build is independent of launching a local Android emulator; missing local SDK executables are local environment issues.
+The repository contains the Expo owner (`smart-box`), project slug (`smart-box`) and EAS project ID. `EXPO_TOKEN`, Expo account authentication and signing credentials remain external CI/account configuration. Do not commit generated `android/` or `ios/` directories unless the project moves to a bare workflow. A successful cloud EAS build is independent of launching a local Android emulator; missing local SDK executables are local environment issues.
 
 ## Structure
+
+Release operations and review materials are documented in
+[`docs/store-metadata.md`](docs/store-metadata.md),
+[`docs/crash-monitoring.md`](docs/crash-monitoring.md), and
+[`docs/mobile-dependency-security.md`](docs/mobile-dependency-security.md).
 
 ```text
 src/
@@ -186,7 +191,7 @@ npx expo-doctor
 
 The authoritative validation workflow is `.github/workflows/mobile.yml`. It runs Expo Doctor plus typechecking and tests for pull requests and pushes to `develop`/`main`, including changes to workflow files. Validation is allowed on non-main branches; EAS builds are restricted to `main`.
 
-EAS workflows use the same repository-level `EXPO_TOKEN` secret. `mobile-production.yml` automatically builds Android production on pushes to `main`. `mobile-preview.yml` and `mobile-release.yml` are manually dispatched and fail immediately unless dispatched from `main`. Each workflow validates the token before dependency installation. The token is never stored in the repository or printed in logs. These workflows run EAS builds; they do not submit builds to app stores or publish OTA updates. Configure the Expo project/account and repository secret outside Git.
+EAS workflows use the same repository-level `EXPO_TOKEN` secret. `mobile-production.yml` automatically builds Android and iOS production apps on pushes to `main`. `mobile-preview.yml` and `mobile-release.yml` are manually dispatched and fail immediately unless dispatched from `main`. Each workflow validates the token before dependency installation. The token is never stored in the repository or printed in logs. These workflows run EAS builds; they do not submit builds to app stores or publish OTA updates. Configure the Expo project/account and repository secret outside Git.
 
 ## Suggested next increment
 

@@ -14,7 +14,8 @@ const TOKEN_KEY = 'investory.authToken';
 const PROFILE_ID_KEY = 'investory.accountingProfileId';
 const LOGIN_PATH = process.env.EXPO_PUBLIC_AUTH_LOGIN_PATH ?? '/api/v1/auth/login';
 const CURRENT_PROFILE_PATH = '/api/v1/auth/me';
-type AuthContextValue = { token: string | null; profileId: number | null; isDemo: boolean; loading: boolean; error: AuthErrorCode | null; biometricAvailable: boolean; biometricEnabled: boolean; signIn: (email: string, password: string) => Promise<void>; unlockWithBiometrics: () => Promise<boolean>; enableBiometricLogin: () => Promise<boolean>; disableBiometricLogin: () => Promise<void>; startDemo: () => Promise<void>; signOut: () => Promise<void> };
+const INVITATION_ACCEPT_PATH = '/api/v1/auth/invitations';
+type AuthContextValue = { token: string | null; profileId: number | null; isDemo: boolean; loading: boolean; error: AuthErrorCode | null; biometricAvailable: boolean; biometricEnabled: boolean; signIn: (email: string, password: string) => Promise<void>; activateAccount: (token: string, password: string) => Promise<void>; unlockWithBiometrics: () => Promise<boolean>; enableBiometricLogin: () => Promise<boolean>; disableBiometricLogin: () => Promise<void>; startDemo: () => Promise<void>; signOut: () => Promise<void> };
 const AuthContext = createContext<AuthContextValue | null>(null);
 
 // SecureStore is native-only. Expo web uses the existing browser-backed
@@ -87,8 +88,16 @@ export function AuthProvider({ children }: PropsWithChildren) {
       if (!nextToken) throw new Error('invalid_response');
       const profile = await resolveProfile(nextToken);
       await sessionStore.set(TOKEN_KEY, nextToken); await sessionStore.set(PROFILE_ID_KEY, String(profile.id));
-      if (await biometricLoginAvailable()) { await sessionStore.set(BIOMETRIC_ENABLED_KEY, 'true'); setBiometricEnabled(true); }
       setAccountingAuthToken(nextToken); setAccountingProfileId(profile.id); setToken(nextToken); setProfileId(profile.id);
+    } catch (reason) { const code = authErrorForFailure(reason); setError(code); throw new Error(code); } finally { clearTimeout(timeout); }
+  }
+  async function activateAccount(invitationToken: string, password: string) {
+    setError(null);
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), DEFAULT_REQUEST_TIMEOUT_MS);
+    try {
+      const response = await fetch(`${API_BASE_URL}${INVITATION_ACCEPT_PATH}/${encodeURIComponent(invitationToken)}/accept`, { method: 'POST', headers: { Accept: 'application/json', 'Content-Type': 'application/json' }, body: JSON.stringify({ password }), signal: controller.signal });
+      if (!response.ok) throw new Error(authErrorForStatus(response.status));
     } catch (reason) { const code = authErrorForFailure(reason); setError(code); throw new Error(code); } finally { clearTimeout(timeout); }
   }
   async function unlockWithBiometrics() {
@@ -116,6 +125,6 @@ export function AuthProvider({ children }: PropsWithChildren) {
     setDemoMode(true); setIsDemo(true); setAccountingAuthToken(null); setAccountingProfileId(DEMO_PROFILE_ID); setToken(DEMO_SESSION_TOKEN); setProfileId(DEMO_PROFILE_ID);
   }
   async function signOut() { await invalidateSession(); await disableBiometricLogin(); }
-  return <AuthContext.Provider value={{ token, profileId, isDemo, loading, error, biometricAvailable, biometricEnabled, signIn, unlockWithBiometrics, enableBiometricLogin, disableBiometricLogin, startDemo, signOut }}>{children}</AuthContext.Provider>;
+  return <AuthContext.Provider value={{ token, profileId, isDemo, loading, error, biometricAvailable, biometricEnabled, signIn, activateAccount, unlockWithBiometrics, enableBiometricLogin, disableBiometricLogin, startDemo, signOut }}>{children}</AuthContext.Provider>;
 }
 export function useAuth() { const value = useContext(AuthContext); if (!value) throw new Error('useAuth must be used inside AuthProvider'); return value; }

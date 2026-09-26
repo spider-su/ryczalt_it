@@ -43,5 +43,5 @@ jobs:
           eas-version: latest
           token: ${{ secrets.EXPO_TOKEN }}
 
-      - name: Build Android production
-        run: eas build --platform android --profile production --non-interactive
+      - name: Build production apps
+        run: eas build --platform all --profile production --non-interactive

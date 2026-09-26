@@ -16,7 +16,7 @@ import { ErrorState, LoadingState } from '../components/ui';
 
 export function MoreScreen() {
   useTheme();
-  const { signOut, isDemo } = useAuth();
+  const { signOut, isDemo, biometricAvailable, biometricEnabled, enableBiometricLogin, disableBiometricLogin } = useAuth();
   const { locale, setLocale } = useLocale();
   const [settingsOpen, setSettingsOpen] = React.useState(false);
   const [counterpartiesOpen, setCounterpartiesOpen] = React.useState(false);
@@ -39,6 +39,7 @@ export function MoreScreen() {
   const rows: { icon: keyof typeof Ionicons.glyphMap; label: string; onPress?: () => void; disabled?: boolean }[] = [
     { icon: 'business-outline', label: t('more.counterparties'), onPress: () => setCounterpartiesOpen(true) },
     { icon: 'settings-outline', label: t('more.settings'), onPress: () => setSettingsOpen(true) },
+    { icon: 'finger-print-outline', label: biometricEnabled ? t('settings.biometricEnabled') : t('settings.biometric'), onPress: biometricAvailable ? () => { void (biometricEnabled ? disableBiometricLogin() : enableBiometricLogin()).catch(() => undefined); } : undefined, disabled: !biometricAvailable },
     { icon: 'notifications-outline', label: t('more.notifications'), onPress: () => setNotificationsOpen(true) },
     { icon: 'download-outline', label: t('more.reports'), disabled: true },
     { icon: 'help-circle-outline', label: t('more.help'), disabled: true }
