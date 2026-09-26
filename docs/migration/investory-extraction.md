@@ -4,41 +4,48 @@
 
 Make Ryczałt an independently deployable accounting product while preserving the current accounting behavior from Investory.
 
-## Source baselines
+## Frozen source baselines
 
-- Backend and accounting web UI: `spider-su/investory@develop`
-- Mobile: this repository's `develop`
+- Investory accounting/backend/web source: `spider-su/investory@20ef753723ab73f1dbe7fed2a9b0fb6df3a3394f` (`develop`)
+- Mobile base: `spider-su/ryczalt_it@de38e0b4dd0ab83d58e7db44a2bb5176cffb0eb3` (`develop`)
 
-## Migration boundary
+## Migrated in this branch
 
-Moves:
-- `modules/ryczalt` domain, calculations, persistence and tests
-- Ryczałt REST controllers and DTOs
-- accounting-only KSeF, bank and NBP adapters required by the domain
+- complete `modules/ryczalt` production source
+- complete `modules/ryczalt` unit tests and certification fixtures
+- accounting REST controllers and DTOs used by the mobile contract
 - Ryczałt SQL migrations
-- accounting-specific web UI controllers/templates/styles
-- accounting documentation and tests
+- KSeF, bank, NBP and ZUS adapter code required by the accounting domain
+- minimal managed-integration persistence/configuration required by KSeF
+- profile-scoped authorization boundary used by accounting REST endpoints
+- accounting-only Thymeleaf controllers/templates/styles/tests as `apps/customer-web`
+- accounting architecture, API, migration, calculation and test documentation
 
-Does not move:
-- investment portfolio
-- long-term planning
-- retirement
-- investment dashboards/imports
-- unrelated integrations
+## Intentionally not migrated
 
-## Strategy
-
-1. Copy code first with package names intact.
-2. Establish standalone Maven build and database migrations.
-3. Preserve REST contracts used by the existing mobile app.
-4. Extract the accounting web UI as a separate customer-web/backoffice seed.
-5. Verify parity before deleting anything from Investory.
-6. Only after parity, remove accounting ownership from Investory in a separate PR.
+- investment portfolio domain
+- retirement and long-term planning
+- broker imports and investment dashboards
+- unrelated integration plugins/jobs
+- Investory-wide profile/reporting UI
+- cross-domain tests whose purpose is to assert the Investory/accounting boundary
 
 ## Transitional repository layout
 
-- `apps/backend` — standalone accounting backend
-- `apps/customer-web` — extracted accounting web UI seed
-- repository root — existing Expo mobile app (kept in place during this extraction to avoid a simultaneous mobile path/build migration)
+- `apps/backend` — standalone accounting backend extraction
+- `apps/customer-web` — customer accounting web seed
+- repository root — existing Expo mobile app, intentionally left in place during extraction to avoid mixing backend extraction with a mobile path/build migration
+- `apps/backoffice` — planned next-stage staff application; no fake implementation is introduced in this migration
 
-A later mechanical change can move the mobile app under `apps/mobile` once backend extraction is green.
+## Known extraction follow-ups
+
+1. replace the customer web in-process bridge with an HTTP client to `apps/backend`
+2. finish standalone identity/authentication ownership and migrate the minimum required identity schema
+3. verify Flyway baseline ownership for managed integrations and profile membership
+4. establish production deployment configuration and secrets for the backend
+5. move the mobile app mechanically to `apps/mobile` after extraction parity is green
+6. only then remove accounting ownership from Investory in a separate PR
+
+## Validation rule
+
+The source Investory repository is not modified by this branch. Deletion/cutover happens only after parity and standalone deployment are proven.

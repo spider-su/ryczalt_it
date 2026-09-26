@@ -1,0 +1,42 @@
+name: extraction-validation
+
+on:
+  push:
+    branches:
+      - feature/extract-accounting-monorepo
+    paths:
+      - 'apps/backend/**'
+      - 'apps/customer-web/**'
+      - 'docs/migration/**'
+      - '.github/workflows/extraction-validation.yml'
+  pull_request:
+    paths:
+      - 'apps/backend/**'
+      - 'apps/customer-web/**'
+      - 'docs/migration/**'
+      - '.github/workflows/extraction-validation.yml'
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '25'
+          cache: maven
+      - name: Test backend extraction
+        run: mvn -B -f apps/backend/pom.xml test
+
+  customer-web:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '25'
+          cache: maven
+      - name: Test customer web extraction
+        run: mvn -B -f apps/customer-web/pom.xml test
