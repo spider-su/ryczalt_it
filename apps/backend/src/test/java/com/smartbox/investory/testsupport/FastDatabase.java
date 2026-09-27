@@ -2,11 +2,12 @@ package com.smartbox.investory.testsupport;
 
 import java.io.IOException;
 import java.net.URL;
+import org.flywaydb.core.Flyway;
 import org.testcontainers.containers.Container;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.utility.MountableFile;
 
-/** Shared PostgreSQL instance for integration tests that do not need Flyway validation. */
+/** Shared PostgreSQL instance for integration tests that do not need per-test Flyway validation. */
 public final class FastDatabase {
 
   private static final String SNAPSHOT = "db/snapshot/schema.sql";
@@ -51,14 +52,19 @@ public final class FastDatabase {
 
   private static void loadSnapshot(WorkerDatabase database) {
 
-    if (!resourceExists(SNAPSHOT)) {
-      throw new IllegalStateException(
-          "Missing fast test database snapshot "
-              + SNAPSHOT
-              + ". Run bash scripts/update-test-db-snapshot.sh and commit the result.");
-    }
     if (!snapshotLoaded(database)) {
-      executeResource(database, SNAPSHOT, "/tmp/investory-schema.sql");
+      if (resourceExists(SNAPSHOT)) {
+        executeResource(database, SNAPSHOT, "/tmp/investory-schema.sql");
+      } else {
+        Flyway.configure()
+            .dataSource(database.jdbcUrl(), database.username(), database.password())
+            .schemas("investory")
+            .defaultSchema("investory")
+            .createSchemas(true)
+            .locations("classpath:sql/migration")
+            .load()
+            .migrate();
+      }
     }
   }
 

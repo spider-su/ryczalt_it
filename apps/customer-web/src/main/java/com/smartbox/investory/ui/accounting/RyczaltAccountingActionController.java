@@ -78,6 +78,7 @@ public class RyczaltAccountingActionController {
       redirect.addFlashAttribute(
           "accountingMessage", "Bank import complete: " + result.imported() + " imported.");
     } catch (Exception exception) {
+      RyczaltAccountingWebSupport.rethrowBackendSessionFailure(exception);
       RyczaltAccountingWebSupport.logFailure("bank-import", profileId, null, exception);
       redirect.addFlashAttribute(
           "accountingError",
@@ -94,6 +95,7 @@ public class RyczaltAccountingActionController {
       redirect.addFlashAttribute(
           "accountingMessage", "KSeF sync complete: " + result.imported() + " imported.");
     } catch (Exception exception) {
+      RyczaltAccountingWebSupport.rethrowBackendSessionFailure(exception);
       RyczaltAccountingWebSupport.logFailure("ksef-sync", profileId, month, exception);
       redirect.addFlashAttribute(
           "accountingError",
@@ -132,6 +134,7 @@ public class RyczaltAccountingActionController {
       operation.run();
       redirect.addFlashAttribute("accountingMessage", "Ryczalt action completed: " + name + ".");
     } catch (RuntimeException exception) {
+      RyczaltAccountingWebSupport.rethrowBackendSessionFailure(exception);
       RyczaltAccountingWebSupport.logFailure(name, profileId, month, exception);
       redirect.addFlashAttribute(
           "accountingError",

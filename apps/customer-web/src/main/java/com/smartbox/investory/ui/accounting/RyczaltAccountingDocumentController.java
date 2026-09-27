@@ -40,6 +40,7 @@ public class RyczaltAccountingDocumentController {
           + "/accounting/documents/candidates/"
           + candidate.candidateKey();
     } catch (Exception exception) {
+      RyczaltAccountingWebSupport.rethrowBackendSessionFailure(exception);
       RyczaltAccountingWebSupport.logFailure("document-recognition", profileId, null, exception);
       redirect.addFlashAttribute(
           "accountingError",
@@ -93,6 +94,7 @@ public class RyczaltAccountingDocumentController {
       redirect.addFlashAttribute(
           "accountingMessage", approve ? "Invoice approved." : "Candidate saved for review.");
     } catch (Exception exception) {
+      RyczaltAccountingWebSupport.rethrowBackendSessionFailure(exception);
       RyczaltAccountingWebSupport.logFailure("candidate-approval", profileId, null, exception);
       redirect.addFlashAttribute(
           "accountingError",

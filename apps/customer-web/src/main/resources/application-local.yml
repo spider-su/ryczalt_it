@@ -1,0 +1,9 @@
+ryczalt:
+  backend:
+    base-url: ${RYCZALT_BACKEND_URL:http://localhost:8080}
+
+server:
+  servlet:
+    session:
+      cookie:
+        secure: false

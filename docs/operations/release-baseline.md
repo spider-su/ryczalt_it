@@ -97,6 +97,8 @@ After first production release:
 
 ## Environments
 
+Customer web has a runtime dependency on the standalone backend API. Configure `RYCZALT_BACKEND_URL` explicitly in each environment; customer-web does not default to a deployed backend. Its application context can start without the backend being reachable, but customer operations require the configured service.
+
 Maintain separate DEV, STAGING and PROD values for:
 
 - database

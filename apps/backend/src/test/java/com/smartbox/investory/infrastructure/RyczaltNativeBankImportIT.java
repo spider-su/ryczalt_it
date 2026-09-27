@@ -74,8 +74,26 @@ class RyczaltNativeBankImportIT {
           "TRUNCATE investory.ryczalt_payment_match, investory.ryczalt_source_reference,"
               + " investory.ryczalt_obligation, investory.ryczalt_transaction,"
               + " investory.ryczalt_invoice, investory.ryczalt_calculation,"
-              + " investory.ryczalt_audit_event, investory.ryczalt_period RESTART IDENTITY CASCADE");
+              + " investory.ryczalt_audit_event, investory.ryczalt_period RESTART IDENTITY"
+              + " CASCADE");
     }
+    seedProfile(1, "bank-profile-one");
+    seedProfile(2, "bank-profile-two");
+  }
+
+  private void seedProfile(long id, String username) {
+    jdbc.update(
+        "INSERT INTO investory.app_users(id, username, display_name) VALUES (?, ?, ?)"
+            + " ON CONFLICT (id) DO NOTHING",
+        id,
+        username,
+        username);
+    jdbc.update(
+        "INSERT INTO investory.portfolios(id, name, user_id) VALUES (?, ?, ?)"
+            + " ON CONFLICT (id) DO NOTHING",
+        id,
+        username,
+        id);
   }
 
   private byte[] csv(String... rows) {
@@ -229,7 +247,8 @@ class RyczaltNativeBankImportIT {
         .isEqualTo(3);
     assertThat(
             jdbc.queryForObject(
-                "SELECT count(*) FROM investory.ryczalt_obligation WHERE profile_id=1 AND status='PAID'",
+                "SELECT count(*) FROM investory.ryczalt_obligation WHERE profile_id=1 AND"
+                    + " status='PAID'",
                 Integer.class))
         .isEqualTo(3);
   }
@@ -351,5 +370,6 @@ class RyczaltNativeBankImportIT {
     registry.add("spring.datasource.password", DATABASE::password);
     registry.add("spring.jpa.hibernate.ddl-auto", () -> "none");
     registry.add("spring.flyway.enabled", () -> "false");
+    registry.add("app.ryczalt.payment.tolerance-pln", () -> "0.05");
   }
 }
