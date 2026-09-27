@@ -1,0 +1,5 @@
+app:
+  security:
+    token-secret: test-only-ryczalt-token-secret-not-for-production
+  integrations:
+    master-key: test-only-ryczalt-integration-master-key-not-for-production

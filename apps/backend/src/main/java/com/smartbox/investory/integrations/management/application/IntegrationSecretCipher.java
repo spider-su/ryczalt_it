@@ -62,7 +62,10 @@ public class IntegrationSecretCipher {
 
   private SecretKeySpec key() {
     if (masterKey == null || masterKey.isBlank()) {
-      throw new IllegalStateException("INVESTORY_INTEGRATION_MASTER_KEY is not configured");
+      throw new IllegalStateException("RYCZALT_INTEGRATION_MASTER_KEY is not configured");
+    }
+    if (masterKey.length() < 32) {
+      throw new IllegalStateException("RYCZALT_INTEGRATION_MASTER_KEY must be at least 32 characters");
     }
     try {
       return new SecretKeySpec(
