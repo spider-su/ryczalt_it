@@ -1,0 +1,92 @@
+name: Customer Web Docker Build and Publish
+
+on:
+  workflow_run:
+    workflows:
+      - Customer Web CI
+    types:
+      - completed
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  docker:
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source commit
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || github.sha }}
+
+      - name: Select source commit tags
+        id: source
+        env:
+          SOURCE_SHA: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || github.sha }}
+        run: |
+          echo "sha=${SOURCE_SHA}" >> "$GITHUB_OUTPUT"
+          echo "short_sha=${SOURCE_SHA:0:7}" >> "$GITHUB_OUTPUT"
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v4
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Extract image metadata
+        id: meta
+        uses: docker/metadata-action@v6
+        with:
+          images: aserobaba/ryczalt_it_ui
+          tags: |
+            type=raw,value=latest,enable={{is_default_branch}}
+            type=raw,value=sha-${{ steps.source.outputs.short_sha }}
+
+      - name: Verify customer web build context
+        run: |
+          test -f apps/customer-web/Dockerfile
+          test -f apps/customer-web/pom.xml
+
+      - name: Build and push
+        id: image
+        uses: docker/build-push-action@v7
+        with:
+          context: ./apps/customer-web
+          file: ./apps/customer-web/Dockerfile
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha,scope=ryczalt-customer-web-publish
+          cache-to: type=gha,scope=ryczalt-customer-web-publish,mode=max
+
+      - name: Scan published image
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          image-ref: aserobaba/ryczalt_it_ui@${{ steps.image.outputs.digest }}
+          format: table
+          exit-code: '1'
+          ignore-unfixed: true
+          vuln-type: os,library
+          severity: CRITICAL,HIGH
+
+      - name: Generate image SBOM
+        uses: anchore/sbom-action@v0
+        with:
+          image: aserobaba/ryczalt_it_ui@${{ steps.image.outputs.digest }}
+          artifact-name: ryczalt-ui-image.spdx.json
+          output-file: ryczalt-ui.spdx.json
+
+      - name: Upload image SBOM
+        uses: actions/upload-artifact@v7
+        with:
+          name: ryczalt-ui-image-sbom
+          path: ryczalt-ui.spdx.json
+          if-no-files-found: error
+          retention-days: 7
