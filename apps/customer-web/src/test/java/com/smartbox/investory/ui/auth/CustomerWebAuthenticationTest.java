@@ -13,8 +13,9 @@ import com.smartbox.investory.ui.accounting.RyczaltWebAccountingClient;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
+import org.springframework.context.ApplicationContext;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -22,13 +23,23 @@ import org.springframework.test.web.servlet.MockMvc;
 @AutoConfigureMockMvc
 class CustomerWebAuthenticationTest {
   @Autowired MockMvc mvc;
+  @Autowired ApplicationContext context;
   @MockitoBean BackendAuthClient backend;
-  @MockitoBean RyczaltWebAccountingClient accounting;
+
+  @Test
+  void productionAccountingHttpAdapterIsWiredWithoutContactingBackend() {
+    org.assertj.core.api.Assertions.assertThat(
+            context.getBeansOfType(RyczaltWebAccountingClient.class).values())
+        .singleElement()
+        .extracting(value -> value.getClass().getSimpleName())
+        .isEqualTo("HttpRyczaltWebAccountingClient");
+  }
 
   @Test
   void anonymousCanSeeLoginButCannotOpenAccounting() throws Exception {
     mvc.perform(get("/login")).andExpect(status().isOk());
-    mvc.perform(get("/profiles/7/accounting")).andExpect(status().is3xxRedirection())
+    mvc.perform(get("/profiles/7/accounting"))
+        .andExpect(status().is3xxRedirection())
         .andExpect(redirectedUrl("/login"));
   }
 
@@ -38,20 +49,29 @@ class CustomerWebAuthenticationTest {
     when(backend.login("person@example.test", "secret"))
         .thenReturn(new BackendAuthClient.LoginResponse("server-only-token", null, "Bearer", 900));
     when(backend.me("server-only-token"))
-        .thenReturn(new BackendAuthClient.CurrentProfileResponse("person@example.test", profile, List.of(profile)));
+        .thenReturn(
+            new BackendAuthClient.CurrentProfileResponse(
+                "person@example.test", profile, List.of(profile)));
 
-    var result = mvc.perform(post("/login").with(csrf())
-            .param("username", "person@example.test").param("password", "secret"))
-        .andExpect(status().is3xxRedirection()).andExpect(redirectedUrl("/accounting"))
-        .andReturn();
+    var result =
+        mvc.perform(
+                post("/login")
+                    .with(csrf())
+                    .param("username", "person@example.test")
+                    .param("password", "secret"))
+            .andExpect(status().is3xxRedirection())
+            .andExpect(redirectedUrl("/accounting"))
+            .andReturn();
 
     var session = result.getRequest().getSession(false);
     org.assertj.core.api.Assertions.assertThat(session).isNotNull();
-    var securityContext = (org.springframework.security.core.context.SecurityContext)
-        session.getAttribute("SPRING_SECURITY_CONTEXT");
+    var securityContext =
+        (org.springframework.security.core.context.SecurityContext)
+            session.getAttribute("SPRING_SECURITY_CONTEXT");
     org.assertj.core.api.Assertions.assertThat(securityContext.getAuthentication().getPrincipal())
         .isInstanceOf(AuthenticatedRyczaltSession.class);
-    org.assertj.core.api.Assertions.assertThat(securityContext.getAuthentication().getPrincipal().toString())
+    org.assertj.core.api.Assertions.assertThat(
+            securityContext.getAuthentication().getPrincipal().toString())
         .doesNotContain("server-only-token");
     mvc.perform(get("/accounting").session((org.springframework.mock.web.MockHttpSession) session))
         .andExpect(status().is3xxRedirection())
@@ -63,22 +83,30 @@ class CustomerWebAuthenticationTest {
     when(backend.login(anyString(), anyString()))
         .thenThrow(new BackendAuthException(BackendAuthException.Kind.UNAUTHENTICATED));
     mvc.perform(post("/login").with(csrf()).param("username", "person").param("password", "wrong"))
-        .andExpect(status().is3xxRedirection()).andExpect(redirectedUrl("/login?error"));
+        .andExpect(status().is3xxRedirection())
+        .andExpect(redirectedUrl("/login?error"));
 
     doReturn(new BackendAuthClient.LoginResponse("server-only-token", null, "Bearer", 900))
-        .when(backend).login("person", "secret");
+        .when(backend)
+        .login("person", "secret");
     var allowed = new BackendAuthClient.Profile(7, "Main", "OWNER");
     when(backend.me("server-only-token"))
-        .thenReturn(new BackendAuthClient.CurrentProfileResponse("person", allowed, List.of(allowed)));
-    var login = mvc.perform(post("/login").with(csrf()).param("username", "person").param("password", "secret"))
-        .andReturn();
-    var session = (org.springframework.mock.web.MockHttpSession) login.getRequest().getSession(false);
-    mvc.perform(get("/profiles/99/accounting").session(session))
-        .andExpect(status().isForbidden());
+        .thenReturn(
+            new BackendAuthClient.CurrentProfileResponse("person", allowed, List.of(allowed)));
+    var login =
+        mvc.perform(
+                post("/login").with(csrf()).param("username", "person").param("password", "secret"))
+            .andReturn();
+    var session =
+        (org.springframework.mock.web.MockHttpSession) login.getRequest().getSession(false);
+    mvc.perform(get("/profiles/99/accounting").session(session)).andExpect(status().isForbidden());
     org.assertj.core.api.Assertions.assertThat(session.isInvalid()).isFalse();
-    var context = (org.springframework.security.core.context.SecurityContext)
-        session.getAttribute("SPRING_SECURITY_CONTEXT");
-    org.assertj.core.api.Assertions.assertThat(((AuthenticatedRyczaltSession)
-        context.getAuthentication().getPrincipal()).currentProfileId()).isEqualTo(7);
+    var context =
+        (org.springframework.security.core.context.SecurityContext)
+            session.getAttribute("SPRING_SECURITY_CONTEXT");
+    org.assertj.core.api.Assertions.assertThat(
+            ((AuthenticatedRyczaltSession) context.getAuthentication().getPrincipal())
+                .currentProfileId())
+        .isEqualTo(7);
   }
 }
