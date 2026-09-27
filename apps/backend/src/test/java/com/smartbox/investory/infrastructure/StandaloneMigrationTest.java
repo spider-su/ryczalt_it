@@ -13,15 +13,15 @@ class StandaloneMigrationTest {
       try (var connection = MigrationTestDatabase.connection(database);
           var statement = connection.createStatement()) {
         assertTrue(MigrationTestDatabase.exists(
-            statement, "SELECT 1 FROM information_schema.tables WHERE table_schema='investory' AND table_name='app_users'"));
+            statement, "SELECT 1 FROM information_schema.tables WHERE table_schema='ryczalt' AND table_name='app_users'"));
         assertTrue(MigrationTestDatabase.exists(
-            statement, "SELECT 1 FROM information_schema.tables WHERE table_schema='investory' AND table_name='portfolios'"));
+            statement, "SELECT 1 FROM information_schema.tables WHERE table_schema='ryczalt' AND table_name='portfolios'"));
         assertTrue(MigrationTestDatabase.exists(
-            statement, "SELECT 1 FROM information_schema.tables WHERE table_schema='investory' AND table_name='ryczalt_invoice'"));
+            statement, "SELECT 1 FROM information_schema.tables WHERE table_schema='ryczalt' AND table_name='ryczalt_invoice'"));
         assertTrue(MigrationTestDatabase.exists(
-            statement, "SELECT 1 FROM information_schema.tables WHERE table_schema='investory' AND table_name='integration_instances'"));
+            statement, "SELECT 1 FROM information_schema.tables WHERE table_schema='ryczalt' AND table_name='integration_instances'"));
         assertEquals(0, MigrationTestDatabase.singleInt(statement,
-            "SELECT count(*) FROM investory.app_users"));
+            "SELECT count(*) FROM ryczalt.app_users"));
       }
     }
   }
@@ -33,13 +33,13 @@ class StandaloneMigrationTest {
       try (var connection = MigrationTestDatabase.connection(database);
           var statement = connection.createStatement()) {
         assertTrue(MigrationTestDatabase.exists(
-            statement, "SELECT 1 FROM information_schema.tables WHERE table_schema='investory' AND table_name='app_users'"));
+            statement, "SELECT 1 FROM information_schema.tables WHERE table_schema='ryczalt' AND table_name='app_users'"));
       }
       MigrationTestDatabase.migrate(database);
       try (var connection = MigrationTestDatabase.connection(database);
           var statement = connection.createStatement()) {
         assertTrue(MigrationTestDatabase.exists(
-            statement, "SELECT 1 FROM information_schema.tables WHERE table_schema='investory' AND table_name='ryczalt_invoice'"));
+            statement, "SELECT 1 FROM information_schema.tables WHERE table_schema='ryczalt' AND table_name='ryczalt_invoice'"));
       }
     }
   }

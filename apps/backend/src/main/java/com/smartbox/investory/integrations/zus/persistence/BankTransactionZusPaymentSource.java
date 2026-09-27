@@ -24,7 +24,7 @@ public class BankTransactionZusPaymentSource {
         .query(
             """
         SELECT id, booking_date, amount, currency, reference, counterparty, description
-          FROM investory.ryczalt_transaction
+          FROM ryczalt.ryczalt_transaction
          WHERE profile_id = ? AND booking_date >= ? AND booking_date < ?
            AND amount < 0
            AND UPPER(currency) = 'PLN'

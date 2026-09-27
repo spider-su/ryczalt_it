@@ -1,6 +1,6 @@
 # Ryczalt persistence
 
-Stage 3 adds a separate relational model under the `investory` schema. Runtime Ryczalt loading uses
+Stage 3 adds a separate relational model under the `ryczalt` schema. Runtime Ryczalt loading uses
 only these tables:
 
 ```text

@@ -7,13 +7,13 @@ spring:
     password: ${DATABASE_PASSWORD:ryczalt}
   flyway:
     locations: classpath:sql/migration
-    schemas: investory
-    default-schema: investory
+    schemas: ryczalt
+    default-schema: ryczalt
     create-schemas: true
   jpa:
     properties:
       hibernate:
-        default_schema: investory
+        default_schema: ryczalt
 
 server:
   port: ${PORT:8080}

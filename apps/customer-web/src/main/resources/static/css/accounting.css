@@ -250,3 +250,5 @@
     border-radius: 18px 0 0 18px;
   }
 }
+/* Minimal standalone sign-in page. */
+.customer-login-page{min-height:100vh;display:grid;place-items:center;padding:24px;background:#f5f7fc;color:#182433;font-family:system-ui,-apple-system,"Segoe UI",sans-serif}.customer-login-card{width:min(100%,420px);padding:32px;background:#fff;border:1px solid #dce2ea;border-radius:16px;box-shadow:0 16px 48px #18243312}.customer-login-card h1{margin:0 0 8px;font-size:1.7rem}.customer-login-card p{color:#596579;line-height:1.5}.customer-login-card form{display:grid;gap:10px;margin-top:24px}.customer-login-card label{margin-top:8px;font-weight:650}.customer-login-card input{min-height:46px;padding:10px 12px;border:1px solid #b8c2d0;border-radius:8px;font:inherit}.customer-login-card button{min-height:48px;margin-top:12px;border:0;border-radius:8px;background:#1769e0;color:white;font:inherit;font-weight:700;cursor:pointer}.customer-login-message{margin-top:14px;padding:12px;border-radius:8px;background:#fff3d8;color:#6b4a00;line-height:1.4}

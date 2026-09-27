@@ -19,7 +19,7 @@ public interface RyczaltFxResolutionJpaRepository
   @Query(
       value =
           """
-          insert into investory.ryczalt_fx_resolution
+          insert into ryczalt.ryczalt_fx_resolution
               (currency, requested_date, effective_date, rate, provider, provider_reference, resolved_at)
           values (:currency, :requestedDate, :effectiveDate, :rate, :provider, :providerReference, :resolvedAt)
           on conflict (provider, currency, requested_date) do nothing

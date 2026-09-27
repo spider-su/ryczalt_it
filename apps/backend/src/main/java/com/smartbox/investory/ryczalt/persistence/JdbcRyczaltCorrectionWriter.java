@@ -23,7 +23,7 @@ public class JdbcRyczaltCorrectionWriter implements RyczaltCorrectionWriter {
       Instant requestedAt,
       Long correctionPeriodId) {
     jdbc.update(
-        "INSERT INTO investory.ryczalt_correction (profile_id, original_period_id,"
+        "INSERT INTO ryczalt.ryczalt_correction (profile_id, original_period_id,"
             + " affected_entity_type, affected_entity_id, reason, requested_at, correction_period_id)"
             + " VALUES (?, ?, ?, ?, ?, ?, ?)",
         profileId,
@@ -34,6 +34,6 @@ public class JdbcRyczaltCorrectionWriter implements RyczaltCorrectionWriter {
         requestedAt,
         correctionPeriodId);
     return jdbc.queryForObject(
-        "SELECT currval(pg_get_serial_sequence('investory.ryczalt_correction', 'id'))", Long.class);
+        "SELECT currval(pg_get_serial_sequence('ryczalt.ryczalt_correction', 'id'))", Long.class);
   }
 }

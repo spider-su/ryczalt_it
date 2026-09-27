@@ -6,7 +6,7 @@ import jakarta.persistence.*;
 import java.math.BigDecimal;
 
 @Entity
-@Table(name = "ryczalt_counterparty_rule", schema = "investory")
+@Table(name = "ryczalt_counterparty_rule", schema = "ryczalt")
 public class RyczaltCounterpartyRuleEntity extends RyczaltEntity {
   @Column(name = "profile_id", nullable = false)
   private long profileId;

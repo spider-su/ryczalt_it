@@ -45,8 +45,8 @@ final class MigrationTestDatabase {
         Flyway.configure()
             .cleanDisabled(false)
             .dataSource(database.jdbcUrl(), database.username(), database.password())
-            .schemas("investory")
-            .defaultSchema("investory")
+            .schemas("ryczalt")
+            .defaultSchema("ryczalt")
             .createSchemas(true)
             .locations("classpath:sql/migration");
     if (target != null) configuration.target(target);

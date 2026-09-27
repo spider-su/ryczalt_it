@@ -13,7 +13,7 @@ import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
 @Entity
-@Table(name = "ryczalt_source_reference", schema = "investory")
+@Table(name = "ryczalt_source_reference", schema = "ryczalt")
 public class RyczaltSourceReferenceEntity {
   private static final ObjectMapper JSON = new ObjectMapper();
 

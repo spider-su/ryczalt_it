@@ -9,6 +9,7 @@ import com.smartbox.investory.ryczalt.application.query.RyczaltInvoiceQueryServi
 import com.smartbox.investory.ryczalt.domain.ApprovalMethod;
 import com.smartbox.investory.ryczalt.domain.ApprovalStatus;
 import com.smartbox.investory.ryczalt.domain.PeriodStatus;
+import com.smartbox.investory.ryczalt.integration.fx.RyczaltFxRateService;
 import com.smartbox.investory.ryczalt.integration.ksef.InvoiceSourcePort;
 import com.smartbox.investory.ryczalt.integration.ksef.InvoiceSourceRecord;
 import com.smartbox.investory.ryczalt.integration.ksef.KsefSyncMode;
@@ -84,11 +85,29 @@ class RyczaltNativeKsefImportIT {
     try (var connection = dataSource.getConnection();
         var statement = connection.createStatement()) {
       statement.execute(
-          "TRUNCATE investory.ryczalt_payment_match, investory.ryczalt_source_reference,"
-              + " investory.ryczalt_obligation, investory.ryczalt_transaction,"
-              + " investory.ryczalt_invoice, investory.ryczalt_calculation,"
-              + " investory.ryczalt_audit_event, investory.ryczalt_period RESTART IDENTITY CASCADE");
+          "TRUNCATE ryczalt.ryczalt_payment_match, ryczalt.ryczalt_source_reference,"
+              + " ryczalt.ryczalt_obligation, ryczalt.ryczalt_transaction,"
+              + " ryczalt.ryczalt_invoice, ryczalt.ryczalt_calculation,"
+              + " ryczalt.ryczalt_audit_event, ryczalt.ryczalt_period RESTART IDENTITY"
+              + " CASCADE");
     }
+    seedProfile(1, "ksef-profile-one");
+    seedProfile(2, "ksef-profile-two");
+  }
+
+  private void seedProfile(long id, String username) {
+    jdbc.update(
+        "INSERT INTO ryczalt.app_users(id, username, display_name) VALUES (?, ?, ?)"
+            + " ON CONFLICT (id) DO NOTHING",
+        id,
+        username,
+        username);
+    jdbc.update(
+        "INSERT INTO ryczalt.portfolios(id, name, user_id) VALUES (?, ?, ?)"
+            + " ON CONFLICT (id) DO NOTHING",
+        id,
+        username,
+        id);
   }
 
   private InvoiceSourceRecord income(String ksefNumber, String amount) {
@@ -141,7 +160,7 @@ class RyczaltNativeKsefImportIT {
     assertThat(reference.getEntityType()).isEqualTo("INVOICE");
     assertThat(reference.getExternalId()).isEqualTo("KSEF-1");
     assertThat(invoices.findAll().getFirst().getApprovalStatus())
-        .isEqualTo(ApprovalStatus.APPROVED);
+        .isEqualTo(ApprovalStatus.NEEDS_REVIEW);
     assertThat(invoices.findAll().getFirst().getApprovalMethod())
         .isEqualTo(ApprovalMethod.KSEF_TRUSTED);
   }
@@ -272,7 +291,7 @@ class RyczaltNativeKsefImportIT {
   @Test
   void frozenPeriodRejectsSync() {
     jdbc.update(
-        "INSERT INTO investory.ryczalt_period(profile_id, period_year, period_month, status)"
+        "INSERT INTO ryczalt.ryczalt_period(profile_id, period_year, period_month, status)"
             + " VALUES (1, 2026, 2, 'FROZEN')");
     source.records.add(income("KSEF-1", "29600"));
 
@@ -284,7 +303,7 @@ class RyczaltNativeKsefImportIT {
   @Test
   void invoiceChangeMarksCalculatedPeriodDirty() {
     jdbc.update(
-        "INSERT INTO investory.ryczalt_period(profile_id, period_year, period_month, status)"
+        "INSERT INTO ryczalt.ryczalt_period(profile_id, period_year, period_month, status)"
             + " VALUES (1, 2026, 2, 'CALCULATED')");
     source.records.add(income("KSEF-1", "29600"));
 
@@ -328,6 +347,11 @@ class RyczaltNativeKsefImportIT {
     @Bean
     ProgrammableInvoiceSource programmableInvoiceSource() {
       return new ProgrammableInvoiceSource();
+    }
+
+    @Bean
+    RyczaltFxRateService fxRateService() {
+      return org.mockito.Mockito.mock(RyczaltFxRateService.class);
     }
   }
 

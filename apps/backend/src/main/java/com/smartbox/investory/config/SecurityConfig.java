@@ -48,7 +48,7 @@ public class SecurityConfig {
     return username -> {
       try {
         return jdbc.queryForObject(
-            "SELECT username, password_hash, role, active FROM investory.app_users WHERE lower(username) = lower(?)",
+            "SELECT username, password_hash, role, active FROM ryczalt.app_users WHERE lower(username) = lower(?)",
             (rs, row) -> {
               if (!rs.getBoolean("active") || rs.getString("password_hash") == null)
                 throw new org.springframework.security.core.userdetails.UsernameNotFoundException(username);

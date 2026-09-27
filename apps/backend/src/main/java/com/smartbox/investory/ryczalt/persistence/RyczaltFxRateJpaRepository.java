@@ -22,7 +22,7 @@ public interface RyczaltFxRateJpaRepository extends JpaRepository<RyczaltFxRateE
   @Query(
       value =
           """
-          insert into investory.ryczalt_fx_rate
+          insert into ryczalt.ryczalt_fx_rate
               (currency, effective_date, rate, provider, provider_reference, fetched_at)
           values (:currency, :effectiveDate, :rate, :provider, :providerReference, :fetchedAt)
           on conflict (provider, currency, effective_date) do nothing

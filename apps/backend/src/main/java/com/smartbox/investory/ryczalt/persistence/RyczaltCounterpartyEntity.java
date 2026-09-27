@@ -5,7 +5,7 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.Table;
 
 @Entity
-@Table(name = "ryczalt_counterparty", schema = "investory")
+@Table(name = "ryczalt_counterparty", schema = "ryczalt")
 public class RyczaltCounterpartyEntity extends RyczaltEntity {
   @Column(name = "profile_id", nullable = false)
   private long profileId;

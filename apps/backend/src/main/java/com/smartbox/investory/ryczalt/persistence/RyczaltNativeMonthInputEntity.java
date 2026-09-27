@@ -11,7 +11,7 @@ import java.util.EnumSet;
 import java.util.Set;
 
 @Entity
-@Table(name = "ryczalt_native_month_input", schema = "investory")
+@Table(name = "ryczalt_native_month_input", schema = "ryczalt")
 public class RyczaltNativeMonthInputEntity extends RyczaltEntity {
   @Column(name = "profile_id", nullable = false)
   private long profileId;

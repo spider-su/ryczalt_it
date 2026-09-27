@@ -71,11 +71,29 @@ class RyczaltNativeBankImportIT {
     try (Connection connection = dataSource.getConnection();
         var statement = connection.createStatement()) {
       statement.execute(
-          "TRUNCATE investory.ryczalt_payment_match, investory.ryczalt_source_reference,"
-              + " investory.ryczalt_obligation, investory.ryczalt_transaction,"
-              + " investory.ryczalt_invoice, investory.ryczalt_calculation,"
-              + " investory.ryczalt_audit_event, investory.ryczalt_period RESTART IDENTITY CASCADE");
+          "TRUNCATE ryczalt.ryczalt_payment_match, ryczalt.ryczalt_source_reference,"
+              + " ryczalt.ryczalt_obligation, ryczalt.ryczalt_transaction,"
+              + " ryczalt.ryczalt_invoice, ryczalt.ryczalt_calculation,"
+              + " ryczalt.ryczalt_audit_event, ryczalt.ryczalt_period RESTART IDENTITY"
+              + " CASCADE");
     }
+    seedProfile(1, "bank-profile-one");
+    seedProfile(2, "bank-profile-two");
+  }
+
+  private void seedProfile(long id, String username) {
+    jdbc.update(
+        "INSERT INTO ryczalt.app_users(id, username, display_name) VALUES (?, ?, ?)"
+            + " ON CONFLICT (id) DO NOTHING",
+        id,
+        username,
+        username);
+    jdbc.update(
+        "INSERT INTO ryczalt.portfolios(id, name, user_id) VALUES (?, ?, ?)"
+            + " ON CONFLICT (id) DO NOTHING",
+        id,
+        username,
+        id);
   }
 
   private byte[] csv(String... rows) {
@@ -115,15 +133,15 @@ class RyczaltNativeBankImportIT {
   @Test
   void importAutomaticallySettlesMatchingObligations() {
     jdbc.update(
-        "INSERT INTO investory.ryczalt_period(profile_id, period_year, period_month, status)"
+        "INSERT INTO ryczalt.ryczalt_period(profile_id, period_year, period_month, status)"
             + " VALUES (1, 2026, 2, 'CALCULATED')");
     Long periodId =
         jdbc.queryForObject(
-            "SELECT id FROM investory.ryczalt_period WHERE profile_id=1 AND period_year=2026 AND"
+            "SELECT id FROM ryczalt.ryczalt_period WHERE profile_id=1 AND period_year=2026 AND"
                 + " period_month=2",
             Long.class);
     jdbc.update(
-        "INSERT INTO investory.ryczalt_obligation(period_id, profile_id, obligation_type, amount,"
+        "INSERT INTO ryczalt.ryczalt_obligation(period_id, profile_id, obligation_type, amount,"
             + " currency, due_date, status) VALUES (?, 1, 'ZUS', 498.35, 'PLN', '2026-02-20',"
             + " 'OPEN')",
         periodId);
@@ -131,10 +149,10 @@ class RyczaltNativeBankImportIT {
     importCsv(1, "2026-02-15,2026-02-01,BANK-REF-1,ZUS,PLN,-498.35,ZUS payment");
 
     Integer matches =
-        jdbc.queryForObject("SELECT count(*) FROM investory.ryczalt_payment_match", Integer.class);
+        jdbc.queryForObject("SELECT count(*) FROM ryczalt.ryczalt_payment_match", Integer.class);
     String status =
         jdbc.queryForObject(
-            "SELECT status FROM investory.ryczalt_obligation WHERE profile_id=1 AND"
+            "SELECT status FROM ryczalt.ryczalt_obligation WHERE profile_id=1 AND"
                 + " obligation_type='ZUS'",
             String.class);
     assertThat(matches).isEqualTo(1);
@@ -168,47 +186,47 @@ class RyczaltNativeBankImportIT {
     assertThat(result.zus()).isPositive();
     assertThat(
             jdbc.queryForObject(
-                "SELECT count(*) FROM investory.ryczalt_calculation WHERE profile_id=1",
+                "SELECT count(*) FROM ryczalt.ryczalt_calculation WHERE profile_id=1",
                 Integer.class))
         .isEqualTo(3);
     assertThat(
             jdbc.queryForObject(
-                "SELECT status FROM investory.ryczalt_period WHERE profile_id=1"
+                "SELECT status FROM ryczalt.ryczalt_period WHERE profile_id=1"
                     + " AND period_year=2026 AND period_month=9",
                 String.class))
         .isEqualTo("CALCULATED");
     assertThat(
             jdbc.queryForObject(
-                "SELECT count(*) FROM investory.ryczalt_calculation WHERE profile_id=1"
+                "SELECT count(*) FROM ryczalt.ryczalt_calculation WHERE profile_id=1"
                     + " AND status='CALCULATED' AND is_current=true",
                 Integer.class))
         .isEqualTo(3);
     assertThat(
             jdbc.queryForObject(
-                "SELECT count(*) FROM investory.ryczalt_obligation WHERE profile_id=1",
+                "SELECT count(*) FROM ryczalt.ryczalt_obligation WHERE profile_id=1",
                 Integer.class))
         .isEqualTo(3);
     assertThat(
             jdbc.queryForObject(
-                "SELECT count(*) FROM investory.ryczalt_obligation WHERE profile_id=1"
+                "SELECT count(*) FROM ryczalt.ryczalt_obligation WHERE profile_id=1"
                     + " AND obligation_type IN ('RYCZALT', 'VAT', 'ZUS')",
                 Integer.class))
         .isEqualTo(3);
     assertThat(
             jdbc.queryForObject(
-                "SELECT amount FROM investory.ryczalt_obligation WHERE profile_id=1"
+                "SELECT amount FROM ryczalt.ryczalt_obligation WHERE profile_id=1"
                     + " AND obligation_type='RYCZALT'",
                 java.math.BigDecimal.class))
         .isEqualByComparingTo(result.ryczalt());
     assertThat(
             jdbc.queryForObject(
-                "SELECT amount FROM investory.ryczalt_obligation WHERE profile_id=1"
+                "SELECT amount FROM ryczalt.ryczalt_obligation WHERE profile_id=1"
                     + " AND obligation_type='VAT'",
                 java.math.BigDecimal.class))
         .isEqualByComparingTo(result.vat());
     assertThat(
             jdbc.queryForObject(
-                "SELECT amount FROM investory.ryczalt_obligation WHERE profile_id=1"
+                "SELECT amount FROM ryczalt.ryczalt_obligation WHERE profile_id=1"
                     + " AND obligation_type='ZUS'",
                 java.math.BigDecimal.class))
         .isEqualByComparingTo(result.zus());
@@ -225,11 +243,12 @@ class RyczaltNativeBankImportIT {
 
     assertThat(
             jdbc.queryForObject(
-                "SELECT count(*) FROM investory.ryczalt_payment_match", Integer.class))
+                "SELECT count(*) FROM ryczalt.ryczalt_payment_match", Integer.class))
         .isEqualTo(3);
     assertThat(
             jdbc.queryForObject(
-                "SELECT count(*) FROM investory.ryczalt_obligation WHERE profile_id=1 AND status='PAID'",
+                "SELECT count(*) FROM ryczalt.ryczalt_obligation WHERE profile_id=1 AND"
+                    + " status='PAID'",
                 Integer.class))
         .isEqualTo(3);
   }
@@ -237,15 +256,15 @@ class RyczaltNativeBankImportIT {
   @Test
   void importTreatsSmallUnderpaymentWithinToleranceAsPaid() {
     jdbc.update(
-        "INSERT INTO investory.ryczalt_period(profile_id, period_year, period_month, status)"
+        "INSERT INTO ryczalt.ryczalt_period(profile_id, period_year, period_month, status)"
             + " VALUES (1, 2026, 2, 'CALCULATED')");
     Long periodId =
         jdbc.queryForObject(
-            "SELECT id FROM investory.ryczalt_period WHERE profile_id=1 AND period_year=2026 AND"
+            "SELECT id FROM ryczalt.ryczalt_period WHERE profile_id=1 AND period_year=2026 AND"
                 + " period_month=2",
             Long.class);
     jdbc.update(
-        "INSERT INTO investory.ryczalt_obligation(period_id, profile_id, obligation_type, amount,"
+        "INSERT INTO ryczalt.ryczalt_obligation(period_id, profile_id, obligation_type, amount,"
             + " currency, due_date, status) VALUES (?, 1, 'ZUS', 1495.04, 'PLN', '2026-02-20',"
             + " 'OPEN')",
         periodId);
@@ -254,7 +273,7 @@ class RyczaltNativeBankImportIT {
 
     String status =
         jdbc.queryForObject(
-            "SELECT status FROM investory.ryczalt_obligation WHERE profile_id=1 AND"
+            "SELECT status FROM ryczalt.ryczalt_obligation WHERE profile_id=1 AND"
                 + " obligation_type='ZUS'",
             String.class);
     assertThat(status).isEqualTo("PAID");
@@ -288,7 +307,7 @@ class RyczaltNativeBankImportIT {
   @Test
   void frozenPeriodRejectsImportAndKeepsHistoryIntact() {
     jdbc.update(
-        "INSERT INTO investory.ryczalt_period(profile_id, period_year, period_month, status)"
+        "INSERT INTO ryczalt.ryczalt_period(profile_id, period_year, period_month, status)"
             + " VALUES (1, 2026, 2, 'FROZEN')");
 
     assertThatThrownBy(() -> importCsv(1, "2026-02-15,2026-02-01,BANK-REF-1,ACME,PLN,-498.35,ZUS"))
@@ -300,7 +319,7 @@ class RyczaltNativeBankImportIT {
   @Test
   void importDoesNotOverDirtyAlreadyCalculatedPeriod() {
     jdbc.update(
-        "INSERT INTO investory.ryczalt_period(profile_id, period_year, period_month, status)"
+        "INSERT INTO ryczalt.ryczalt_period(profile_id, period_year, period_month, status)"
             + " VALUES (1, 2026, 2, 'CALCULATED')");
 
     importCsv(1, "2026-02-15,2026-02-01,BANK-REF-1,ACME,PLN,-498.35,ZUS");
@@ -310,7 +329,7 @@ class RyczaltNativeBankImportIT {
     assertThat(transactions.count()).isEqualTo(1);
     Integer audits =
         jdbc.queryForObject(
-            "SELECT count(*) FROM investory.ryczalt_audit_event WHERE profile_id=1 AND"
+            "SELECT count(*) FROM ryczalt.ryczalt_audit_event WHERE profile_id=1 AND"
                 + " event_type='CALCULATION_INVALIDATED'",
             Integer.class);
     assertThat(audits).isEqualTo(1);
@@ -351,5 +370,6 @@ class RyczaltNativeBankImportIT {
     registry.add("spring.datasource.password", DATABASE::password);
     registry.add("spring.jpa.hibernate.ddl-auto", () -> "none");
     registry.add("spring.flyway.enabled", () -> "false");
+    registry.add("app.ryczalt.payment.tolerance-pln", () -> "0.05");
   }
 }
