@@ -40,6 +40,20 @@ See:
 - [migration plan](../../docs/migration/investory-extraction.md)
 - [release baseline](../../docs/operations/release-baseline.md)
 
+## Calculation rules and tests
+
+Pure rule behavior and the regression-test coverage map are maintained in
+[calculation rules](../../docs/backend/docs/calculation-rules.md). The focused calculation unit
+suite runs without Docker:
+
+```bash
+mvn -f apps/backend/pom.xml \
+  -Dtest=RyczaltCalculatorTest,VatCalculatorTest,ZusCalculatorTest,NativeMonthCalculationServiceTest,NativeMonthInputAggregatorTest,HappyInvestorCalculationTest \
+  test
+```
+
+Database and transaction checks are separate `*IT` integration tests.
+
 ## Runtime secrets and local development
 
 The default runtime requires `RYCZALT_TOKEN_SECRET` to be explicitly configured.

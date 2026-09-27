@@ -89,6 +89,26 @@ class ZusCalculatorTest {
     assertAmount("1384.98", result.healthPaidForDeduction());
   }
 
+  @Test
+  void appliesHealthBandsAtInclusiveRevenueThresholdsAfterPaidSocial() {
+    assertEquals(
+        ZusRules2026.HealthBand.LOW,
+        ZusRules2026.healthBand(new BigDecimal("60000.00")));
+    assertEquals(
+        ZusRules2026.HealthBand.MEDIUM,
+        ZusRules2026.healthBand(new BigDecimal("60000.01")));
+    assertEquals(
+        ZusRules2026.HealthBand.MEDIUM,
+        ZusRules2026.healthBand(new BigDecimal("300000.00")));
+    assertEquals(
+        ZusRules2026.HealthBand.HIGH,
+        ZusRules2026.healthBand(new BigDecimal("300000.01")));
+    assertEquals(
+        ZusRules2026.HealthBand.LOW,
+        ZusRules2026.healthBandAfterPaidSocial(
+            new BigDecimal("60050"), new BigDecimal("50")));
+  }
+
   private static void assertAmount(String expected, BigDecimal actual) {
     assertEquals(0, new BigDecimal(expected).compareTo(actual));
   }
