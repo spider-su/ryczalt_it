@@ -30,13 +30,18 @@ public class CustomerWebSecurityConfiguration implements WebMvcConfigurer {
   }
 
   @Bean
-  BackendAuthClient backendAuthClient(BackendProperties properties) {
+  RestClient customerWebBackendRestClient(BackendProperties properties) {
     HttpClient httpClient = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(3)).build();
     var requestFactory = new JdkClientHttpRequestFactory(httpClient);
     requestFactory.setReadTimeout(Duration.ofSeconds(8));
     RestClient client =
         RestClient.builder().baseUrl(properties.baseUrl()).requestFactory(requestFactory).build();
-    return new RestBackendAuthClient(client);
+    return client;
+  }
+
+  @Bean
+  BackendAuthClient backendAuthClient(RestClient customerWebBackendRestClient) {
+    return new RestBackendAuthClient(customerWebBackendRestClient);
   }
 
   @Bean
@@ -62,12 +67,14 @@ public class CustomerWebSecurityConfiguration implements WebMvcConfigurer {
                     .failureUrl("/login?error"))
         .logout(
             logout ->
-                logout.logoutUrl("/logout")
+                logout
+                    .logoutUrl("/logout")
                     .logoutSuccessUrl("/login?logout")
                     .invalidateHttpSession(true)
                     .clearAuthentication(true)
                     .deleteCookies("JSESSIONID"))
-        .sessionManagement(session -> session.sessionFixation(fixation -> fixation.migrateSession()));
+        .sessionManagement(
+            session -> session.sessionFixation(fixation -> fixation.migrateSession()));
     return http.build();
   }
 
