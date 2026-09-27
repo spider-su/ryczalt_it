@@ -1,5 +1,6 @@
 package com.smartbox.investory.ui.accounting;
 
+import com.smartbox.investory.ui.auth.BackendAuthException;
 import jakarta.servlet.http.HttpServletRequest;
 import java.time.YearMonth;
 import org.springframework.web.server.ResponseStatusException;
@@ -42,6 +43,7 @@ final class RyczaltAccountingWebSupport {
   }
 
   static String userMessage(Exception exception, String fallback) {
+    if (exception instanceof BackendAuthException) return fallback;
     if (!(exception instanceof ResponseStatusException status)) return fallback;
     int code = status.getStatusCode().value();
     if (code == 403) return "You are not allowed to perform this action.";
@@ -50,6 +52,10 @@ final class RyczaltAccountingWebSupport {
     if (code == 400 && status.getReason() != null && !status.getReason().isBlank())
       return status.getReason();
     return fallback;
+  }
+
+  static void rethrowBackendSessionFailure(Exception exception) {
+    if (exception instanceof BackendAuthException backendFailure) throw backendFailure;
   }
 
   static String accountingRedirect(long profileId, YearMonth month) {
