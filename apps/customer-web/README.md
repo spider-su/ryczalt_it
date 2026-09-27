@@ -50,4 +50,11 @@ validation, 404 not found, 409 conflict, 502 unexpected backend response, and
 503 unavailable/timeout. A 401 invalidates the server-side session and redirects
 to sign-in; backend response bodies are not rendered to the user.
 
+## Docker image
+
+Customer web is published to `aserobaba/ryczalt_it_ui` after successful
+Customer Web CI on `main`, or through the manual publish workflow. Published
+tags include `sha-<git-sha>` and `latest` on the default branch. Prefer the
+immutable SHA tag for deployments.
+
 See [product structure](../../docs/architecture/product-structure.md) and [roadmap](../../docs/product/roadmap.md).
