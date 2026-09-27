@@ -84,4 +84,11 @@ same `RYCZALT_LANDING_PUBLIC_BASE_URL` canonical-origin setting and links its
 primary CTA to the existing `/login` route. Its visible FAQs and FAQ JSON-LD
 are maintained in `RyczaltItSeoController` and `templates/ryczalt-it.html`.
 
+## Docker image
+
+Customer web is published to `aserobaba/ryczalt_it_ui` after successful
+Customer Web CI on `main`, or through the manual publish workflow. Published
+tags include `sha-<git-sha>` and `latest` on the default branch. Prefer the
+immutable SHA tag for deployments.
+
 See [product structure](../../docs/architecture/product-structure.md) and [roadmap](../../docs/product/roadmap.md).

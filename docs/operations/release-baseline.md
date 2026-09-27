@@ -79,6 +79,11 @@ After successful Backend CI on `main`, the backend publisher pushes
 Docker Hub, then scans the published digest and uploads an SBOM artifact. Pull
 request Docker builds remain smoke-test-only and are not published.
 
+After successful Customer Web CI on `main`, the customer-web publisher
+independently pushes `aserobaba/ryczalt_it_ui:latest` and
+`aserobaba/ryczalt_it_ui:sha-<short-sha>`, then scans the published digest and
+uploads a separate SBOM artifact. Prefer the immutable SHA tag for deployment.
+
 Example:
 
 ```text
