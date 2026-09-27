@@ -42,10 +42,11 @@ Do not rebuild source between validation and production promotion.
 ### Backend
 
 - Maven `verify` runs Surefire unit tests and Failsafe integration tests
-- Spring context startup
+- full Spring context startup against clean PostgreSQL, including Flyway/JPA wiring
+- `/actuator/health` reports `UP` in the started backend application
 - empty PostgreSQL migration test
 - upgrade-from-previous-release migration test
-- Docker image build after all backend tests pass; CI tags it `ryczalt_it:ci-<git-sha>` without publishing
+- Docker image build after all backend tests pass; CI loads the SHA-tagged image and starts it against temporary PostgreSQL, requiring `/actuator/health` to report `UP` before the job succeeds
 
 ### Mobile
 
@@ -59,7 +60,9 @@ Do not rebuild source between validation and production promotion.
 ### Customer web
 
 - Maven verify
-- context/startup test
+- full context/startup smoke test with the production HTTP accounting adapter wired
+- public login-page HTTP smoke test without requiring a reachable backend
+- authenticated/profile-bound accounting behavior covered separately by customer-web security tests
 - Docker image build
 
 ### Backoffice
