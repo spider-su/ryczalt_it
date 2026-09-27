@@ -8,6 +8,7 @@ import static org.springframework.test.web.client.match.MockRestRequestMatchers.
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.requestTo;
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withStatus;
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withSuccess;
+import static org.springframework.test.web.client.response.MockRestResponseCreators.withException;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpMethod;
@@ -51,6 +52,27 @@ class RestBackendAuthClientTest {
     assertThatThrownBy(() -> client.me("token"))
         .isInstanceOf(BackendAuthException.class)
         .hasMessageNotContaining("private backend detail");
+    server.verify();
+  }
+
+  @Test
+  void classifiesTimeoutAndMalformedBackendResponse() {
+    RestClient.Builder builder = RestClient.builder().baseUrl("http://backend.test");
+    MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
+    BackendAuthClient client = new RestBackendAuthClient(builder.build());
+    server.expect(requestTo("http://backend.test/api/v1/auth/login"))
+        .andRespond(withException(new java.net.SocketTimeoutException("timed out")));
+    server.expect(requestTo("http://backend.test/api/v1/auth/me"))
+        .andRespond(withSuccess("not-json", MediaType.APPLICATION_JSON));
+
+    assertThatThrownBy(() -> client.login("user", "secret"))
+        .isInstanceOf(BackendAuthException.class)
+        .extracting(error -> ((BackendAuthException) error).kind())
+        .isEqualTo(BackendAuthException.Kind.TIMEOUT);
+    assertThatThrownBy(() -> client.me("token"))
+        .isInstanceOf(BackendAuthException.class)
+        .extracting(error -> ((BackendAuthException) error).kind())
+        .isEqualTo(BackendAuthException.Kind.UNEXPECTED);
     server.verify();
   }
 }
