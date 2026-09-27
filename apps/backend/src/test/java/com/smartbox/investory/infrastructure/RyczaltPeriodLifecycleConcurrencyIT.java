@@ -26,6 +26,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Import;
 import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 
@@ -35,6 +36,7 @@ class RyczaltPeriodLifecycleConcurrencyIT {
 
   @Autowired private RyczaltPeriodJpaRepository periods;
   @Autowired private RyczaltPeriodLifecycleService lifecycle;
+  @Autowired private JdbcTemplate jdbc;
 
   @BeforeAll
   static void migrateSchema() {
@@ -49,6 +51,12 @@ class RyczaltPeriodLifecycleConcurrencyIT {
   @BeforeEach
   void clean() {
     periods.deleteAll();
+    jdbc.update(
+        "insert into investory.app_users (id, username, display_name) values (1, 'lifecycle-test',"
+            + " 'Lifecycle Test') on conflict (id) do nothing");
+    jdbc.update(
+        "insert into investory.portfolios (id, name, user_id) values (1, 'Lifecycle Test', 1) on"
+            + " conflict (id) do nothing");
     periods.saveAndFlush(new RyczaltPeriodEntity(1L, 2026, 8, PeriodStatus.FROZEN));
   }
 
