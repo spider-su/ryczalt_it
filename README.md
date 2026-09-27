@@ -83,8 +83,8 @@ Start here:
 Backend:
 
 ```bash
-mvn -B -f apps/backend/pom.xml verify
-docker build -t ryczalt-backend:local apps/backend
+mvn -B -f apps/backend/pom.xml clean verify
+docker build -t ryczalt_it:local apps/backend
 ```
 
 Customer web:

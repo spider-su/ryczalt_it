@@ -41,13 +41,11 @@ Do not rebuild source between validation and production promotion.
 
 ### Backend
 
-- Maven verify
-- unit tests
-- integration tests
+- Maven `verify` runs Surefire unit tests and Failsafe integration tests
 - Spring context startup
 - empty PostgreSQL migration test
 - upgrade-from-previous-release migration test
-- Docker image build
+- Docker image build after all backend tests pass; CI tags it `ryczalt_it:ci-<git-sha>` without publishing
 
 ### Mobile
 
@@ -75,7 +73,7 @@ Backend and web images should be identified by commit SHA or release version.
 Example:
 
 ```text
-ryczalt-backend:<git-sha>
+ryczalt_it:<git-sha>
 ```
 
 Never promote a mutable `latest` tag as the deployment identity.
