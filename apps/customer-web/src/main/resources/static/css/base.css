@@ -1,0 +1,104 @@
+body {
+    margin: 0;
+    min-height: 100vh;
+    font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+    font-size: .9375rem;
+    color: var(--iv-text);
+    background: var(--iv-bg);
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+}
+
+/* Global document and framework overrides only. Shared components live under components/. */
+main.container-xl.py-4 {
+    max-width: 1480px;
+    padding: clamp(16px, 3vw, 32px) !important;
+}
+
+main.container-xl.py-4 > h1,
+main.container-xl.py-4 > .d-flex > h1,
+main.container-xl.py-4 h1 {
+    color: var(--iv-text);
+    font-weight: 800;
+    letter-spacing: -.03em;
+}
+
+main.container-xl.py-4 .card {
+    overflow: hidden;
+    border: 1px solid var(--iv-border);
+    border-radius: var(--iv-radius);
+    background: var(--iv-surface);
+    box-shadow: var(--iv-shadow);
+}
+
+main.container-xl.py-4 .row-cards > [class*="col"] > .card {
+    height: 100%;
+    transition: transform .18s ease, box-shadow .18s ease;
+}
+
+main.container-xl.py-4 .row-cards > [class*="col"] > .card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--iv-shadow-hover);
+}
+
+main.container-xl.py-4 .card-header,
+main.container-xl.py-4 .card-footer {
+    border-color: var(--iv-border);
+    background: var(--iv-surface-muted);
+}
+
+main.container-xl.py-4 .card-title {
+    color: var(--iv-text);
+    font-weight: 700;
+}
+
+main.container-xl.py-4 .text-secondary,
+main.container-xl.py-4 .form-hint {
+    color: var(--iv-text-muted) !important;
+}
+
+main.container-xl.py-4 .form-control,
+main.container-xl.py-4 .form-select,
+main.container-xl.py-4 .input-group-text {
+    border-color: var(--iv-border);
+    background: var(--iv-surface);
+    color: var(--iv-text);
+}
+
+main.container-xl.py-4 .form-control:focus,
+main.container-xl.py-4 .form-select:focus {
+    border-color: var(--iv-primary);
+    box-shadow: 0 0 0 .2rem color-mix(in srgb, var(--iv-primary) 16%, transparent);
+}
+
+main.container-xl.py-4 .btn-primary {
+    border-color: var(--iv-primary);
+    background: var(--iv-primary);
+}
+
+main.container-xl.py-4 .btn-outline-primary {
+    border-color: color-mix(in srgb, var(--iv-primary) 40%, transparent);
+    color: var(--iv-primary);
+}
+
+main.container-xl.py-4 .table > :not(caption) > * > * {
+    border-color: var(--iv-border);
+}
+
+main.container-xl.py-4 .table thead th {
+    color: var(--iv-text-muted);
+    background: var(--iv-surface-muted);
+    font-size: .72rem;
+    font-weight: 700;
+    letter-spacing: .05em;
+    text-transform: uppercase;
+}
+
+.iv-app {
+    box-sizing: border-box;
+    width: min(100%, var(--iv-dashboard-max-width));
+    max-width: var(--iv-dashboard-max-width);
+    margin-inline: auto;
+    padding-top: 14px;
+    padding-inline: var(--iv-dashboard-gutter);
+}
