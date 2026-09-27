@@ -29,7 +29,16 @@ The current code is an accounting-only Thymeleaf extraction from Investory kept 
 
 It is a **migration seed**, not a final technology commitment and not yet the complete planned customer portal.
 
-Runtime boot verification is enforced in CI: the production Spring context starts with the HTTP accounting adapter wired, and the public login page is exercised over HTTP without requiring a live backend. Authenticated/profile-bound behavior is covered by the dedicated customer-web security tests.\n\nThe old in-process Investory bridge must not become a runtime dependency. Customer-web now consumes the standalone Ryczałt backend API over HTTP through `HttpRyczaltWebAccountingClient`; the UI remains behind `RyczaltWebAccountingClient`. It does not access the accounting database or backend Spring services directly.
+Runtime boot verification is enforced in CI: the production Spring context starts with the HTTP accounting adapter wired, and the public login page is exercised over HTTP without requiring a live backend. Authenticated/profile-bound behavior is covered by the dedicated customer-web security tests.
+
+The old in-process Investory bridge must not become a runtime dependency. Customer-web now consumes the standalone Ryczałt backend API over HTTP through `HttpRyczaltWebAccountingClient`; the UI remains behind `RyczaltWebAccountingClient`. It does not access the accounting database or backend Spring services directly.
+
+The accounting view maps obligation amounts from the backend's `expectedAmount`,
+`paidAmount`, and `outstandingAmount` fields. Money is displayed with Polish
+decimal formatting, two fractional digits, and an explicit currency. The
+dashboard compares calculated ryczałt revenue with the backend's recorded
+invoice net revenue and flags any difference for review; it does not silently
+replace a calculation result or trigger a recalculation.
 
 ## Authentication and profile access
 

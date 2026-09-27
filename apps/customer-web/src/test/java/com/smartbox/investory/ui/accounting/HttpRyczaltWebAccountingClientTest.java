@@ -65,7 +65,7 @@ class HttpRyczaltWebAccountingClientTest {
         .andExpect(header("Authorization", "Bearer user-token"))
         .andRespond(
             withSuccess(
-                "[{\"id\":3,\"type\":\"PIT\",\"expected\":\"4.00\",\"paid\":\"1.00\",\"outstanding\":\"3.00\",\"currency\":\"PLN\",\"dueDate\":\"2026-02-20\",\"status\":\"PARTIAL\",\"manuallyPaid\":false,\"manualPaidDate\":null}]",
+                "[{\"id\":3,\"type\":\"RYCZALT\",\"expectedAmount\":\"4.00\",\"paidAmount\":\"1.00\",\"outstandingAmount\":\"3.00\",\"currency\":\"PLN\",\"dueDate\":\"2026-02-20\",\"status\":\"PARTIALLY_PAID\",\"manuallyPaid\":false,\"manualPaidDate\":null}]",
                 MediaType.APPLICATION_JSON));
     server
         .expect(requestTo("http://backend.test/api/profiles/42/accounting/counterparties"))
@@ -84,6 +84,9 @@ class HttpRyczaltWebAccountingClientTest {
     assertThat(period.documents().invoices()).isEqualTo(1);
     assertThat(invoice.counterparty()).isEqualTo("Acme");
     assertThat(invoice.grossAmount()).isEqualByComparingTo("12.30");
+    assertThat(obligation.type()).isEqualTo("RYCZALT");
+    assertThat(obligation.expected()).isEqualByComparingTo("4.00");
+    assertThat(obligation.paid()).isEqualByComparingTo("1.00");
     assertThat(obligation.outstanding()).isEqualByComparingTo("3.00");
     assertThat(counterparty.displayName()).isEqualTo("Acme");
     server.verify();

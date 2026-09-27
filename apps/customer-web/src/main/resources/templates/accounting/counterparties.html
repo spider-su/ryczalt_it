@@ -26,7 +26,7 @@
               <a th:href="@{/profiles/{profileId}/accounting/counterparties/{id}(profileId=${profileId},id=${item.id})}" th:aria-label="${'Open counterparty ' + item.displayName}" th:text="${item.displayName}">Emagine</a>
               <span class="text-secondary d-block" th:if="${item.alias != null and !item.alias.isBlank()}" th:text="${item.legalName}">Legal name</span>
             </td>
-            <td th:text="${item.country + ' · ' + item.taxIdentifier}">PL · 123</td>
+            <td th:text="${(item.country == null || item.country.isBlank() ? '—' : item.country) + ' · ' + (item.taxIdentifier == null || item.taxIdentifier.isBlank() ? '—' : item.taxIdentifier)}">PL · 123</td>
             <td th:text="${item.invoiceCount}">0</td>
             <td><a class="btn btn-sm btn-outline-secondary" th:href="@{/profiles/{profileId}/accounting/counterparties/{id}(profileId=${profileId},id=${item.id})}">Edit</a></td>
           </tr>

@@ -46,7 +46,8 @@ class RyczaltCustomerWebApplicationSmokeTest {
           "/css/components.css",
           "/css/tabler.min.css",
           "/css/accounting.css",
-          "/js/theme.js"
+          "/js/theme.js",
+          "/favicon.svg"
         }) {
       HttpResponse<String> response =
           httpClient.send(
@@ -56,5 +57,23 @@ class RyczaltCustomerWebApplicationSmokeTest {
       assertThat(response.statusCode()).as(asset).isEqualTo(200);
       assertThat(response.body()).as(asset).isNotBlank();
     }
+  }
+
+  @Test
+  void protectedRedirectRespectsForwardedHttpsOrigin() throws Exception {
+    HttpResponse<String> response =
+        httpClient.send(
+            HttpRequest.newBuilder(
+                    URI.create("http://localhost:" + port + "/profiles/42/accounting"))
+                .header("X-Forwarded-Proto", "https")
+                .header("X-Forwarded-Host", "ryczalt.example.test")
+                .header("X-Forwarded-Port", "443")
+                .GET()
+                .build(),
+            HttpResponse.BodyHandlers.ofString());
+
+    assertThat(response.statusCode()).isBetween(300, 399);
+    assertThat(response.headers().firstValue("location").orElseThrow())
+        .startsWith("https://ryczalt.example.test/");
   }
 }

@@ -60,6 +60,7 @@ public class CustomerWebSecurityConfiguration implements WebMvcConfigurer {
                         "/ryczalt-it",
                         "/css/**",
                         "/js/**",
+                        "/favicon.svg",
                         "/actuator/health")
                     .permitAll()
                     .anyRequest()

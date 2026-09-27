@@ -518,9 +518,9 @@ final class HttpRyczaltWebAccountingClient implements RyczaltWebAccountingClient
     return new Obligation(
         number(n, "id"),
         text(n, "type"),
-        decimal(n, "expected"),
-        decimal(n, "paid"),
-        decimal(n, "outstanding"),
+        decimal(n, "expectedAmount"),
+        decimal(n, "paidAmount"),
+        decimal(n, "outstandingAmount"),
         text(n, "currency"),
         date(n, "dueDate"),
         text(n, "status"),

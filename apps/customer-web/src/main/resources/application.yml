@@ -3,6 +3,7 @@ ryczalt:
     base-url: ${RYCZALT_BACKEND_URL:}
 
 server:
+  forward-headers-strategy: framework
   tomcat:
     max-http-form-post-size: 11MB
   servlet:
