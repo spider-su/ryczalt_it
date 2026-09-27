@@ -12,7 +12,7 @@ CREATE TABLE ryczalt.ryczalt_profile (
     first_name VARCHAR(120),
     surname VARCHAR(120),
     date_of_birth DATE,
-    auto_approve_known_counterparties BOOLEAN NOT NULL DEFAULT FALSE,
+    auto_approve_known_counterparties BOOLEAN NOT NULL DEFAULT TRUE,
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
 );

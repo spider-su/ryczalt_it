@@ -36,6 +36,17 @@ mvn -B -f apps/backend/pom.xml -Dit.test=StandaloneMigrationIT verify
 
 This integration test requires a Docker daemon available to Testcontainers.
 
+## Standalone release state
+
+As of the 2026-09-27 pre-deployment review, the standalone schema migrations
+remain a pre-production baseline in the repository-managed release lifecycle:
+PR #11 is unmerged, the repository has no GitHub release or deployment records,
+and no production deployment workflow is configured. Accordingly V01.021 and
+V01.022 may be corrected directly before the first standalone production
+release. These repository records cannot rule out a separately provisioned or
+manually migrated database; verify any such environment independently before
+a production rollout.
+
 Stage 2 deliberately owns normalized calculator inputs rather than importing accounting DTOs or
 fixtures. The calculator-level fixture `February2026CalculatorFixture` is a small normalized
 February example. The complete operational story is owned by
