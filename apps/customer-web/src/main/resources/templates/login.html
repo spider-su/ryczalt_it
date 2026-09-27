@@ -3,13 +3,13 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Sign in · Investory</title>
+  <title>Sign in · Ryczałt</title>
   <link rel="stylesheet" th:href="@{/css/accounting.css}">
 </head>
 <body class="customer-login-page">
   <main class="customer-login-card">
-    <h1>Sign in to Investory</h1>
-    <p>Use your Investory account to access your accounting profile.</p>
+    <h1>Sign in to Ryczałt</h1>
+    <p>Use your Ryczałt account to access your accounting profile.</p>
     <div class="customer-login-message" role="alert" th:if="${loginError}">We could not sign you in. Check your credentials or try again later.</div>
     <div class="customer-login-message" role="status" th:if="${sessionExpired}">Your session expired. Sign in again to continue.</div>
     <div class="customer-login-message" role="status" th:if="${loggedOut}">You have been signed out.</div>

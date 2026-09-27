@@ -45,4 +45,9 @@ Backend error mapping currently relies on HTTP status because the accounting API
 
 The current backend login contract returns `expiresIn` seconds. Customer web stores that expiry and requires sign-in again after expiry or a backend 401. The backend does not currently provide refresh-token support, so customer web does not attempt token refresh. Backend 403 responses preserve the login session and deny the requested operation.
 
+Other backend authentication failures use safe status-specific pages: 400
+validation, 404 not found, 409 conflict, 502 unexpected backend response, and
+503 unavailable/timeout. A 401 invalidates the server-side session and redirects
+to sign-in; backend response bodies are not rendered to the user.
+
 See [product structure](../../docs/architecture/product-structure.md) and [roadmap](../../docs/product/roadmap.md).

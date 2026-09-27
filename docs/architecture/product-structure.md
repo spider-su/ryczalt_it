@@ -142,6 +142,27 @@ Mobile store submission remains manual.
 
 Ryczałt backend exclusively owns Ryczałt persistence.
 
+### Canonical identity and accounting profile
+
+- `app_users` owns login identity, authentication state, platform role, and
+  external authentication subject identifiers. It is not the canonical source
+  for taxpayer or accounting configuration.
+- `portfolios` is the profile/container and access boundary: it owns profile ID,
+  user ownership, and membership relationships. It is not the canonical source
+  for taxpayer or payment details.
+- `ryczalt_profile` is the canonical source for NIP, taxpayer/company name and
+  owner details, tax office, payment accounts, ZUS/accounting preferences, and
+  `auto_approve_known_counterparties`.
+
+`app_users.birth_date` and the `portfolios.owner`, `taxpayer_*`,
+`tax_micro_account`, and `zus_payment_account` columns are retained as
+transitional legacy/import compatibility fields. They are not read or written
+by current product logic and must not be used by new functionality or future
+NIP onboarding. New and migrated taxpayer/accounting facts belong in
+`ryczalt_profile`. These compatibility columns can be removed only in a
+separately planned migration after imported data and downstream consumers are
+verified.
+
 There should be:
 
 - no direct customer-web/mobile/backoffice DB access

@@ -13,21 +13,26 @@ public class BackendSessionExceptionHandler {
   @ExceptionHandler(BackendAuthException.class)
   public ModelAndView handle(
       BackendAuthException exception, HttpServletRequest request, HttpServletResponse response) {
-    if (exception.kind() == BackendAuthException.Kind.UNAUTHENTICATED) {
-      var session = request.getSession(false);
-      if (session != null) session.invalidate();
-      SecurityContextHolder.clearContext();
-      return new ModelAndView("redirect:/login?expired");
-    }
-    if (exception.kind() == BackendAuthException.Kind.FORBIDDEN) {
-      response.setStatus(HttpServletResponse.SC_FORBIDDEN);
-      return new ModelAndView("error/403");
-    }
-    response.setStatus(
-        exception.kind() == BackendAuthException.Kind.UNAVAILABLE
-                || exception.kind() == BackendAuthException.Kind.TIMEOUT
-            ? HttpServletResponse.SC_SERVICE_UNAVAILABLE
-            : HttpServletResponse.SC_BAD_GATEWAY);
-    return new ModelAndView("error/backend-unavailable");
+    return switch (exception.kind()) {
+      case UNAUTHENTICATED -> {
+        var session = request.getSession(false);
+        if (session != null) session.invalidate();
+        SecurityContextHolder.clearContext();
+        response.setStatus(HttpServletResponse.SC_FOUND);
+        yield new ModelAndView("redirect:/login?expired");
+      }
+      case FORBIDDEN -> error(response, HttpServletResponse.SC_FORBIDDEN, "error/403");
+      case NOT_FOUND -> error(response, HttpServletResponse.SC_NOT_FOUND, "error/404");
+      case VALIDATION -> error(response, HttpServletResponse.SC_BAD_REQUEST, "error/400");
+      case CONFLICT -> error(response, HttpServletResponse.SC_CONFLICT, "error/409");
+      case UNAVAILABLE, TIMEOUT ->
+          error(response, HttpServletResponse.SC_SERVICE_UNAVAILABLE, "error/backend-unavailable");
+      case UNEXPECTED -> error(response, HttpServletResponse.SC_BAD_GATEWAY, "error/backend-error");
+    };
+  }
+
+  private static ModelAndView error(HttpServletResponse response, int status, String view) {
+    response.setStatus(status);
+    return new ModelAndView(view);
   }
 }
