@@ -29,7 +29,7 @@ The current code is an accounting-only Thymeleaf extraction from Investory kept 
 
 It is a **migration seed**, not a final technology commitment and not yet the complete planned customer portal.
 
-The old in-process Investory bridge must not become a runtime dependency. Customer-web now consumes the standalone Ryczałt backend API over HTTP through `HttpRyczaltWebAccountingClient`; the UI remains behind `RyczaltWebAccountingClient`. It does not access the accounting database or backend Spring services directly.
+Runtime boot verification is enforced in CI: the production Spring context starts with the HTTP accounting adapter wired, and the public login page is exercised over HTTP without requiring a live backend. Authenticated/profile-bound behavior is covered by the dedicated customer-web security tests.\n\nThe old in-process Investory bridge must not become a runtime dependency. Customer-web now consumes the standalone Ryczałt backend API over HTTP through `HttpRyczaltWebAccountingClient`; the UI remains behind `RyczaltWebAccountingClient`. It does not access the accounting database or backend Spring services directly.
 
 ## Authentication and profile access
 

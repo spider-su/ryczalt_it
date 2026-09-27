@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<body>
+<th:block th:fragment="emptyRail"></th:block>
+<header th:fragment="appHeader(title, subtitle, activePage, profileId, kpi1Label, kpi1Value, kpi2Label, kpi2Value, kpi3Label, kpi3Value, kpi1Meta, kpi2Meta, kpi3Meta, kpi1PaymentMeta, kpi2PaymentMeta, kpi3PaymentMeta, kpi1PaymentStatus, kpi2PaymentStatus, kpi3PaymentStatus, kpi1PaymentStatusClass, kpi2PaymentStatusClass, kpi3PaymentStatusClass, actions, brandDetails, railRight)"
+       class="iv-topbar iv-shared-topbar"
+       th:classappend="${actions != null} ? ' iv-shared-topbar--with-actions'">
+  <div class="iv-brand">
+    <div class="iv-brand__content">
+      <div class="iv-brand__title-row">
+        <h1 class="iv-brand__title" th:text="${title}">Accounting</h1>
+        <button id="theme-toggle" class="iv-theme-toggle iv-theme-toggle--brand" type="button"
+                aria-label="Switch color theme" title="Switch color theme">
+          <svg class="iv-theme-toggle__icon" viewBox="0 0 24 24" aria-hidden="true">
+            <circle cx="12" cy="12" r="8"></circle>
+            <path d="M12 4a8 8 0 0 0 0 16z" fill="currentColor" stroke="none"></path>
+          </svg>
+        </button>
+      </div>
+      <p class="iv-shared-topbar__subtitle" th:if="${subtitle != null}" th:text="${subtitle}"></p>
+      <div th:if="${brandDetails != null}" th:insert="${brandDetails}"></div>
+    </div>
+  </div>
+
+  <div class="iv-topbar-summary iv-shared-topbar__summary iv-accounting-tax-summary"
+       th:if="${taxCards != null}">
+    <div class="iv-kpi iv-shared-topbar__kpi" th:each="card : ${taxCards}">
+      <span class="iv-topbar-metric__label" th:text="${card.type}">RYCZALT</span>
+      <div class="iv-accounting-tax-card__main">
+        <span class="iv-kpi__value" th:text="${card.calculated}">0</span>
+        <span class="iv-accounting-tax-card__status" th:classappend="${card.statusClass}"
+              th:text="${card.status}">○ Unpaid</span>
+      </div>
+      <div class="iv-accounting-tax-card__line"><span>Reference</span><strong th:text="${card.reference}">—</strong>
+        <small th:if="${card.referenceDiff != null}" th:text="${'diff ' + card.referenceDiff}"></small>
+      </div>
+      <div class="iv-accounting-tax-card__line"><span>Bank</span><strong th:text="${card.bank}">0</strong>
+        <small th:if="${card.bankDiff != null}" th:text="${'diff ' + card.bankDiff}"></small>
+      </div>
+    </div>
+  </div>
+
+  <div class="iv-shared-topbar__actions" th:if="${actions != null}" th:insert="${actions}"></div>
+  <div class="iv-header-rail iv-shared-topbar__rail">
+    <div class="iv-header-rail__left"></div>
+    <div th:replace="~{fragments/app-header :: appNavigation(${activePage}, ${profileId})}"></div>
+    <div class="iv-header-rail__right" th:if="${railRight == null}"></div>
+    <div class="iv-header-rail__right" th:unless="${railRight == null}" th:insert="${railRight}"></div>
+  </div>
+</header>
+
+<nav th:fragment="appNavigation(activePage, profileId)" class="iv-page-nav" aria-label="Application navigation">
+  <span th:if="${activePage == 'accounting'}" class="is-active" aria-current="page">Accounting</span>
+  <a th:unless="${activePage == 'accounting'}" th:href="@{/profiles/{profileId}/accounting(profileId=${profileId})}">Accounting</a>
+</nav>
+</body>
+</html>
