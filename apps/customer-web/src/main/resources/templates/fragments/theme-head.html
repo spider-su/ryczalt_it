@@ -3,10 +3,30 @@
 <body>
 <th:block th:fragment="theme">
   <meta name="_csrf" th:if="${_csrf != null}" th:content="${_csrf.token}">
+  <script>
+    (function () {
+      try {
+        const saved = localStorage.getItem('investory.theme');
+        const theme = saved === 'dark' || saved === 'light'
+          ? saved
+          : (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+        document.documentElement.dataset.theme = theme;
+        document.documentElement.dataset.bsTheme = theme;
+      } catch (ignored) {
+        const theme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+        document.documentElement.dataset.theme = theme;
+        document.documentElement.dataset.bsTheme = theme;
+      }
+    }());
+  </script>
   <link href="/favicon.svg" rel="icon" type="image/svg+xml">
   <link href="/css/tokens.css" rel="stylesheet">
   <link href="/css/base.css" rel="stylesheet">
   <link href="/css/components.css" rel="stylesheet">
+  <script type="module">
+    import { initTheme } from '/js/theme.js';
+    initTheme();
+  </script>
 </th:block>
 </body>
 </html>

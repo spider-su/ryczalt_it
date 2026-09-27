@@ -36,4 +36,25 @@ class RyczaltCustomerWebApplicationSmokeTest {
     assertThat(response.statusCode()).isEqualTo(200);
     assertThat(response.body()).contains("Sign in");
   }
+
+  @Test
+  void accountingThemeAssetsAreServed() throws Exception {
+    for (String asset :
+        new String[] {
+          "/css/tokens.css",
+          "/css/base.css",
+          "/css/components.css",
+          "/css/tabler.min.css",
+          "/css/accounting.css",
+          "/js/theme.js"
+        }) {
+      HttpResponse<String> response =
+          httpClient.send(
+              HttpRequest.newBuilder(URI.create("http://localhost:" + port + asset)).GET().build(),
+              HttpResponse.BodyHandlers.ofString());
+
+      assertThat(response.statusCode()).as(asset).isEqualTo(200);
+      assertThat(response.body()).as(asset).isNotBlank();
+    }
+  }
 }

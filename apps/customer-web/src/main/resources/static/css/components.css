@@ -1,0 +1,12 @@
+/* Investory stylesheet composition */
+/* Ownership order: tokens -> base -> shared components/features -> page-specific CSS. */
+/* Keep imports in cascade order; feature files are intentionally small ownership units. */
+@import url("components/planning-foundations.css");
+@import url("components/foundations.css");
+@import url("components/header.css");
+@import url("components/data-display.css");
+@import url("components/overlays.css");
+@import url("components/trust-and-localization.css");
+@import url("components/planning-components.css");
+@import url("components/dashboard-components.css");
+@import url("components/settings-components.css");
