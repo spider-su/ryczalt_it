@@ -171,7 +171,9 @@ class RyczaltNativeBankImportIT {
                 new VatCalculationInput(
                     new java.math.BigDecimal("2300"),
                     java.math.BigDecimal.ZERO,
-                    new java.math.BigDecimal("100")),
+                    new java.math.BigDecimal("100"),
+                    java.math.BigDecimal.ZERO,
+                    java.math.BigDecimal.ZERO),
                 new ZusCalculationInput(
                     true,
                     false,

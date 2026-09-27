@@ -162,7 +162,7 @@ public class RyczaltInvoiceRecognitionService {
             MANUAL_SOURCE,
             externalId,
             "MANUAL",
-            InvoiceDirection.COST,
+            command.direction(),
             command.issueDate(),
             command.saleDate(),
             command.dueDate(),
@@ -321,8 +321,8 @@ public class RyczaltInvoiceRecognitionService {
 
   private static void validateManual(ManualCandidateCommand c) {
     if (c == null) throw new IllegalArgumentException("Manual invoice is required");
-    if (c.direction() != InvoiceDirection.COST)
-      throw new IllegalArgumentException("Manual invoice direction must be COST");
+    if (c.direction() == null)
+      throw new IllegalArgumentException("Manual invoice direction is required");
     if (blank(c.reference()) || c.reference().length() > 128)
       throw new IllegalArgumentException("Manual invoice reference is required");
     if (c.issueDate() == null) throw new IllegalArgumentException("issueDate is required");

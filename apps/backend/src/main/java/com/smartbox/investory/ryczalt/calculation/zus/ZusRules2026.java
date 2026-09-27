@@ -16,8 +16,9 @@ public final class ZusRules2026 {
   private ZusRules2026() {}
 
   public static HealthBand healthBand(BigDecimal ytdRevenueAfterPaidSocial) {
-    BigDecimal revenue =
-        ytdRevenueAfterPaidSocial == null ? BigDecimal.ZERO : ytdRevenueAfterPaidSocial;
+    if (ytdRevenueAfterPaidSocial == null)
+      throw new IllegalArgumentException("Year-to-date revenue is required to determine health band");
+    BigDecimal revenue = ytdRevenueAfterPaidSocial;
     if (revenue.compareTo(new BigDecimal("60000")) <= 0) return HealthBand.LOW;
     if (revenue.compareTo(new BigDecimal("300000")) <= 0) return HealthBand.MEDIUM;
     return HealthBand.HIGH;
@@ -25,8 +26,10 @@ public final class ZusRules2026 {
 
   public static HealthBand healthBandAfterPaidSocial(
       BigDecimal ytdRevenue, BigDecimal paidSocialContributions) {
-    BigDecimal revenue = ytdRevenue == null ? BigDecimal.ZERO : ytdRevenue;
-    BigDecimal social = paidSocialContributions == null ? BigDecimal.ZERO : paidSocialContributions;
+    if (ytdRevenue == null || paidSocialContributions == null)
+      throw new IllegalArgumentException("Revenue and paid social contributions are required");
+    BigDecimal revenue = ytdRevenue;
+    BigDecimal social = paidSocialContributions;
     return healthBand(revenue.subtract(social).max(BigDecimal.ZERO));
   }
 

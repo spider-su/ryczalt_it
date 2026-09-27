@@ -38,6 +38,16 @@ class ZusCalculatorTest {
   }
 
   @Test
+  void rejectsUnsupportedInsuranceConfigurationsAndUnavailableRevenue() {
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> calculator.calculate(new ZusCalculationInput(true, false, null, false, BigDecimal.ZERO, null)));
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> new ZusCalculationInput(true, false, "JDG", false, null, null));
+  }
+
+  @Test
   void includesVoluntarySicknessInSocialAndDeductibleAmount() {
     ZusCalculationResult result =
         calculator.calculate(
