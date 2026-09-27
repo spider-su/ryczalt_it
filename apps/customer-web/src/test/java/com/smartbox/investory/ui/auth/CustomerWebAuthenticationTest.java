@@ -19,7 +19,11 @@ import org.springframework.context.ApplicationContext;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
-@SpringBootTest(properties = "ryczalt.backend.base-url=http://backend.test")
+@SpringBootTest(
+    properties = {
+      "ryczalt.backend.base-url=http://backend.test",
+      "ryczalt.landing.public-base-url=https://ryczalt.example.test"
+    })
 @AutoConfigureMockMvc
 class CustomerWebAuthenticationTest {
   @Autowired MockMvc mvc;
@@ -41,6 +45,48 @@ class CustomerWebAuthenticationTest {
     mvc.perform(get("/profiles/7/accounting"))
         .andExpect(status().is3xxRedirection())
         .andExpect(redirectedUrl("/login"));
+  }
+
+  @Test
+  void rentalSeoLandingIsPublicIndexableAndContainsNoProfileData() throws Exception {
+    var response = mvc.perform(get("/ryczalt-najem")).andExpect(status().isOk()).andReturn();
+    String html = response.getResponse().getContentAsString();
+
+    org.assertj.core.api.Assertions.assertThat(html)
+        .contains("Ryczałt z najmu prywatnego — prosto, bez Excela")
+        .contains("Ryczałt od najmu prywatnego – aplikacja do czynszu i podatku | Ryczałt")
+        .contains("name=\"robots\" content=\"index,follow\"")
+        .contains("rel=\"canonical\" href=\"https://ryczalt.example.test/ryczalt-najem\"")
+        .contains("application/ld+json")
+        .contains("FAQPage")
+        .contains("Kalkulator ryczałtu od najmu")
+        .contains("monthly-rent")
+        .doesNotContain("server-only-token", "SPRING_SECURITY_CONTEXT", "profileId");
+  }
+
+  @Test
+  void landingAssetsArePubliclyServed() throws Exception {
+    mvc.perform(get("/js/rental-calculator.js")).andExpect(status().isOk());
+    mvc.perform(get("/css/rental-landing.css")).andExpect(status().isOk());
+  }
+
+  @Test
+  void ryczaltItSeoLandingIsPublicAndExplainsSupportedAccountingScope() throws Exception {
+    var response = mvc.perform(get("/ryczalt-it")).andExpect(status().isOk()).andReturn();
+    String html = response.getResponse().getContentAsString();
+
+    org.assertj.core.api.Assertions.assertThat(html)
+        .contains("Ryczałt, VAT i ZUS — w jednym miejscu")
+        .contains("Księgowość JDG na ryczałcie – PIT, VAT, ZUS i KSeF | Ryczałt IT")
+        .contains("name=\"robots\" content=\"index,follow\"")
+        .contains("rel=\"canonical\" href=\"https://ryczalt.example.test/ryczalt-it\"")
+        .contains("application/ld+json")
+        .contains("FAQPage")
+        .contains("JDG")
+        .contains("ryczałt 12%")
+        .contains("KSeF jest opcjonalny")
+        .contains("href=\"/login\"")
+        .doesNotContain("server-only-token", "SPRING_SECURITY_CONTEXT", "profileId");
   }
 
   @Test

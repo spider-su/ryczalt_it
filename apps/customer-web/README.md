@@ -50,4 +50,38 @@ validation, 404 not found, 409 conflict, 502 unexpected backend response, and
 503 unavailable/timeout. A 401 invalidates the server-side session and redirects
 to sign-in; backend response bodies are not rendered to the user.
 
+## Public private-rental SEO page
+
+`GET /ryczalt-najem` serves a public Polish landing page for the standalone
+Ryczałt private-rental app. It is intentionally independent of authenticated
+profile data; the route is the only additional public application page (besides
+the login page and health check). The page includes FAQ/SoftwareApplication
+JSON-LD and a client-only annual tax estimator.
+
+Set `RYCZALT_LANDING_PUBLIC_BASE_URL` to the production HTTPS origin, for
+example `https://example.com`, so the page emits a canonical URL. When unset or
+invalid, canonical metadata is omitted rather than publishing a localhost or
+environment-specific URL. Set `RYCZALT_LANDING_CTA_URL` to a real public HTTPS
+download/beta destination when one exists; only HTTPS URLs and same-site paths
+are accepted. Until then, the CTA points to the on-page test-version note and
+does not invent an app-store link. The generated example-app visual is CSS-only
+and needs no screenshot asset.
+
+The estimator uses the documented private-rental rates (8.5% through PLN
+100,000 and 12.5% on the excess), integer grosz and whole-zloty rounding. It is
+an informational estimate only; personal deductions and individual tax
+circumstances are not included. Update visible FAQ answers and their matching
+FAQ JSON-LD together in `RentalSeoController` and
+`templates/ryczalt-najem.html`.
+
+`GET /ryczalt-it` is a separate public SEO page for the JDG accounting product
+in this repository. It describes the currently supported JDG / 12% ryczałt /
+monthly PIT / active monthly VAT profile, optional KSeF, backend-owned
+calculations, mobile and web responsibilities, and invitation-based account
+activation. It deliberately does not advertise support for other tax profiles,
+automatic declaration filing, or open self-registration. The page uses the
+same `RYCZALT_LANDING_PUBLIC_BASE_URL` canonical-origin setting and links its
+primary CTA to the existing `/login` route. Its visible FAQs and FAQ JSON-LD
+are maintained in `RyczaltItSeoController` and `templates/ryczalt-it.html`.
+
 See [product structure](../../docs/architecture/product-structure.md) and [roadmap](../../docs/product/roadmap.md).
