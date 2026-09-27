@@ -1,188 +1,106 @@
-# Investory Accounting Mobile
+# Ryczałt
 
-Expo + React Native + TypeScript client for the Investory Accounting mobile app.
+Ryczałt is an independent accounting product for Polish JDG users. It is no longer treated as an Investory module.
 
-## Scope
+The product is intentionally narrow at first: **JDG, 12% ryczałt, active VAT, monthly PIT and VAT periods**. The goal is to make this supported case exceptionally simple and automated before expanding to more tax regimes.
 
-The app presents authoritative monthly accounting data from the Investory API and an explicit mock mode.
+## Product surfaces
 
-Implemented mobile surface:
+- `apps/backend` — authoritative Spring Boot accounting backend
+- `apps/mobile` — Expo / React Native app for everyday customer tasks
+- `apps/customer-web` — detailed customer workspace for settings, history, reports and advanced workflows
+- `apps/backoffice` — staff workspace for administrators and accounting reviewers
+- `docs/` — product, architecture, operations and migration documentation
 
-- Home / monthly Accounting dashboard
-- total amount to pay
-- Ryczałt / VAT / ZUS breakdown
-- income preview
-- cost preview
-- payment preview
-- "needs attention" card
-- Documents filtered by income/cost/review status
-- shared month selection across Home, Faktury and Rozliczenia
-- backend-driven month status and actionable issue summaries
-- authoritative PPE, VAT, ZUS and total outstanding values
-- settlement detail sheets with paid, unpaid and overdue states
-- genuine multi-month invoice filtering (repository fetches documents only for each requested month)
-- Add Cost document recognition and backend-confirmed staging submission using backend-provided treatment options
-- typed mutation/duplicate/error mapping and refresh invalidation after confirmed mutations
-- local auto-approval policy settings with an explicit backend-write guardrail
-- Polish and English UI with persisted language selection under More → Settings
-- replaceable repository boundary with REST and explicit mock modes
+All four applications belong to one product repository but have independent build and deployment cycles.
 
-The mobile client does not calculate tax, obligations or lifecycle state. It does not initiate payments. Settlement history is read from the backend payment-history endpoint in API mode. Add Cost renders backend-provided VAT-treatment options, sends selected facts to the backend staging workflow, and leaves tax-period selection to the backend. The mobile client does not infer a VAT rate or use a client-side tax-period fallback.
+## Product principle
 
-## Design direction
+The user should provide as little data as possible.
 
-The UI is inspired by the interaction principles visible in mObywatel:
-
-- large, clear page headings
-- card-based information hierarchy
-- restrained blue accent
-- generous spacing
-- strong touch targets
-- simple bottom navigation
-- important status information surfaced before details
-
-It does **not** copy mObywatel branding, logos or proprietary assets.
-
-## Run
-
-Use Node.js 22.13+ for Expo SDK 57.
-
-```bash
-npm install
-npx expo install --fix
-npm start
-```
-
-Then open the app using Expo Go or an Android/iOS development build.
-
-## Release validation
-
-The managed Expo project has Android and iOS prebuild support and three EAS profiles:
-
-```bash
-npx expo-doctor
-npx expo prebuild --no-install --platform android
-npx expo prebuild --no-install --platform ios
-npx eas-cli build --profile production --platform all
-npx eas-cli submit --profile production --platform all
-```
-
-The repository contains the Expo owner (`spider-su`), project slug (`investory-accounting`) and EAS project ID. `EXPO_TOKEN`, Expo account authentication and signing credentials remain external CI/account configuration. Do not commit generated `android/` or `ios/` directories unless the project moves to a bare workflow. A successful cloud EAS build is independent of launching a local Android emulator; missing local SDK executables are local environment issues.
-
-## Structure
+Target first-use flow:
 
 ```text
-src/
-  components/
-    AccountingListCard.tsx
-    PaymentCard.tsx
-    SectionHeader.tsx
-    SummaryCard.tsx
-
-  data/
-    accountingRepository.ts
-    mockAccountingRepository.ts
-    mocks/
-      july2026.ts
-
-  model/
-    accounting.ts
-
-  navigation/
-    AppNavigator.tsx
-
-  actions/
-    cost/
-      AddCostScreen.tsx
-  screens/
-    HomeScreen.tsx
-    DocumentsScreen.tsx
-    MoreScreen.tsx
-
-  theme/
-    theme.ts
-
-  utils/
-    money.ts
+NIP
+ -> retrieve company data
+ -> confirm supported accounting configuration
+ -> answer only required ZUS questions
+ -> connect KSeF now or skip
+ -> Home
 ```
 
-## Investory API configuration
+KSeF is optional during onboarding and can be configured later.
 
-The UI does not know where Accounting data comes from.
+The backend remains authoritative for PIT/ryczałt, VAT, ZUS, payment obligations, classification and accounting completeness. Frontends present and manage those facts; they do not independently calculate tax obligations.
 
-By default, the app uses the deployed Investory backend:
+## Experience split
 
-```bash
-EXPO_PUBLIC_ACCOUNTING_DATA_SOURCE=api \
-EXPO_PUBLIC_ACCOUNTING_MONTH=2025-01 \
-npx expo start --web
-```
+- **Mobile:** “What do I need to do now?”
+- **Customer web:** “What exactly happened, why, and how do I manage it?”
+- **Backoffice:** “What needs review, correction, support or operational intervention?”
 
-To run Expo Web against the local Investory backend instead:
+## Current supported accounting scope
 
-```bash
-EXPO_PUBLIC_API_URL=http://localhost:8080 \
-EXPO_PUBLIC_ACCOUNTING_DATA_SOURCE=api \
-EXPO_PUBLIC_ACCOUNTING_MONTH=2025-01 \
-npx expo start --web
-```
+| Area | Supported now |
+|---|---|
+| Legal form | JDG |
+| Income tax | Ryczałt 12% |
+| PIT period | Monthly |
+| VAT | Active VAT taxpayer |
+| VAT period | Monthly |
+| KSeF | Optional |
+| Other rates / quarterly / non-VAT / other forms | Planned, not enabled |
 
-`EXPO_PUBLIC_API_URL` overrides the deployed default. Expo reads `EXPO_PUBLIC_*`
-variables when the development server starts, so restart Expo after changing one.
+Unsupported configurations may be visible in UI as **Coming soon / Wkrótce**, but must not be activated or silently coerced into the supported profile.
 
-`EXPO_PUBLIC_ACCOUNTING_MONTH` selects the `YYYY-MM` month used by Home. The default data source is `api`; use `EXPO_PUBLIC_ACCOUNTING_DATA_SOURCE=mock` for the bundled July 2026 fixture.
+## Build and release baseline
 
-The API calls are:
+Before further product expansion, the repository must keep a stable build/deployment baseline:
 
-- `GET /api/v1/profiles/1/accounting/months/{month}`
-- `GET /api/v1/profiles/1/accounting/months/{month}/documents`
-- `GET /api/v1/profiles/1/accounting/payments/history?from={month}&to={month}&type={type}`
-- `GET /api/profiles/1/accounting/counterparties`
+- each app builds independently
+- PRs validate only
+- artifacts are immutable and SHA-versioned
+- DEV/STAGING/PROD remain separate
+- production promotion is explicit
+- Flyway migrations are verified from empty and previous-release schemas
+- mobile store submission remains manual
 
-Invoice range filters request only documents for each explicitly selected month. `Wszystkie` in the date filter means all documents in the selected month; there is no unbounded global invoice-history endpoint or pagination contract.
+See [release baseline](docs/operations/release-baseline.md).
 
-Add Cost uses:
+## Documentation
 
-- `POST /api/profiles/1/accounting/documents/recognize`
-- `POST /api/profiles/1/accounting/documents`
+Start here:
 
-The save response is authoritative and may report a deterministic duplicate document. Recognition returns backend-supported VAT-treatment options and conditional `requiredInputs` metadata for fields such as VAT rate and counterparty country; mobile renders those requirements without encoding tax rules. Tax-period selection remains backend-owned. If recognition does not provide the metadata needed for a document requiring an accounting decision, mobile stops and directs the user to the web panel.
-
-The backend must allow the Expo Web origin (`http://localhost:8081`) through its `/api/v1/**` CORS configuration. The mobile app does not add a browser CORS workaround.
-
-### Text ownership and localization boundary
-
-Known product state follows `backend code → mobile semantic presentation state → UI translation`. Backend human-readable fields remain optional detail and are not machine-translated. Current issue titles/messages, lifecycle/next-action labels, document source/category labels, resolution labels/reasons/options, and recognition input/option labels are backend display copy; their stable codes are retained where available. A future English UI must either localize states from those codes or keep backend copy explicitly marked as server-provided until the backend exposes a complete semantic contract.
-
-The UI keeps canonical accounting calculations on Investory. `paymentSummary.totalOutstanding` and PPE/VAT/ZUS values are displayed as authoritative backend values. The Polish accounting-obligation contract has no currency field and is PLN-scoped, so PLN is attached once in the accounting mapper rather than reconstructed in screens. Document currencies remain backend-provided. Accounting API monetary responses use decimal strings; the mobile mapper accepts legacy numeric fixtures only during rollout and stores domain money as strings. Mobile formats amounts but does not perform accounting arithmetic.
-
-The UI supports exactly `pl` and `en`. English uses `en-GB` formatting for a European financial presentation; tax jurisdiction remains Poland. Saved locale preference takes precedence over supported device English, with Polish as fallback. Locale changes affect presentation strings and formatting only: accounting month IDs, backend enums, tax periods, amounts, currencies, profile and mutation payload semantics remain unchanged. Backend human-readable display fields are not machine-translated; stable backend codes are required for complete future localization.
-
-Authentication uses the current token at request time. A confirmed HTTP 401 invalidates the central session and returns the app to sign-in. The accounting profile is currently fixed to `ACCOUNTING_PROFILE_ID = 1`; authenticated profile selection is not yet available and remains a pre-production blocker.
-
-The repository remains replaceable:
-
-```ts
-createAccountingRepository();
-```
-
-Keep all canonical accounting calculations on the Investory backend. The mobile project should display server results and perform only presentation-level formatting.
+- [Product strategy](docs/product/strategy.md)
+- [Automated onboarding](docs/product/onboarding.md)
+- [Roadmap](docs/product/roadmap.md)
+- [Product structure](docs/architecture/product-structure.md)
+- [Release baseline](docs/operations/release-baseline.md)
+- [Investory extraction](docs/migration/investory-extraction.md)
 
 ## Validation
 
+Backend:
+
 ```bash
+mvn -B -f apps/backend/pom.xml clean verify
+docker build -t ryczalt_it:local apps/backend
+```
+
+Customer web:
+
+```bash
+mvn -B -f apps/customer-web/pom.xml verify
+docker build -t ryczalt-customer-web:local apps/customer-web
+```
+
+Mobile:
+
+```bash
+cd apps/mobile
 npm ci
-npm run typecheck
-npm test
 npm run ci
 npx expo-doctor
 ```
 
-The authoritative validation workflow is `.github/workflows/mobile.yml`. It runs Expo Doctor plus typechecking and tests for pull requests and pushes to `develop`/`main`. Preview, production and manually triggered release workflows remain build/release workflows.
-
-EAS workflows use the same repository-level `EXPO_TOKEN` secret: `mobile-preview.yml` builds an Android preview on pushes to `develop`, `mobile-production.yml` builds Android production on pushes to `main`, and `mobile-release.yml` supports manual preview/production builds. Each workflow fails before dependency installation if the secret is missing. The token is never stored in the repository or printed in logs. Configure the Expo project/account and repository secret outside Git.
-
-## Suggested next increment
-
-1. Connect auto-approval settings to authenticated backend write actions.
-2. Validate Android/iOS builds and the EAS release flow.
+The source Investory repository remains a separate investment/retirement product. New Ryczałt functionality must not depend on Investory runtime services or database tables.

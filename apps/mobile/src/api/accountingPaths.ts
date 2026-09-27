@@ -1,0 +1,10 @@
+const root = (profileId: number) => `/api/profiles/${profileId}/accounting`;
+export const accountingPaths = {
+  periods: (profileId: number) => `${root(profileId)}/periods`, period: (profileId: number, month: string) => `${root(profileId)}/periods/${month}`,
+  invoices: (profileId: number, month: string) => `${root(profileId)}/periods/${month}/invoices`, transactions: (profileId: number, month: string) => `${root(profileId)}/periods/${month}/transactions`, obligations: (profileId: number, month: string) => `${root(profileId)}/periods/${month}/obligations`, issues: (profileId: number, month: string) => `${root(profileId)}/periods/${month}/issues`, payments: (profileId: number) => `${root(profileId)}/payments`,
+  counterparties: (profileId: number) => `${root(profileId)}/counterparties`, counterparty: (profileId: number, id: string | number) => `${root(profileId)}/counterparties/${id}`, counterpartyAlias: (profileId: number, id: string | number) => `${root(profileId)}/counterparties/${id}/alias`, rules: (profileId: number, id: string | number) => `${root(profileId)}/counterparties/${id}/rules`, rule: (profileId: number, id: string | number, ruleId: string | number) => `${root(profileId)}/counterparties/${id}/rules/${ruleId}`,
+  counterpartyInvoices: (profileId: number, counterpartyId: string | number) => `${root(profileId)}/invoices?counterpartyId=${encodeURIComponent(String(counterpartyId))}`,
+  manualPaid: (profileId: number, invoiceId: string | number) => `${root(profileId)}/invoices/${invoiceId}/manual-paid`,
+  obligationManualPaid: (profileId: number, month: string, obligationId: string | number) => `${root(profileId)}/periods/${month}/obligations/${obligationId}/manual-paid`,
+  recognizeInvoice: (profileId: number) => `${root(profileId)}/invoices/recognize`, invoicesCreate: (profileId: number) => `${root(profileId)}/invoices`, calculate: (profileId: number, month: string) => `${root(profileId)}/periods/${month}/calculate`, freeze: (profileId: number, month: string) => `${root(profileId)}/periods/${month}/freeze`, reopen: (profileId: number, month: string) => `${root(profileId)}/periods/${month}/reopen`
+} as const;

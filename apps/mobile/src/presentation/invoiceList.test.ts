@@ -1,0 +1,90 @@
+import { describe, expect, it } from 'vitest';
+import type { Invoice } from '../model/accounting';
+import { canMarkInvoiceManuallyPaid, groupInvoicesByMonth, invoiceApprovalMatches, invoiceApprovalPresentation, invoiceClassificationLabel, invoiceCounterpartyLabel, invoicePaymentPresentation, invoiceSourceMatches, invoiceSourcePresentation, receivedInvoiceGroups } from './invoiceList';
+import { matchesInvoice, invoicePaymentMatches } from './accounting';
+
+function invoice(id: string, issueDate: string | null): Invoice {
+  return {
+    id, title: `Invoice ${id}`, amount: { amount: '10.00', currency: 'PLN' }, direction: 'PURCHASE',
+    counterparty: 'Adobe', legalName: 'Adobe', alias: null, taxIdentifier: null,
+    documentNumber: `FV/${id}`, issueDate, currency: 'PLN', importStatus: null,
+    approvalStatus: null, approvalSource: null, paymentVerificationPolicy: null, paymentStatus: null,
+    source: null, category: null, sourceType: null
+  };
+}
+
+describe('invoice list presentation', () => {
+  it('groups date-only invoice dates by month, newest first, preserving order within groups and across years', () => {
+    const groups = groupInvoicesByMonth([
+      invoice('mar-15', '2026-03-15'), invoice('mar-01', '2026-03-01'),
+      invoice('feb-20', '2026-02-20'), invoice('jan', '2026-01-30'),
+      invoice('dec', '2025-12-31')
+    ]);
+    expect(groups.map((group) => group.month)).toEqual(['2026-03', '2026-02', '2026-01', '2025-12']);
+    expect(groups[0]?.invoices.map((item) => item.id)).toEqual(['mar-15', 'mar-01']);
+  });
+
+  it('separates received income invoices from cost bills and prefers aliases for display', () => {
+    const sale = { ...invoice('sale', '2026-03-01'), direction: 'SALE' as const, alias: 'Company alias', legalName: 'Company legal name' };
+    const purchase = { ...invoice('purchase', '2026-03-02'), alias: null, legalName: 'Seller legal name' };
+    const unknown = { ...invoice('unknown', null), direction: 'UNKNOWN' as const };
+    const groups = receivedInvoiceGroups([sale, purchase, unknown]);
+    expect(groups.income.map((item) => item.id)).toEqual(['sale']);
+    expect(groups.costs.map((item) => item.id)).toEqual(['purchase']);
+    expect(invoiceCounterpartyLabel(sale)).toBe('Company alias');
+    expect(invoiceCounterpartyLabel(purchase)).toBe('Seller legal name');
+  });
+
+  it('uses documented approval values, treats unknown values neutrally, and only marks counterparty-rule approval automatic', () => {
+    expect(invoiceApprovalPresentation('APPROVED', 'COUNTERPARTY_RULE')).toEqual({ label: 'approved', tone: 'success', automatic: true });
+    expect(invoiceApprovalPresentation('APPROVED', 'KSEF_TRUSTED')).toEqual({ label: 'approved', tone: 'success', automatic: true });
+    expect(invoiceApprovalPresentation('APPROVED', 'MANUAL')?.automatic).toBe(false);
+    expect(invoiceApprovalPresentation('APPROVED', 'MIGRATION')?.automatic).toBe(false);
+    expect(invoiceApprovalPresentation('NEEDS_REVIEW', 'COUNTERPARTY_RULE')).toEqual({ label: 'needsReview', tone: 'warning', automatic: false });
+    expect(invoiceApprovalPresentation('FUTURE_STATUS', 'FUTURE_METHOD')).toEqual({ label: 'unknown', tone: 'muted', automatic: false });
+    expect(invoiceApprovalPresentation(null, null)).toBeNull();
+  });
+
+  it('does not create an approval badge from payment state alone', () => {
+    const paidOnly = { ...invoice('paid-only', '2026-03-01'), paymentStatus: 'PAID' };
+    expect(invoiceApprovalPresentation(paidOnly.approvalStatus, paidOnly.approvalSource)).toBeNull();
+  });
+
+  it('maps known invoice classifications by direction and safely hides unknown identifiers', () => {
+    expect(invoiceClassificationLabel('SALE', 'PL_SERVICE')).toBe('Usługa krajowa');
+    expect(invoiceClassificationLabel('SALE', 'EU_SERVICE')).toBe('Usługa UE');
+    expect(invoiceClassificationLabel('PURCHASE', 'VEHICLE_FUEL')).toBe('Paliwo');
+    expect(invoiceClassificationLabel('PURCHASE', 'ACCOUNTING_SERVICE')).toBe('Księgowość');
+    expect(invoiceClassificationLabel('PURCHASE', 'FUTURE_INTERNAL_CODE')).toBe('Brak danych');
+    expect(invoiceClassificationLabel('PURCHASE', null)).toBeNull();
+  });
+
+  it('keeps approval, payment and source as independent invoice dimensions', () => {
+    const item = { ...invoice('cross-state', '2026-03-01'), direction: 'SALE' as const, approvalStatus: 'APPROVED', approvalSource: 'COUNTERPARTY_RULE', paymentStatus: 'UNMATCHED', sourceType: 'KSEF', taxIdentifier: '1234567890' };
+    expect(invoiceApprovalMatches(item, 'APPROVED')).toBe(true);
+    expect(invoicePaymentPresentation(item.paymentStatus)).toMatchObject({ labelKey: 'common.unpaid', tone: 'warning' });
+    expect(invoicePaymentMatches(item, 'UNPAID')).toBe(true);
+    expect(invoicePaymentMatches({ ...item, paymentStatus: 'PARTIALLY_MATCHED' }, 'PARTIALLY_PAID')).toBe(true);
+    expect(invoicePaymentPresentation(null)).toBeNull();
+    expect(invoiceSourceMatches(item, 'KSEF')).toBe(true);
+    expect(invoiceSourceMatches(item, 'UPLOAD')).toBe(false);
+    expect(matchesInvoice(item, '1234567890')).toBe(true);
+    expect(matchesInvoice({ ...item, category: 'EU_SERVICE' }, 'EU service')).toBe(true);
+    expect(matchesInvoice({ ...item, direction: 'PURCHASE', category: 'VEHICLE_FUEL' }, 'Paliwo')).toBe(true);
+  });
+
+  it('blocks manual paid confirmation for already paid or payment-not-required invoices', () => {
+    expect(canMarkInvoiceManuallyPaid('MATCHED')).toBe(false);
+    expect(canMarkInvoiceManuallyPaid('NOT_REQUIRED')).toBe(false);
+    expect(canMarkInvoiceManuallyPaid('MANUALLY_CONFIRMED')).toBe(false);
+    expect(canMarkInvoiceManuallyPaid('PARTIALLY_MATCHED')).toBe(true);
+    expect(canMarkInvoiceManuallyPaid('UNMATCHED')).toBe(true);
+  });
+
+  it('uses the KSeF treatment only when the source type explicitly identifies KSeF', () => {
+    expect(invoiceSourcePresentation({ sourceType: 'KSEF', sourceReference: 'K-123', documentNumber: 'FV/123', issueDate: '2026-03-15' })).toEqual({ kind: 'ksef', reference: 'K-123', date: '2026-03-15' });
+    expect(invoiceSourcePresentation({ sourceType: 'ksef', source: 'K-456', documentNumber: 'FV/456', issueDate: '2026-03-16' }).reference).toBe('K-456');
+    expect(invoiceSourcePresentation({ sourceType: null, documentNumber: 'KSEF/2026/123', issueDate: '2026-03-15' })).toEqual({ kind: 'document', reference: 'KSEF/2026/123', date: '2026-03-15' });
+    expect(invoiceSourcePresentation({ sourceType: 'OTHER', documentNumber: 'FV/123', issueDate: null }).kind).toBe('document');
+  });
+});
