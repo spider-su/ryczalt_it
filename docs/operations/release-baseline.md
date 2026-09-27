@@ -74,6 +74,11 @@ Add equivalent application-specific checks when code is introduced.
 
 Backend and web images should be identified by commit SHA or release version.
 
+After successful Backend CI on `main`, the backend publisher pushes
+`aserobaba/ryczalt_it:latest` and `aserobaba/ryczalt_it:sha-<short-sha>` to
+Docker Hub, then scans the published digest and uploads an SBOM artifact. Pull
+request Docker builds remain smoke-test-only and are not published.
+
 Example:
 
 ```text
