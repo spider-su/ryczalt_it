@@ -2,9 +2,11 @@ package com.smartbox.investory.ui.accounting;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.text.NumberFormat;
 import java.text.Normalizer;
 import java.time.LocalDate;
 import java.time.YearMonth;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
@@ -60,6 +62,8 @@ final class RyczaltAccountingPageViewAssembler {
         selectedMonthInPeriods
             ? bankTransactionsForDisplay(currentMonthTransactions, nextMonthTransactions)
             : List.<RyczaltWebAccountingClient.Transaction>of();
+    List<RyczaltWebAccountingClient.Issue> pageIssues = new ArrayList<>(issues);
+    addRevenueMismatchIssue(period, pageIssues);
     return new PageView(
         selected,
         selected.minusMonths(1),
@@ -73,11 +77,11 @@ final class RyczaltAccountingPageViewAssembler {
         transactions,
         bankTransactionRows(counterparties, transactions),
         obligations,
-        issues,
+        List.copyOf(pageIssues),
         today,
         canWrite,
-        whole(period.settlement().totalOutstanding()),
-        whole(period.settlement().totalPaid()),
+        money(period.settlement().totalOutstanding(), "PLN"),
+        money(period.settlement().totalPaid(), "PLN"),
         obligations.stream()
             .filter(item -> item.outstanding() != null && item.outstanding().signum() > 0)
             .map(RyczaltWebAccountingClient.Obligation::dueDate)
@@ -116,19 +120,24 @@ final class RyczaltAccountingPageViewAssembler {
             .filter(value -> value != null)
             .reduce(BigDecimal.ZERO, BigDecimal::add);
     var hasObligation = obligations.stream().anyMatch(item -> type.equalsIgnoreCase(item.type()));
-    var outstanding =
-        obligations.stream()
-            .filter(item -> type.equalsIgnoreCase(item.type()))
-            .map(RyczaltWebAccountingClient.Obligation::outstanding)
-            .filter(value -> value != null)
-            .reduce(BigDecimal.ZERO, BigDecimal::add);
-    var paid = hasObligation && outstanding.signum() <= 0;
+    var typeObligations =
+        obligations.stream().filter(item -> type.equalsIgnoreCase(item.type())).toList();
+    var paid =
+        hasObligation
+            && typeObligations.stream()
+                .allMatch(
+                    item ->
+                        item.manuallyPaid()
+                            || (item.outstanding() != null
+                                && item.outstanding().signum() <= 0
+                                && ("PAID".equalsIgnoreCase(item.status())
+                                    || "OVERPAID".equalsIgnoreCase(item.status()))));
     return new TaxCard(
         type,
-        whole(calculated),
-        whole(reference),
+        money(calculated, "PLN"),
+        money(reference, "PLN"),
         difference(calculated, reference),
-        whole(bank),
+        money(bank, "PLN"),
         difference(calculated, bank),
         paid ? "✓ Paid" : "○ Unpaid",
         paid ? "is-paid" : "is-unpaid");
@@ -166,7 +175,7 @@ final class RyczaltAccountingPageViewAssembler {
               return new BankTransactionRow(
                   label == null || label.isBlank() ? "—" : label,
                   transaction.bookingDate(),
-                  whole(amount),
+                  money(amount, transaction.currency()),
                   status,
                   transaction.description());
             })
@@ -204,16 +213,46 @@ final class RyczaltAccountingPageViewAssembler {
         .toUpperCase(Locale.ROOT);
   }
 
-  private static String whole(BigDecimal value) {
-    return value == null ? "—" : value.setScale(0, RoundingMode.HALF_UP).toPlainString();
+  static String money(BigDecimal value, String currency) {
+    if (value == null) return "—";
+    NumberFormat format = NumberFormat.getNumberInstance(Locale.forLanguageTag("pl-PL"));
+    format.setMinimumFractionDigits(2);
+    format.setMaximumFractionDigits(2);
+    format.setRoundingMode(RoundingMode.HALF_UP);
+    String amount = format.format(value);
+    return currency == null || currency.isBlank() ? amount : amount + " " + currency;
   }
 
   private static String difference(BigDecimal calculated, BigDecimal comparison) {
     if (calculated == null || comparison == null) return null;
-    var difference = calculated.subtract(comparison).setScale(0, RoundingMode.HALF_UP);
-    return difference.signum() == 0
-        ? null
-        : (difference.signum() > 0 ? "+" : "") + difference.toPlainString();
+    var difference = calculated.subtract(comparison).setScale(2, RoundingMode.HALF_UP);
+    if (difference.signum() == 0) return null;
+    var display = money(difference.abs(), "PLN");
+    return (difference.signum() > 0 ? "+" : "−") + display;
+  }
+
+  private static void addRevenueMismatchIssue(
+      RyczaltWebAccountingClient.Period period,
+      List<RyczaltWebAccountingClient.Issue> issues) {
+    if (period.summary() == null || period.audit() == null) return;
+    BigDecimal sourceRevenue = period.summary().revenue();
+    BigDecimal calculatedRevenue = period.audit().revenue();
+    if (sourceRevenue == null
+        || calculatedRevenue == null
+        || sourceRevenue.compareTo(calculatedRevenue) == 0) return;
+    issues.add(
+        new RyczaltWebAccountingClient.Issue(
+            "revenue-mismatch:" + period.month(),
+            "REVENUE_MISMATCH",
+            "WARNING",
+            "DATA_INTEGRITY",
+            "Revenue does not reconcile",
+            "Calculated revenue is "
+                + money(calculatedRevenue, "PLN")
+                + "; recorded invoice net revenue is "
+                + money(sourceRevenue, "PLN")
+                + ". Verify the period sources and calculation before relying on this audit.",
+            "RYCZALT"));
   }
 
   record PageView(

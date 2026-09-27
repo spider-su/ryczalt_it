@@ -16,20 +16,27 @@ A monorepo enables coordinated domain/API changes without coupling deployment cy
 
 ## Applications
 
+The application boundaries describe ownership, not equal delivery maturity.
+For controlled-POC status and supported scope, see
+[`docs/product/poc-scope.md`](../product/poc-scope.md) and the
+[`roadmap`](../product/roadmap.md). Backend-provisioned accounting configuration
+is consumed by clients; current account activation is invitation-based, not
+NIP-based self-service.
+
 ### Backend
 
 Spring Boot + PostgreSQL.
 
-Authoritative owner of:
+Authoritative owner of (within implemented and validated contracts):
 
 - company/accounting profile
 - invoices and counterparties
 - PIT / ryczałt
-- VAT / JPK-related accounting state
+- VAT accounting state; JPK_V7M generation/submission is deferred
 - ZUS
 - obligations and payments
 - accounting completeness
-- KSeF and accounting integrations
+- implemented/enabled accounting integrations; KSeF issuance/FA(3) is deferred
 - accounting audit/history
 - authorization for customer and staff operations
 
@@ -89,7 +96,7 @@ Browser
   -> Backend API and profile authorization
 ```
 
-### Backoffice
+### Backoffice (planned surface; not a completed POC application)
 
 Internal staff workspace for administrators and accounting reviewers.
 
@@ -127,7 +134,14 @@ Each app has an independent build/release lifecycle.
 
 A backend release must not require a mobile release if API compatibility is preserved.
 
-Recommended environment path:
+Current backend and customer-web Docker publishers run after their respective
+CI workflows on `main` and publish `aserobaba/ryczalt_it` and
+`aserobaba/ryczalt_it_ui` using immutable `sha-<short-sha>` tags plus mutable
+`latest`. They scan the pushed digest with Trivy and upload SBOM artifacts.
+This proves image-pipeline behavior only; it does not prove Cloud Run deployment
+or a POC release. See [release baseline](../operations/release-baseline.md).
+
+Target environment path (deployment evidence is still required):
 
 ```text
 PR -> validate
@@ -172,4 +186,7 @@ There should be:
 
 ## Migration rule
 
-Do not remove source accounting ownership from Investory until standalone parity, migration and deployment are verified.
+Do not remove source accounting ownership from Investory until standalone
+parity, migration and deployment are verified. Investory remains an independent
+investment/retirement product; retained Investory documents are historical
+reference only.

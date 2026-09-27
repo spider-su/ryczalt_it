@@ -1,5 +1,8 @@
 # ZUS DRA export status
 
+> **Historical Investory reference.** This is migration context, not the current
+> Ryczałt runtime/API contract. See the current backend docs and [POC scope](../../product/poc-scope.md).
+
 No ZUS DRA renderer, validator, submission client, or KEDU fixture exists in the current source
 tree. This document is retained as a design note only; it is not an implemented runtime boundary
 and must not be used as evidence that Investory can generate, submit, or confirm a ZUS filing.

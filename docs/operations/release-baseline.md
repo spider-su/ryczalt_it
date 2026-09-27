@@ -1,6 +1,8 @@
 # Ryczałt Platform Baseline v0.1
 
-This baseline is a gate before major product expansion.
+This baseline describes the release process; it is not evidence that deployment
+or POC acceptance has occurred. Controlled POC entry requirements are in
+[`docs/product/poc-scope.md`](../product/poc-scope.md).
 
 ## Goal
 
@@ -83,6 +85,13 @@ After successful Customer Web CI on `main`, the customer-web publisher
 independently pushes `aserobaba/ryczalt_it_ui:latest` and
 `aserobaba/ryczalt_it_ui:sha-<short-sha>`, then scans the published digest and
 uploads a separate SBOM artifact. Prefer the immutable SHA tag for deployment.
+
+The publisher workflows scan the pushed image digest with Trivy (HIGH/CRITICAL)
+and upload SBOM artifacts. Docker Hub publication does not deploy to Cloud Run.
+Cloud Run revisions, runtime URL/secrets, health checks, migrations, backups,
+and rollback must be verified independently for each environment. A CI Docker
+build record is not a published image; a published image is not a deployed
+service.
 
 Example:
 

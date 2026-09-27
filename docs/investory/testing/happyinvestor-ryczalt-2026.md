@@ -1,5 +1,8 @@
 # Happy Investor Ryczalt 2026 fixture
 
+> **Historical Investory reference.** This is calculation-test evidence only,
+> not POC acceptance or a deployed-user scenario. See [current POC scope](../../product/poc-scope.md).
+
 This is a synthetic operational fixture for the independent native Ryczalt path. It covers one
 continuous business story from January through July 2026.
 

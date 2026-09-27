@@ -1,5 +1,8 @@
 # Accounting post-freeze polishing
 
+> **Historical Investory reference.** This is not the current Ryczałt roadmap.
+> See the [current roadmap](../../product/roadmap.md) and [POC scope](../../product/poc-scope.md).
+
 This list is deliberately outside the freeze-hardening scope. Items move back
 into implementation only when verification shows a correctness or isolation
 defect:
