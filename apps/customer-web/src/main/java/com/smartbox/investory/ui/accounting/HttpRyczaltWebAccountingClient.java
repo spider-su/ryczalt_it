@@ -507,7 +507,11 @@ final class HttpRyczaltWebAccountingClient implements RyczaltWebAccountingClient
         text(n, "approvalMethod"),
         text(n, "paymentVerificationPolicy"),
         text(n, "paymentStatus"),
-        text(c, "displayName"));
+        firstNonBlank(text(c, "alias"), text(c, "legalName")));
+  }
+
+  private static String firstNonBlank(String preferred, String fallback) {
+    return preferred == null || preferred.isBlank() ? fallback : preferred;
   }
 
   private static Obligation obligation(JsonNode n) {

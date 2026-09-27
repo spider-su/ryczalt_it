@@ -1,0 +1,31 @@
+spring:
+  datasource:
+    url: ${DB_URL}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+
+springdoc:
+  api-docs:
+    enabled: false
+  swagger-ui:
+    enabled: false
+
+logging:
+  level:
+    org.hibernate.SQL: OFF
+    org.hibernate.orm.jdbc.bind: OFF
+
+app:
+  security:
+    token-secret: ${APP_SECURITY_TOKEN_SECRET}
+    google:
+      enabled: ${APP_SECURITY_GOOGLE_ENABLED:false}
+      client-id: ${APP_SECURITY_GOOGLE_CLIENT_ID:}
+      client-secret: ${APP_SECURITY_GOOGLE_CLIENT_SECRET:}
+      redirect-uri: ${APP_SECURITY_GOOGLE_REDIRECT_URI:{baseUrl}/login/oauth2/code/{registrationId}}
+  ryczalt:
+    ksef:
+      sync:
+        enabled: ${APP_RYCZALT_KSEF_SYNC_ENABLED:false}
+  notifications:
+    enabled: ${APP_NOTIFICATIONS_ENABLED:false}
