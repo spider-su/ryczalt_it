@@ -1,126 +1,61 @@
-# Automated onboarding
+# Account activation and future onboarding
 
-## Goal
+## Current account activation
 
-Onboarding should collect only the information required to create a valid supported accounting profile.
-
-Target flow:
+Accounting/company configuration is provisioned on the backend. The current
+account lifecycle is access activation, not a second accounting setup wizard:
 
 ```text
-1. Enter NIP
-2. Retrieve and confirm company
-3. Confirm supported accounting setup
-4. Answer required ZUS questions
-5. Connect KSeF now or later
-6. Open Home
+administrator provisions/invites user and profile access
+ -> user accepts invitation and establishes credentials
+ -> user signs in
+ -> backend returns authorized profile context
+ -> mobile or customer web presents backend-owned accounting state
 ```
 
-## Step 1 — Company by NIP
+The backend owns the profile and authorization boundary. A client must not let
+the user supply an arbitrary profile ID as proof of access, create conflicting
+accounting configuration, or infer readiness from a successful login, empty
+list, or zero-valued response. Invitations are the current supported way to
+activate a new user; public self-registration is not available.
 
-The user enters NIP once.
+When a user has no accessible configured profile, show a clear access/setup
+state and route them to the administrator/support process. Do not start an
+accounting wizard that duplicates backend-provided configuration.
 
-Backend lookup should use supported authoritative/public sources where available, such as:
+## POC account acceptance
 
-- GUS / REGON
-- CEIDG
-- VAT White List
-- VIES where relevant
+Before inviting a controlled POC user, verify that the backend profile is
+complete and within the supported scope: Polish JDG, 12% ryczałt, monthly PIT,
+active VAT and monthly VAT. Verify access is bound to that profile and that
+unsupported configurations are rejected. See [controlled POC scope](poc-scope.md).
 
-The application should retrieve, when available:
+For mid-year use, verify an explicit accounting start date and the opening
+facts required for calculations. Missing prior VAT carry-forward, year-to-date
+revenue, consumed deductions, or contribution facts cannot be represented as
+zero. The currently implemented missing-prior-VAT fallback is a known gap; do
+not use mid-year profiles until corrected and tested.
 
-- legal company name
-- REGON
-- business status
-- business start date
-- registered address
-- owner name
-- VAT registration status
-- registered business bank accounts
+KSeF and other integrations are optional only where implemented and enabled.
+Skipping an optional integration must not falsely certify complete accounting
+data or block supported manual workflows.
 
-The user confirms the result instead of typing it again.
+## Future self-service onboarding (not implemented)
 
-Retrieved values should keep provenance and retrieval time. User corrections must not be silently overwritten by later refreshes.
+If public self-service account creation is later approved, design it as a
+separate project. Candidate flow:
 
-## Step 2 — Supported accounting setup
+```text
+identity verification
+ -> backend creates/assigns an authorized profile
+ -> retrieve and confirm public company data
+ -> validate supported accounting configuration
+ -> collect required ZUS and opening-state facts
+ -> offer optional implemented integrations
+ -> backend reports readiness and next actions
+```
 
-Current supported profile:
-
-- JDG
-- ryczałt 12%
-- PIT monthly
-- active VAT
-- VAT monthly
-
-The UI should present this as one concise configuration summary and ask the user to confirm it.
-
-Do not make the user select four radio buttons when only one combination is supported.
-
-Other configurations may be visible under **Wkrótce / Coming soon**, but disabled.
-
-The backend validates the configuration and rejects unsupported combinations.
-
-## Accounting start date
-
-Ask:
-
-> From when do you want to keep accounting in Ryczałt?
-
-Default to the current accounting month.
-
-If the user starts mid-year, do not assume prior revenue, paid tax, VAT carry-forward or contribution values are zero. Missing historical inputs must produce an incomplete-calculation state and be handled by the later historical-bootstrap workflow.
-
-## ZUS
-
-Use progressive questions based on the current calculation engine.
-
-Ask only for facts required for supported calculations, for example:
-
-- contribution regime
-- concurrent employment
-- voluntary sickness insurance
-- health-contribution inputs where required
-
-Do not infer ZUS entitlement solely from business age.
-
-Year-dependent thresholds belong to backend rules, not onboarding UI constants.
-
-## Step 3 — KSeF
-
-KSeF is optional.
-
-Offer two clear actions:
-
-- **Connect now / Połącz teraz**
-- **Configure later / Skonfiguruję później**
-
-Skipping KSeF:
-
-- completes onboarding
-- does not produce an error
-- does not block Home
-- keeps manual supported invoice workflows available
-- leaves KSeF status as not connected
-- allows connection later in Settings
-
-A failed KSeF connection must not roll back company or accounting setup.
-
-## First Home after onboarding
-
-Do not start another wizard.
-
-Show a compact contextual readiness section only when useful.
-
-Examples:
-
-- company configured — complete
-- tax setup — complete
-- current-period data — review if needed
-- KSeF — optional
-
-The backend owns readiness/completeness status. Mobile must not infer “no revenue” from an empty invoice list.
-
-## Existing users
-
-Do not force established users through new onboarding if their current profile already contains the required configuration.
-
-Request only genuinely missing information.
+NIP lookup, GUS/CEIDG/VAT registry prefill, self-service profile creation, and a
+NIP-to-Home promise are product direction only, not current functionality.
+Never expose a selectable tax/ZUS mode until backend validation and supported
+calculations exist.

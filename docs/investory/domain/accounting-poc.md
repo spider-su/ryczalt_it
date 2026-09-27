@@ -1,5 +1,8 @@
 # Accounting POC
 
+> **Historical Investory reference.** This source-project POC is not the current
+> Ryczałt POC or its acceptance status. See [current POC scope](../../product/poc-scope.md).
+
 ## Goal
 
 The accounting POC proves that a month can be reconstructed deterministically from sales invoices, expense invoices, bank transactions, tax/ZUS obligations and Investory FX conversion, then compared with captured wFirma outputs.

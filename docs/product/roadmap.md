@@ -1,121 +1,30 @@
 # Ryczałt roadmap
 
-The roadmap is ordered to stabilize the platform before expanding accounting scope.
+This roadmap distinguishes repository foundations, current partial capabilities,
+and controlled-POC blockers. “Present in source” is not the same as accepted in a
+deployed end-to-end flow. POC entry gates are authoritative in
+[`poc-scope.md`](poc-scope.md).
 
-## Stage 0 — Product extraction and repository baseline
+| Stage | Status | Scope / exit evidence |
+|---|---|---|
+| 0. Standalone product foundation | **Complete in repository** | Separate Ryczałt repository, application boundaries, backend-owned accounting and persistence; source extraction/cutover evidence remains in migration docs. |
+| 1. Build and image pipeline | **Implemented; deployment evidence required per environment** | App-specific CI, backend and customer-web Docker publishing, immutable SHA tags, Trivy and SBOM steps. CI/image publication does not prove Cloud Run deployment, rollback, or real-user readiness. |
+| 2. Supported monthly calculations | **Implemented with known correctness gap** | Native PIT/VAT/ZUS path and unit coverage exist. Missing prior VAT period/current result still falls back to zero; no validated general opening-state contract. Must close before mid-year POC use. |
+| 3. Account access and current client surfaces | **Partial** | Backend invitations and acceptance, mobile login/invitation acceptance, and profile-bound customer web exist. No public self-registration or NIP-based setup wizard. Validate complete invite-to-accounting journey in deployed environments. |
+| 4. POC accounting completeness and acceptance | **Required before POC** | Explicit start date/opening balances, fail-closed missing inputs, correct due/paid semantics, supported-config rejection, realistic cross-client E2E, deployment/operations evidence. See POC scope. |
+| 5. POC deployment and controlled-user operation | **Required before POC** | Deploy verified Docker digests for backend/web; explicit mobile API URL; health/readiness, backups, rollback, support, and a recorded acceptance run with a controlled cohort. |
+| 6. Expanded customer workspace | **Partial / continue after POC gates** | Current Thymeleaf workspace is a migration seed and includes implemented profile-bound/accounting views. Do not claim every advanced setting, export, or document workflow is complete; track each against shipped behavior. |
+| 7. Backoffice and collaboration | **Deferred** | Full staff review queues, reviewer tooling, multiuser productization and broader accountant collaboration. |
 
-Status: current foundation.
+## Post-POC expansion (deferred)
 
-- separate Ryczałt from Investory
-- one product repository
-- backend, mobile, customer web and backoffice boundaries
-- independent app builds
-- standalone accounting persistence
-- preserve accounting tests and contracts
+- JPK_V7M generation/submission, PIT-28, and full annual health settlement.
+- KSeF issuance/FA(3), bank API/MT940, and full reconciliation automation.
+- More tax rates/forms, quarterly periods, VAT-exempt users, other legal forms,
+  and additional ZUS regimes.
+- Full backoffice, advanced self-service onboarding, broad multiuser support,
+  and full accounting-system replacement.
 
-Exit criteria:
-
-- no new Ryczałt feature depends on Investory runtime/database
-- all current applications build from the Ryczałt repository
-
-## Stage 1 — Build and deployment baseline
-
-Stabilize delivery before feature growth.
-
-- final monorepo paths
-- app-specific CI
-- immutable SHA-tagged backend/web artifacts
-- DEV / STAGING / PROD environment contracts
-- empty-schema and upgrade migration tests
-- deployment smoke tests
-- explicit rollback procedure
-- pinned build tooling
-- manual production/store promotion
-
-Exit criteria:
-
-- main is always releasable
-- failed deployment can be rolled back without rebuilding source
-
-## Stage 2 — Automated customer onboarding
-
-- NIP lookup
-- automatic company prefill
-- confirm supported JDG / 12% / monthly PIT+VAT profile
-- minimal ZUS questions
-- optional KSeF
-- existing-profile compatibility
-
-Exit criteria:
-
-- supported user reaches Home in minutes with minimal typing
-
-## Stage 3 — First-use readiness
-
-- contextual Home guidance
-- accounting completeness states
-- distinguish missing data from zero/no activity
-- retry/partial-error handling
-- clear next actions
-
-Exit criteria:
-
-- a new user understands whether the current period is ready and what to do next
-
-## Stage 4 — Historical accounting bootstrap
-
-- reuse existing Ryczałt data first
-- use KSeF/imports where available
-- ask only for missing opening values
-- track provenance
-- avoid false zero assumptions
-
-Exit criteria:
-
-- mid-year starters can produce correct supported calculations
-
-## Stage 5 — Customer web workspace
-
-- detailed accounting dashboard
-- full settings
-- invoice filters and bulk workflows
-- historical data management
-- detailed calculation breakdowns
-- reports, exports and document management
-- KSeF configuration/history
-
-Mobile remains the primary quick-action interface.
-
-## Stage 6 — Backoffice
-
-- reviewer/admin authentication and roles
-- business assignments
-- review queues
-- classification/completeness exceptions
-- corrections
-- integration/support tooling
-- audit trail
-
-## Stage 7 — Payments and reconciliation hardening
-
-- tax micro-account setup
-- ZUS payment account
-- payment history
-- authoritative paid/unpaid/overdue state
-- reconciliation and safe manual confirmation
-- reminders
-
-## Later expansion
-
-Only after the initial supported profile is stable:
-
-- additional ryczałt rates
-- multiple rates
-- quarterly periods
-- VAT-exempt users
-- other taxation methods
-- other legal forms
-- broader accountant collaboration
-- deeper bank automation
-
-Do not expose these as usable accounting modes before backend support and validation are complete.
+Do not promote deferred work to supported based on UI placeholders, old
+Investory documents, or an integration adapter alone. It requires explicit
+scope, backend support, tests, and release evidence.

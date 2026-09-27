@@ -1,10 +1,15 @@
 # Ryczałt product strategy
 
-## Strategic goal
+## Strategic goal and POC boundary
 
 Ryczałt is an independent accounting product for Polish sole proprietors. It owns its backend, customer experiences, internal review tooling, accounting persistence and integrations.
 
 The product should automate routine accounting while keeping the supported scope narrow enough to remain reliable.
+
+This describes the product direction, not a feature-completeness claim. The
+controlled POC supports the bounded profile and prerequisites in
+[`poc-scope.md`](poc-scope.md). Required/optional/deferred scope and readiness
+gates there take precedence over aspirational examples in this strategy.
 
 ## Initial target customer
 
@@ -20,7 +25,7 @@ The initial UX should be optimized for this user rather than generalized around 
 
 ## Core principles
 
-### 1. Minimal user input
+### 1. Minimal user input (future self-service direction)
 
 Prefer:
 
@@ -34,9 +39,11 @@ over:
 ask user to type known public data
 ```
 
-Company identity should be derived from NIP and official/public sources where possible.
+Company identity should be derived from NIP and official/public sources where
+possible when self-service onboarding is implemented. Today, user access is
+invitation-based and accounting configuration is provisioned on the backend.
 
-### 2. Progressive configuration
+### 2. Progressive configuration (future self-service direction)
 
 Ask for information only when it is required.
 
@@ -45,7 +52,8 @@ Examples:
 - company name/address/REGON: retrieve automatically
 - KSeF: optional during onboarding
 - ZUS payment account: ask when payment setup requires it
-- historical opening data: ask only when calculations actually depend on it
+- historical opening data: collect and validate it before any dependent
+  calculation; missing is not zero
 - advanced VAT corrections: do not ask users who do not need them
 
 ### 3. Backend authority
@@ -128,7 +136,7 @@ Optimized for detailed management:
 - payment history/reconciliation
 - account and access management
 
-### Backoffice
+### Backoffice (future product surface)
 
 Optimized for staff:
 
@@ -141,8 +149,10 @@ Optimized for staff:
 - user/account administration
 - audit trails
 
-Administrator access and accounting-review access are separate roles and must be enforced by the backend.
+Administrator access and accounting-review access are separate roles and must
+be enforced by the backend. This is not a claim that the full backoffice is
+available in the POC.
 
-## Success criterion
+## Future self-service success criterion
 
 A supported JDG user should be able to go from NIP to a useful Home screen in minutes, without manually re-entering public company data or preparing KSeF credentials first.

@@ -14,22 +14,13 @@ The product is intentionally narrow at first: **JDG, 12% ryczałt, active VAT, m
 
 All four applications belong to one product repository but have independent build and deployment cycles.
 
-## Product principle
+## First use
 
-The user should provide as little data as possible.
-
-Target first-use flow:
-
-```text
-NIP
- -> retrieve company data
- -> confirm supported accounting configuration
- -> answer only required ZUS questions
- -> connect KSeF now or skip
- -> Home
-```
-
-KSeF is optional during onboarding and can be configured later.
+The current account lifecycle is invitation-based: backend-provisioned users
+accept an invitation, authenticate, and access their already-configured
+authorized profile. The product does not currently offer public
+self-registration or NIP-based accounting setup. Do not represent the earlier
+NIP-to-Home concept as implemented onboarding.
 
 The backend remains authoritative for PIT/ryczałt, VAT, ZUS, payment obligations, classification and accounting completeness. Frontends present and manage those facts; they do not independently calculate tax obligations.
 
@@ -39,7 +30,7 @@ The backend remains authoritative for PIT/ryczałt, VAT, ZUS, payment obligation
 - **Customer web:** “What exactly happened, why, and how do I manage it?”
 - **Backoffice:** “What needs review, correction, support or operational intervention?”
 
-## Current supported accounting scope
+## Supported POC accounting scope
 
 | Area | Supported now |
 |---|---|
@@ -67,12 +58,18 @@ Before further product expansion, the repository must keep a stable build/deploy
 
 See [release baseline](docs/operations/release-baseline.md).
 
+The binding controlled-user scope and pre-POC gates are in
+[POC scope](docs/product/poc-scope.md). In particular, historical opening
+accounting state is required for mid-year starts; the current missing-prior-VAT
+fallback is documented as an unresolved correctness gap.
+
 ## Documentation
 
 Start here:
 
 - [Product strategy](docs/product/strategy.md)
-- [Automated onboarding](docs/product/onboarding.md)
+- [Controlled POC scope](docs/product/poc-scope.md)
+- [Account activation and future onboarding](docs/product/onboarding.md)
 - [Roadmap](docs/product/roadmap.md)
 - [Product structure](docs/architecture/product-structure.md)
 - [Release baseline](docs/operations/release-baseline.md)

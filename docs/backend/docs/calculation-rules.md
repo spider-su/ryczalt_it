@@ -65,6 +65,15 @@ behavior are covered separately by integration tests (`*IT`).
 
 ## Persistence compatibility and open debt
 
+### POC readiness gap
+
+Current native calculations cover the supported-profile rules listed above,
+but that is not enough to claim mid-year POC readiness. Missing historical
+opening data must be distinguished from a true zero. The required opening-state
+contract and fail-closed behavior are not complete on this branch. The current
+prior-VAT fallback below is therefore a release blocker for mid-year use. Track
+closure through the [POC scope](../../product/poc-scope.md).
+
 Rule-version strings containing `_POC_V1` are already persisted calculation identifiers. Their name
 is historical, but must not be renamed without an explicit migration/recalculation policy. The old
 `RyczaltCalculationApplicationService` was an unused parallel path and has been removed; native month

@@ -1,5 +1,8 @@
 # Accounting resolution command contract
 
+> **Historical Investory reference.** This is migration context, not the current
+> Ryczałt runtime/API contract. See the current backend docs and [POC scope](../product/poc-scope.md).
+
 ## V1 public command surface
 
 There is no public mobile issue-resolution command in the current backend.

@@ -2,8 +2,9 @@
 
 ## Product
 
+- [Controlled POC scope and entry gates](product/poc-scope.md)
 - [Strategy](product/strategy.md)
-- [Automated onboarding](product/onboarding.md)
+- [Account activation and future onboarding](product/onboarding.md)
 - [Roadmap](product/roadmap.md)
 
 ## Architecture
@@ -21,4 +22,10 @@
 
 ## Legacy source material
 
-`docs/investory/` contains accounting documentation copied from the Investory codebase during extraction. It is retained as migration/reference material, not as the current product strategy. When a legacy document conflicts with the product or architecture documents above, the newer Ryczałt documentation is authoritative.
+`docs/investory/` is historical source/migration/reference material, not current
+Ryczałt implementation documentation. Its claims may describe old Investory
+code or designs and must not be used as evidence of current runtime behavior.
+Current Ryczałt product scope is governed by `product/poc-scope.md`; roadmap
+status is governed by `product/roadmap.md`; current contracts and implementation
+are documented in the relevant app/backend docs. Investory itself remains a
+separate investment/retirement product.

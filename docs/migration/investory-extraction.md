@@ -55,19 +55,12 @@ Do not delete accounting implementation from Investory until:
 
 ## Next product stages
 
-Extraction is not the end-state roadmap.
-
-After build/deployment stabilization:
-
-1. automated NIP-based onboarding
-2. optional KSeF setup
-3. first-use readiness
-4. historical accounting bootstrap
-5. detailed customer web
-6. reviewer/admin backoffice
-7. payment/reconciliation hardening
-
-See [roadmap](../product/roadmap.md).
+This extraction-era sequence is historical, not the active product roadmap.
+Current account activation is invitation-based and backend configuration is
+authoritative. The controlled POC still requires closure of calculation
+completeness, historical opening-state, deployment, and end-to-end acceptance
+gates. See the current [roadmap](../product/roadmap.md) and
+[POC scope](../product/poc-scope.md).
 
 ## Legacy documentation
 

@@ -41,22 +41,15 @@ Current supported configuration:
 
 Other configurations may be shown as **Wkrótce / Coming soon**, but must not be activatable.
 
-## Onboarding direction
+## Account activation
 
-Target flow:
+Backend-provisioned users accept an invitation, sign in, and access their
+authorized profile. Mobile does not provide public self-registration or an
+accounting-configuration wizard. A user with no accessible profile should be
+given a clear support/access state, not a client-created profile flow.
 
-```text
-NIP
- -> retrieve and confirm company
- -> confirm supported accounting setup
- -> required ZUS questions
- -> connect KSeF or configure later
- -> Home
-```
-
-KSeF is optional and must not block onboarding.
-
-See [automated onboarding](../../docs/product/onboarding.md).
+See [account activation and future onboarding](../../docs/product/onboarding.md)
+and the [controlled POC scope](../../docs/product/poc-scope.md).
 
 ## API configuration
 

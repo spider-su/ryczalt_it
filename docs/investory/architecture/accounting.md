@@ -1,5 +1,8 @@
 # Accounting architecture
 
+> **Historical Investory reference.** This is migration context, not the current
+> Ryczałt architecture contract. See the current backend docs and [POC scope](../../product/poc-scope.md).
+
 This document describes the current Accounting boundaries. It separates source extraction from
 accounting-safe validation, normalized facts, calculation and filing projections.
 
