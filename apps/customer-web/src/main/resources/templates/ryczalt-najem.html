@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="pl" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Ryczałt od najmu prywatnego – aplikacja do czynszu i podatku | Ryczałt</title>
+  <meta name="description" content="Prosta aplikacja dla właścicieli mieszkań. Potwierdzaj wpłaty czynszu, licz ryczałt od najmu i kontroluj podatek bez Excela i bez dostępu do banku.">
+  <meta name="robots" content="index,follow">
+  <link rel="canonical" th:if="${!canonicalUrl.isBlank()}" th:href="${canonicalUrl}">
+  <meta property="og:title" content="Ryczałt od najmu prywatnego – aplikacja do czynszu i podatku | Ryczałt">
+  <meta property="og:description" content="Potwierdzasz otrzymaną wpłatę. Aplikacja pokazuje przychód, podatek i co zostało do zapłaty.">
+  <meta property="og:type" content="website">
+  <meta property="og:locale" content="pl_PL">
+  <link rel="stylesheet" th:href="@{/css/rental-landing.css}">
+  <script type="application/ld+json" th:utext="${structuredData}"></script>
+</head>
+<body class="rental-landing">
+  <header class="landing-header">
+    <a class="brand" href="/ryczalt-najem" aria-label="Ryczałt — strona główna"><span class="brand-mark" aria-hidden="true">R</span><span>ryczałt</span></a>
+    <a class="button button-small button-outline" href="#jak-dziala">Jak działa?</a>
+  </header>
+
+  <main>
+    <section class="hero section-wrap" aria-labelledby="hero-title">
+      <div class="hero-copy">
+        <p class="eyebrow">Spokojniejszy najem, bez rozbudowanego systemu</p>
+        <h1 id="hero-title">Ryczałt z najmu prywatnego — prosto, bez Excela</h1>
+        <p class="lead">Dla właścicieli mieszkań, którzy chcą pilnować wpłat i podatku bez rozbudowanego systemu do zarządzania najmem.</p>
+        <div class="hero-actions">
+          <a class="button button-primary" href="#jak-dziala">Zobacz jak działa <span aria-hidden="true">→</span></a>
+          <a class="button button-outline" th:href="${ctaUrl}" th:text="${ctaConfigured ? 'Pobierz aplikację' : 'Dołącz do wersji testowej'}">Dołącz do wersji testowej</a>
+        </div>
+        <ul class="trust-list" aria-label="Ważne informacje o aplikacji">
+          <li>Bez dostępu do banku</li><li>Dane lokalnie na Twoim urządzeniu</li><li>Ręczne potwierdzanie wpłat</li>
+        </ul>
+      </div>
+      <div class="hero-visual" aria-label="Podgląd przykładowego zestawienia w aplikacji">
+        <div class="phone-card">
+          <div class="phone-top"><span>Twój najem</span><span class="avatar-dot" aria-hidden="true">●</span></div>
+          <p class="phone-label">Przychód potwierdzony · sierpień</p>
+          <p class="phone-amount">4 800 <small>zł</small></p>
+          <div class="phone-progress"><span></span></div>
+          <div class="phone-row"><span>Podatek do zapłaty</span><strong>408 zł</strong></div>
+          <div class="phone-task"><span class="task-check" aria-hidden="true">✓</span><span><strong>Czynsz · Mieszkanie</strong><small>Wpłata potwierdzona ręcznie</small></span></div>
+          <div class="phone-task pending"><span class="task-check" aria-hidden="true">•</span><span><strong>Rachunek za prąd</strong><small>Sprawdź płatność</small></span></div>
+          <p class="mock-note">Przykładowy widok</p>
+        </div>
+        <span class="visual-orbit orbit-one" aria-hidden="true"></span><span class="visual-orbit orbit-two" aria-hidden="true"></span>
+      </div>
+    </section>
+
+    <section class="section-wrap section-block" aria-labelledby="problem-title">
+      <div class="section-heading"><p class="eyebrow">Mniej zgadywania</p><h2 id="problem-title">Masz jedno lub kilka mieszkań? Excel szybko przestaje wystarczać.</h2></div>
+      <div class="card-grid three">
+        <article class="info-card"><span class="card-index">01</span><h3>Kto zapłacił?</h3><p>Potwierdzasz tylko wpłaty, które faktycznie otrzymałeś. Częściowe wpłaty też są obsługiwane.</p></article>
+        <article class="info-card"><span class="card-index">02</span><h3>Ile podatku mam zapłacić?</h3><p>Aplikacja liczy ryczałt na podstawie potwierdzonych przychodów i pokazuje kwotę pozostałą do zapłaty.</p></article>
+        <article class="info-card"><span class="card-index">03</span><h3>Czy już zapłaciłem podatek?</h3><p>Wpłaty podatku potwierdzasz ręcznie i masz historię rozliczeń w jednym miejscu.</p></article>
+      </div>
+    </section>
+
+    <section id="jak-dziala" class="section-wrap section-block how-section" aria-labelledby="how-title">
+      <div class="section-heading"><p class="eyebrow">Kilka prostych kroków</p><h2 id="how-title">Jak działa?</h2></div>
+      <div class="steps-grid">
+        <article class="step-card"><span class="step-number">1</span><div><h3>Dodaj mieszkanie</h3><p>Wpisz nazwę mieszkania, oczekiwany czynsz i dzień płatności. Możesz dodać obecnego najemcę i kontakt.</p></div></article>
+        <article class="step-card"><span class="step-number">2</span><div><h3>Potwierdź otrzymaną wpłatę</h3><p>Zapisz datę, kwotę i mieszkanie. To Ty potwierdzasz każdą wpłatę — aplikacja nie wykrywa przelewów.</p></div></article>
+        <article class="step-card"><span class="step-number">3</span><div><h3>Sprawdź podatek</h3><p>Zobacz przychód za okres, sumę narastająco, szacowany podatek, potwierdzone wpłaty i pozostałą kwotę.</p></div></article>
+      </div>
+    </section>
+
+    <section class="section-wrap section-block" aria-labelledby="features-title">
+      <div class="section-heading"><p class="eyebrow">Lekko i konkretnie</p><h2 id="features-title">Tylko to, czego potrzebujesz</h2></div>
+      <div class="feature-grid">
+        <div class="feature-item"><span aria-hidden="true">✓</span><h3>Ręczne potwierdzanie czynszu</h3></div>
+        <div class="feature-item"><span aria-hidden="true">◒</span><h3>Obsługa częściowych wpłat</h3></div>
+        <div class="feature-item"><span aria-hidden="true">%</span><h3>Ryczałt od potwierdzonych przychodów</h3></div>
+        <div class="feature-item"><span aria-hidden="true">✓</span><h3>Ręczne potwierdzanie wpłat podatku</h3></div>
+        <div class="feature-item"><span aria-hidden="true">◷</span><h3>Przypomnienia o czynszu, podatku i rachunkach</h3></div>
+        <div class="feature-item"><span aria-hidden="true">↻</span><h3>Historia mieszkań, najemców i płatności</h3></div>
+      </div>
+      <p class="positioning-note">Bez CRM, bez portalu najemcy, bez automatycznego dostępu do banku.</p>
+    </section>
+
+    <section class="section-wrap section-block calculator-section" aria-labelledby="calculator-title">
+      <div class="calculator-copy"><p class="eyebrow">Szybki szacunek</p><h2 id="calculator-title">Kalkulator ryczałtu od najmu</h2><p>Sprawdź orientacyjny podatek od przychodu z najmu prywatnego według podstawowego progu.</p><p class="source-note">Stawki: 8,5% do 100 000 zł przychodu rocznie i 12,5% od nadwyżki. Przy wspólności majątkowej i wymaganym oświadczeniu małżonków próg może wynosić 200 000 zł.</p></div>
+      <div class="calculator-card">
+        <div class="calculator-fields">
+          <label for="monthly-rent">Miesięczny czynsz (zł)<input id="monthly-rent" type="number" min="0" max="10000000" step="0.01" value="4000" inputmode="decimal"></label>
+          <label for="months">Liczba miesięcy<input id="months" type="number" min="1" max="12" step="1" value="12" inputmode="numeric"></label>
+          <label for="extra-income">Dodatkowy przychód do opodatkowania w roku (zł)<input id="extra-income" type="number" min="0" max="100000000" step="0.01" value="0" inputmode="decimal"></label>
+        </div>
+        <div class="calculator-results" aria-live="polite" aria-atomic="true"><div><span>Przychód w roku</span><strong id="revenue-result">48 000,00 zł</strong></div><div><span>Szacowany ryczałt</span><strong id="tax-result">4 080 zł</strong></div></div>
+        <p id="calculator-error" class="calculator-error" role="alert" hidden>Wpisz poprawne nieujemne kwoty i liczbę miesięcy od 1 do 12.</p>
+        <p class="calculator-disclaimer">Kalkulator ma charakter pomocniczy. Nie uwzględnia indywidualnych odliczeń ani szczególnych sytuacji podatkowych. Ostateczna kwota zależy od Twojej sytuacji podatkowej.</p>
+        <p class="calculator-cta">Chcesz pilnować tego co miesiąc? <a th:href="${ctaUrl}" th:text="${ctaConfigured ? 'Pobierz aplikację Ryczałt' : 'Poznaj wersję testową Ryczałtu'}">Poznaj wersję testową Ryczałtu</a>.</p>
+      </div>
+    </section>
+
+    <section class="section-wrap section-block comparison-section" aria-labelledby="comparison-title">
+      <div class="section-heading"><p class="eyebrow">Właściwe narzędzie do małego najmu</p><h2 id="comparison-title">Nie potrzebujesz rozbudowanego systemu do zarządzania najmem</h2></div>
+      <div class="comparison-table-wrap"><table><thead><tr><th scope="col">Potrzeba</th><th scope="col">Ryczałt</th></tr></thead><tbody>
+        <tr><th scope="row">Potwierdzanie wpłat</th><td>Tak</td></tr><tr><th scope="row">Częściowe wpłaty</th><td>Tak</td></tr><tr><th scope="row">Podatek od najmu</th><td>Tak</td></tr><tr><th scope="row">Historia wpłat podatku</th><td>Tak</td></tr><tr><th scope="row">Przypomnienia</th><td>Tak</td></tr><tr><th scope="row">Dostęp do banku</th><td>Nie</td></tr><tr><th scope="row">Portal najemcy</th><td>Nie</td></tr><tr><th scope="row">Rozbudowany CRM</th><td>Nie</td></tr>
+      </tbody></table></div>
+    </section>
+
+    <section class="section-wrap section-block faq-section" aria-labelledby="faq-title">
+      <div class="section-heading"><p class="eyebrow">Najczęstsze pytania</p><h2 id="faq-title">Zanim zaczniesz</h2></div>
+      <div class="faq-list">
+        <details><summary>Czy aplikacja łączy się z bankiem?</summary><p>Nie. Aplikacja nie łączy się z bankiem i nie pobiera historii rachunku.</p></details>
+        <details><summary>Czy wpłaty są dodawane automatycznie?</summary><p>Nie. Samodzielnie potwierdzasz otrzymaną wpłatę i podajesz jej datę oraz kwotę.</p></details>
+        <details><summary>Czy mogę potwierdzić częściową wpłatę?</summary><p>Tak. Możesz zapisać otrzymaną część czynszu; pozostała oczekiwana kwota nadal wymaga sprawdzenia.</p></details>
+        <details><summary>Czy działa dla kilku mieszkań?</summary><p>Tak. Możesz prowadzić kilka mieszkań i wspólny podgląd przychodów oraz rozliczeń.</p></details>
+        <details><summary>Czy aplikacja liczy ryczałt od najmu?</summary><p>Pokazuje pomocnicze wyliczenie na podstawie zapisanych, potwierdzonych przychodów i obsługiwanych reguł. Nie uwzględnia wszystkich indywidualnych odliczeń ani nie zastępuje zeznania podatkowego.</p></details>
+        <details><summary>Gdzie są przechowywane moje dane?</summary><p>W obecnym modelu dane są przechowywane lokalnie na urządzeniu. Aplikacja nie wymaga konta w chmurze.</p></details>
+        <details><summary>Czy aplikacja działa offline?</summary><p>Dane są przechowywane lokalnie, więc podstawowe funkcje nie wymagają połączenia z serwerem. Linki do zewnętrznych usług wymagają internetu.</p></details>
+        <details><summary>Czy aplikacja zastępuje księgową?</summary><p>Nie. To pomocnik do zapisywania wpłat, przypomnień i orientacyjnego śledzenia podatku, a nie porada podatkowa ani pełna księgowość.</p></details>
+        <details><summary>Czy będzie PIT-28?</summary><p>Przygotowanie PIT-28 jest poza obecnym zakresem i pozostaje zaplanowane na późniejszy etap.</p></details>
+        <details><summary>Czy będzie backup danych?</summary><p>Eksport i import kopii zapasowej są poza obecnym zakresem i pozostają zaplanowane na późniejszy etap.</p></details>
+      </div>
+    </section>
+
+    <section id="wersja-testowa" class="final-cta section-wrap" aria-labelledby="final-title">
+      <div><p class="eyebrow">Ryczałt — Twój osobisty asystent najmu</p><h2 id="final-title">Ryczałt z najmu bez Excela</h2><p>Potwierdzaj wpłaty, pilnuj podatku i miej wszystko pod ręką.</p><p class="beta-note" th:unless="${ctaConfigured}">Publiczny link do pobrania nie jest jeszcze skonfigurowany. Informacje o dostępności wersji testowej pojawią się tutaj.</p></div>
+      <a class="button button-light" th:href="${ctaUrl}" th:text="${ctaConfigured ? 'Pobierz aplikację' : 'Dołącz do wersji testowej'}">Dołącz do wersji testowej</a>
+    </section>
+  </main>
+  <footer class="landing-footer section-wrap"><a class="brand" href="/ryczalt-najem"><span class="brand-mark" aria-hidden="true">R</span><span>ryczałt</span></a><p>Dane na stronie mają charakter informacyjny. Kalkulator nie stanowi porady podatkowej.</p></footer>
+  <script defer th:src="@{/js/rental-calculator.js}"></script>
+</body>
+</html>

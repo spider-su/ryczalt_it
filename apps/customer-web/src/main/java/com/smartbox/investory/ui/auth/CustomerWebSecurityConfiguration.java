@@ -53,7 +53,14 @@ public class CustomerWebSecurityConfiguration implements WebMvcConfigurer {
     http.authenticationProvider(authenticationProvider)
         .authorizeHttpRequests(
             auth ->
-                auth.requestMatchers("/", "/login", "/css/**", "/js/**", "/actuator/health")
+                auth.requestMatchers(
+                        "/",
+                        "/login",
+                        "/ryczalt-najem",
+                        "/ryczalt-it",
+                        "/css/**",
+                        "/js/**",
+                        "/actuator/health")
                     .permitAll()
                     .anyRequest()
                     .authenticated())
