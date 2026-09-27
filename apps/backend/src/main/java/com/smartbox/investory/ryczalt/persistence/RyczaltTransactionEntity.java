@@ -13,7 +13,7 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 
 @Entity
-@Table(name = "ryczalt_transaction", schema = "investory")
+@Table(name = "ryczalt_transaction", schema = "ryczalt")
 public class RyczaltTransactionEntity extends RyczaltEntity {
   @ManyToOne(fetch = FetchType.LAZY, optional = false)
   @JoinColumn(name = "period_id", nullable = false)

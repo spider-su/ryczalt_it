@@ -14,7 +14,7 @@ import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
 @Entity
-@Table(name = "ryczalt_invoice_candidate", schema = "investory")
+@Table(name = "ryczalt_invoice_candidate", schema = "ryczalt")
 public class RyczaltInvoiceCandidateEntity extends RyczaltEntity {
   private static final ObjectMapper JSON = new ObjectMapper();
 

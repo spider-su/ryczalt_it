@@ -18,7 +18,7 @@ import java.time.LocalDate;
 import java.time.YearMonth;
 
 @Entity
-@Table(name = "ryczalt_obligation", schema = "investory")
+@Table(name = "ryczalt_obligation", schema = "ryczalt")
 public class RyczaltObligationEntity extends RyczaltEntity {
   @ManyToOne(fetch = FetchType.LAZY, optional = false)
   @JoinColumn(name = "period_id", nullable = false)

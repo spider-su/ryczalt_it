@@ -54,12 +54,12 @@ public final class FastDatabase {
 
     if (!snapshotLoaded(database)) {
       if (resourceExists(SNAPSHOT)) {
-        executeResource(database, SNAPSHOT, "/tmp/investory-schema.sql");
+        executeResource(database, SNAPSHOT, "/tmp/ryczalt-schema.sql");
       } else {
         Flyway.configure()
             .dataSource(database.jdbcUrl(), database.username(), database.password())
-            .schemas("investory")
-            .defaultSchema("investory")
+            .schemas("ryczalt")
+            .defaultSchema("ryczalt")
             .createSchemas(true)
             .locations("classpath:sql/migration")
             .load()
@@ -113,7 +113,7 @@ public final class FastDatabase {
     try (var connection = database.openConnection();
         var statement = connection.createStatement();
         var result =
-            statement.executeQuery("SELECT to_regclass('investory.flyway_schema_history')")) {
+            statement.executeQuery("SELECT to_regclass('ryczalt.flyway_schema_history')")) {
       return result.next() && result.getString(1) != null;
     } catch (Exception ignored) {
       return false;

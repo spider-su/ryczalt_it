@@ -15,7 +15,7 @@ import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
 @Entity
-@Table(name = "ryczalt_calculation", schema = "investory")
+@Table(name = "ryczalt_calculation", schema = "ryczalt")
 public class RyczaltCalculationEntity {
   private static final ObjectMapper JSON = new ObjectMapper();
 

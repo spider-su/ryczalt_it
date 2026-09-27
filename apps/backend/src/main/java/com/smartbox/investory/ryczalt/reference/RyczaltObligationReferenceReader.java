@@ -19,7 +19,7 @@ public class RyczaltObligationReferenceReader {
     return jdbc.query(
         """
         SELECT obligation_type, expected_amount
-        FROM investory.ryczalt_obligation_reference
+        FROM ryczalt.ryczalt_obligation_reference
         WHERE profile_id = ?
           AND tax_period = ?
         ORDER BY id

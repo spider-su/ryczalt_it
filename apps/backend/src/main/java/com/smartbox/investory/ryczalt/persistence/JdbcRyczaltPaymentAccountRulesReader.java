@@ -21,7 +21,7 @@ public class JdbcRyczaltPaymentAccountRulesReader implements RyczaltPaymentAccou
         """
         SELECT COALESCE(
                    (SELECT r.account_number
-                      FROM investory.ryczalt_payment_account_rule r
+                      FROM ryczalt.ryczalt_payment_account_rule r
                      WHERE r.profile_id = p.id
                        AND r.obligation_type = 'RYCZALT'
                      ORDER BY r.id
@@ -29,7 +29,7 @@ public class JdbcRyczaltPaymentAccountRulesReader implements RyczaltPaymentAccou
                    NULL) AS ryczalt_payment_account,
                COALESCE(
                    (SELECT r.account_number
-                      FROM investory.ryczalt_payment_account_rule r
+                      FROM ryczalt.ryczalt_payment_account_rule r
                      WHERE r.profile_id = p.id
                        AND r.obligation_type = 'VAT'
                      ORDER BY r.id
@@ -37,13 +37,13 @@ public class JdbcRyczaltPaymentAccountRulesReader implements RyczaltPaymentAccou
                    NULL) AS vat_payment_account,
                COALESCE(
                    (SELECT r.account_number
-                      FROM investory.ryczalt_payment_account_rule r
+                      FROM ryczalt.ryczalt_payment_account_rule r
                      WHERE r.profile_id = p.id
                        AND r.obligation_type = 'ZUS'
                      ORDER BY r.id
                      LIMIT 1),
                    NULL) AS zus_payment_account
-          FROM investory.portfolios p
+          FROM ryczalt.portfolios p
          WHERE p.id = ?
         """,
         (rs, rowNum) -> {

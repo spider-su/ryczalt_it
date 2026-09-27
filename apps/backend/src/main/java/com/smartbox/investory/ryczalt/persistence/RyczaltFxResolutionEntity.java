@@ -15,7 +15,7 @@ import java.time.LocalDate;
 
 /** Exact provider resolution for one requested business date. */
 @Entity
-@Table(name = "ryczalt_fx_resolution", schema = "investory")
+@Table(name = "ryczalt_fx_resolution", schema = "ryczalt")
 public class RyczaltFxResolutionEntity {
   @Id
   @GeneratedValue(strategy = GenerationType.IDENTITY)

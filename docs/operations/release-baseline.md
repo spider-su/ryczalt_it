@@ -47,6 +47,7 @@ Do not rebuild source between validation and production promotion.
 - empty PostgreSQL migration test
 - upgrade-from-previous-release migration test
 - Docker image build after all backend tests pass; CI loads the SHA-tagged image and starts it against temporary PostgreSQL, requiring `/actuator/health` to report `UP` before the job succeeds
+- The container smoke script is executable and may also be run directly against a locally built backend image: `./apps/backend/scripts/smoke-container.sh <image>`
 
 ### Mobile
 
@@ -120,6 +121,7 @@ Keep outside Git:
 - token signing secrets
 - KSeF credentials/certificates
 - integration encryption key
+- backend token signing secret (`RYCZALT_TOKEN_SECRET`, at least 32 random characters)
 - DB credentials
 - Expo token
 - store credentials

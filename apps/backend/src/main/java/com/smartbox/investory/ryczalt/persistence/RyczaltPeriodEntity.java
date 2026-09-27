@@ -9,7 +9,7 @@ import jakarta.persistence.Table;
 import java.time.Instant;
 
 @Entity
-@Table(name = "ryczalt_period", schema = "investory")
+@Table(name = "ryczalt_period", schema = "ryczalt")
 public class RyczaltPeriodEntity extends RyczaltEntity {
   @Column(name = "profile_id", nullable = false)
   private long profileId;

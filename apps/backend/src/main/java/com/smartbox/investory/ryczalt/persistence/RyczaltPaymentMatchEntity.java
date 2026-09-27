@@ -16,7 +16,7 @@ import java.math.BigDecimal;
 import java.time.Instant;
 
 @Entity
-@Table(name = "ryczalt_payment_match", schema = "investory")
+@Table(name = "ryczalt_payment_match", schema = "ryczalt")
 public class RyczaltPaymentMatchEntity {
   @Id
   @GeneratedValue(strategy = GenerationType.IDENTITY)

@@ -27,7 +27,7 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 public class SecurityConfig {
   @Bean
   TokenAuthenticationService tokenAuthenticationService(
-      @Value("${app.security.token-secret:change-me-ryczalt-token-secret-please-change}") String secret,
+      @Value("${app.security.token-secret}") String secret,
       @Value("${app.security.token-lifetime:PT12H}") java.time.Duration lifetime) {
     return new TokenAuthenticationService(secret, lifetime);
   }
@@ -48,7 +48,7 @@ public class SecurityConfig {
     return username -> {
       try {
         return jdbc.queryForObject(
-            "SELECT username, password_hash, role, active FROM investory.app_users WHERE lower(username) = lower(?)",
+            "SELECT username, password_hash, role, active FROM ryczalt.app_users WHERE lower(username) = lower(?)",
             (rs, row) -> {
               if (!rs.getBoolean("active") || rs.getString("password_hash") == null)
                 throw new org.springframework.security.core.userdetails.UsernameNotFoundException(username);

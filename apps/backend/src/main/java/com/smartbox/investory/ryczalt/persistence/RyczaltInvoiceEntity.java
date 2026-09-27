@@ -16,7 +16,7 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 
 @Entity
-@Table(name = "ryczalt_invoice", schema = "investory")
+@Table(name = "ryczalt_invoice", schema = "ryczalt")
 public class RyczaltInvoiceEntity extends RyczaltEntity {
   @ManyToOne(fetch = FetchType.LAZY)
   @JoinColumn(name = "counterparty_id")

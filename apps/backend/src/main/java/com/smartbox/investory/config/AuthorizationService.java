@@ -46,8 +46,8 @@ public class AuthorizationService {
     String role = requiredRole == null ? null : requiredRole.name();
     Integer count =
         jdbc.queryForObject(
-            "SELECT count(*) FROM investory.profile_memberships pm "
-                + "JOIN investory.app_users u ON u.id = pm.user_id "
+            "SELECT count(*) FROM ryczalt.profile_memberships pm "
+                + "JOIN ryczalt.app_users u ON u.id = pm.user_id "
                 + "WHERE pm.profile_id = ? AND u.username = ? AND u.active "
                 + "AND (CAST(? AS varchar) IS NULL OR pm.role = ?)",
             Integer.class,

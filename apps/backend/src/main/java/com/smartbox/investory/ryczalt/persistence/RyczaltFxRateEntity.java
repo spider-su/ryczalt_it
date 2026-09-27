@@ -14,7 +14,7 @@ import java.time.Instant;
 import java.time.LocalDate;
 
 @Entity
-@Table(name = "ryczalt_fx_rate", schema = "investory")
+@Table(name = "ryczalt_fx_rate", schema = "ryczalt")
 public class RyczaltFxRateEntity {
   @Id
   @GeneratedValue(strategy = GenerationType.IDENTITY)

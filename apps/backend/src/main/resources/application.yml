@@ -7,13 +7,13 @@ spring:
     password: ${DATABASE_PASSWORD:ryczalt}
   flyway:
     locations: classpath:sql/migration
-    schemas: investory
-    default-schema: investory
+    schemas: ryczalt
+    default-schema: ryczalt
     create-schemas: true
   jpa:
     properties:
       hibernate:
-        default_schema: investory
+        default_schema: ryczalt
 
 server:
   port: ${PORT:8080}
@@ -27,7 +27,7 @@ management:
 app:
   security:
     profile-ownership-required: true
-    token-secret: ${RYCZALT_TOKEN_SECRET:change-me-ryczalt-token-secret-please-change}
+    token-secret: ${RYCZALT_TOKEN_SECRET}
     token-lifetime: PT12H
     mobile-api-allowed-origins: ${RYCZALT_ALLOWED_ORIGINS:http://localhost:8081}
   integrations:

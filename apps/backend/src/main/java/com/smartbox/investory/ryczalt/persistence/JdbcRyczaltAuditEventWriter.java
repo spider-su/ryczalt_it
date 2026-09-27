@@ -24,7 +24,7 @@ public class JdbcRyczaltAuditEventWriter implements RyczaltAuditEventWriter {
       String actor,
       Instant occurredAt) {
     jdbc.update(
-        "INSERT INTO investory.ryczalt_audit_event (profile_id, period_id, event_type, reason,"
+        "INSERT INTO ryczalt.ryczalt_audit_event (profile_id, period_id, event_type, reason,"
             + " actor, occurred_at) VALUES (?, ?, ?, ?, ?, ?)",
         profileId,
         periodId,

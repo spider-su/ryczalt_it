@@ -1,6 +1,6 @@
-SET search_path TO investory, public;
+SET search_path TO ryczalt, public;
 
-CREATE TABLE investory.ryczalt_fx_resolution (
+CREATE TABLE ryczalt.ryczalt_fx_resolution (
     id BIGSERIAL PRIMARY KEY,
     currency VARCHAR(3) NOT NULL,
     requested_date DATE NOT NULL,
@@ -12,9 +12,9 @@ CREATE TABLE investory.ryczalt_fx_resolution (
     CONSTRAINT uq_ryczalt_fx_resolution UNIQUE (provider, currency, requested_date)
 );
 CREATE INDEX ix_ryczalt_fx_resolution_lookup
-    ON investory.ryczalt_fx_resolution(currency, requested_date);
+    ON ryczalt.ryczalt_fx_resolution(currency, requested_date);
 
-ALTER TABLE investory.ryczalt_invoice
+ALTER TABLE ryczalt.ryczalt_invoice
     ADD COLUMN booked_vat_pln NUMERIC(19,4),
     ADD COLUMN fx_rate NUMERIC(19,8),
     ADD COLUMN fx_effective_date DATE,

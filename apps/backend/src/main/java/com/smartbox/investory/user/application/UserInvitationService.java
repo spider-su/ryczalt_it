@@ -30,12 +30,12 @@ public class UserInvitationService {
     if (!profileRole.equals("OWNER") && !profileRole.equals("USER"))
       throw new IllegalArgumentException("Profile role must be OWNER or USER");
     Long creatorId = jdbc.query(
-        "SELECT id FROM investory.app_users WHERE lower(username) = lower(?) AND active",
+        "SELECT id FROM ryczalt.app_users WHERE lower(username) = lower(?) AND active",
         (rs, rowNum) -> rs.getLong("id"), creator).stream().findFirst().orElse(null);
     String token = randomToken();
     Instant expiresAt = Instant.now().plus(INVITATION_LIFETIME);
     jdbc.update(
-        "INSERT INTO investory.app_user_invitations "
+        "INSERT INTO ryczalt.app_user_invitations "
             + "(email, display_name, profile_id, profile_role, token_hash, expires_at, created_by) "
             + "VALUES (?, ?, ?, ?, ?, ?, ?)",
         normalizedEmail, normalizedName, profileId, profileRole, hash(token), expiresAt, creatorId);
@@ -50,7 +50,7 @@ public class UserInvitationService {
     try {
       invitation = jdbc.queryForObject(
           "SELECT id, email, display_name, profile_id, profile_role, expires_at, consumed_at "
-              + "FROM investory.app_user_invitations WHERE token_hash = ? FOR UPDATE",
+              + "FROM ryczalt.app_user_invitations WHERE token_hash = ? FOR UPDATE",
           (rs, rowNum) -> new Invitation(
               rs.getLong("id"), rs.getString("email"), rs.getString("display_name"),
               rs.getLong("profile_id"), rs.getString("profile_role"),
@@ -63,18 +63,18 @@ public class UserInvitationService {
     if (invitation.expiresAt().isBefore(Instant.now())) throw new IllegalArgumentException("Invitation has expired");
     String username = normalizeEmail(invitation.email());
     Integer existing = jdbc.queryForObject(
-        "SELECT count(*) FROM investory.app_users WHERE lower(username) = lower(?)", Integer.class, username);
+        "SELECT count(*) FROM ryczalt.app_users WHERE lower(username) = lower(?)", Integer.class, username);
     if (existing != null && existing > 0) throw new IllegalArgumentException("User already exists");
     jdbc.update(
-        "INSERT INTO investory.app_users (username, email, display_name, active, password_hash, role) "
+        "INSERT INTO ryczalt.app_users (username, email, display_name, active, password_hash, role) "
             + "VALUES (?, ?, ?, true, ?, 'USER')",
         username, invitation.email(), invitation.displayName(), passwordEncoder.encode(password));
     Long userId = jdbc.queryForObject(
-        "SELECT id FROM investory.app_users WHERE username = ?", Long.class, username);
+        "SELECT id FROM ryczalt.app_users WHERE username = ?", Long.class, username);
     jdbc.update(
-        "INSERT INTO investory.profile_memberships (user_id, profile_id, role) VALUES (?, ?, ?)",
+        "INSERT INTO ryczalt.profile_memberships (user_id, profile_id, role) VALUES (?, ?, ?)",
         userId, invitation.profileId(), invitation.profileRole());
-    jdbc.update("UPDATE investory.app_user_invitations SET consumed_at = now() WHERE id = ?", invitation.id());
+    jdbc.update("UPDATE ryczalt.app_user_invitations SET consumed_at = now() WHERE id = ?", invitation.id());
   }
 
   private static String normalizeEmail(String value) {
