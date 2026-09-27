@@ -77,6 +77,15 @@ Typical responsibilities:
 
 The current Thymeleaf extraction is a parity seed, not the final statement that customer web must remain Thymeleaf indefinitely.
 
+Customer web authentication is server-side: the browser holds a customer-web session cookie, while customer-web stores the user's backend bearer token in that session. The backend `/api/v1/auth/me` response supplies the accessible profile list, and each profile-scoped web route is checked against it before accounting access.
+
+```text
+Browser
+  -> Customer Web session
+  -> Backend bearer token
+  -> Backend profile authorization
+```
+
 ### Backoffice
 
 Internal staff workspace for administrators and accounting reviewers.
