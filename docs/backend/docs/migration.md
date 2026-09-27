@@ -27,13 +27,14 @@ calculation. Snapshot provenance is recorded as `ACCOUNTING_CALCULATION_SNAPSHOT
 remain calculation inputs and never become obligations. Payment matches, FX rates, corrections, and
 audit events are intentionally not fabricated during migration.
 
-The strict `AccountingToRyczaltMigrationReconciliationIT` Testcontainers test derives expected
-cardinalities from the source rows, performs source-to-native and native-to-source anti-joins, and
-compares persisted monetary values with numeric equality. Run it with:
+`StandaloneMigrationIT` verifies fresh database migration and upgrade from the released core schema
+using Testcontainers. Run it with:
 
 ```text
-mvn -B -f apps/backend/pom.xml -Dit.test=StandaloneMigrationTest test
+mvn -B -f apps/backend/pom.xml -Dit.test=StandaloneMigrationIT verify
 ```
+
+This integration test requires a Docker daemon available to Testcontainers.
 
 Stage 2 deliberately owns normalized calculator inputs rather than importing accounting DTOs or
 fixtures. The calculator-level fixture `February2026CalculatorFixture` is a small normalized

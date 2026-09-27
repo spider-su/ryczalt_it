@@ -23,7 +23,7 @@ import org.springframework.test.context.DynamicPropertySource;
       "app.security.token-secret=runtime-smoke-test-only-token-secret-value",
       "app.integrations.master-key=runtime-smoke-test-only-master-key"
     })
-class RyczaltApplicationSmokeTest {
+class RyczaltApplicationSmokeIT {
   private static final WorkerDatabase DATABASE = SharedPostgres.database("runtime_boot");
 
   @LocalServerPort private int port;

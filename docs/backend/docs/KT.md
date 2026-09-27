@@ -252,7 +252,7 @@ Useful focused checks:
 mvn -B -f apps/customer-web/pom.xml test
 ```
 
-`StandaloneMigrationTest` verifies Flyway migration from an empty database. Other database-backed tests
+`StandaloneMigrationIT` verifies Flyway migration from an empty database. Other database-backed tests
 run against PostgreSQL through Testcontainers.
 
 CI is defined in `.github/workflows/tests.yml`. The main stages are:

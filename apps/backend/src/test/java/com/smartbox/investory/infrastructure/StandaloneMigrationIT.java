@@ -5,7 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import org.junit.jupiter.api.Test;
 
-class StandaloneMigrationTest {
+class StandaloneMigrationIT {
   @Test
   void emptyDatabaseMigratesToStandaloneRyczaltSchema() throws Exception {
     try (var database = MigrationTestDatabase.open("standalone-ryczalt")) {
