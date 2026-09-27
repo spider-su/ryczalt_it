@@ -57,7 +57,7 @@ class HttpRyczaltWebAccountingClientTest {
         .andExpect(header("Authorization", "Bearer user-token"))
         .andRespond(
             withSuccess(
-                "[{\"id\":5,\"direction\":\"INCOME\",\"reference\":\"INV-5\",\"issueDate\":\"2026-01-02\",\"accountingDate\":\"2026-01-02\",\"netAmount\":\"10.00\",\"vatAmount\":\"2.30\",\"grossAmount\":\"12.30\",\"currency\":\"PLN\",\"approvalStatus\":\"APPROVED\",\"approvalMethod\":\"MANUAL\",\"paymentVerificationPolicy\":\"REQUIRED\",\"paymentStatus\":\"UNPAID\",\"counterparty\":{\"id\":8,\"displayName\":\"Acme\"}}]",
+                "[{\"id\":5,\"direction\":\"INCOME\",\"reference\":\"INV-5\",\"issueDate\":\"2026-01-02\",\"accountingDate\":\"2026-01-02\",\"netAmount\":\"10.00\",\"vatAmount\":\"2.30\",\"grossAmount\":\"12.30\",\"currency\":\"PLN\",\"approvalStatus\":\"APPROVED\",\"approvalMethod\":\"MANUAL\",\"paymentVerificationPolicy\":\"REQUIRED\",\"paymentStatus\":\"UNPAID\",\"counterparty\":{\"id\":8,\"legalName\":\"Acme sp z oo\",\"alias\":\"Acme\",\"taxIdentifier\":null}}]",
                 MediaType.APPLICATION_JSON));
     server
         .expect(
@@ -86,6 +86,32 @@ class HttpRyczaltWebAccountingClientTest {
     assertThat(invoice.grossAmount()).isEqualByComparingTo("12.30");
     assertThat(obligation.outstanding()).isEqualByComparingTo("3.00");
     assertThat(counterparty.displayName()).isEqualTo("Acme");
+    server.verify();
+  }
+
+  @Test
+  void mapsInvoiceCounterpartyAliasAndFallsBackToLegalName() {
+    RestClient.Builder builder = RestClient.builder().baseUrl("http://backend.test");
+    MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
+    var client = client(builder);
+    server
+        .expect(
+            requestTo("http://backend.test/api/profiles/42/accounting/periods/2026-01/invoices"))
+        .andRespond(
+            withSuccess(
+                """
+                [
+                  {"id":1,"direction":"INCOME","reference":"INV-1","counterparty":{"id":8,"legalName":"Acme sp z oo","alias":"Acme","taxIdentifier":null}},
+                  {"id":2,"direction":"COST","reference":"BILL-2","counterparty":{"id":9,"legalName":"Legal Name Ltd","alias":null,"taxIdentifier":null}}
+                ]
+                """,
+                MediaType.APPLICATION_JSON));
+
+    var invoices = client.invoices(PROFILE, YearMonth.of(2026, 1));
+
+    assertThat(invoices).hasSize(2);
+    assertThat(invoices.get(0).counterparty()).isEqualTo("Acme");
+    assertThat(invoices.get(1).counterparty()).isEqualTo("Legal Name Ltd");
     server.verify();
   }
 
