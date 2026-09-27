@@ -18,3 +18,4 @@
 **/target/
 /apps/backend/src/main/resources/application-local.yml
 /out/
+/apps/customer-web/src/main/resources/application-local.yml

@@ -1,6 +1,5 @@
 package com.smartbox.investory.ryczalt.calculation.application;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.smartbox.investory.ryczalt.calculation.InputFingerprint;
 import com.smartbox.investory.ryczalt.calculation.ryczalt.RyczaltCalculationInput;
 import com.smartbox.investory.ryczalt.calculation.ryczalt.RyczaltCalculationResult;
@@ -25,9 +24,13 @@ import com.smartbox.investory.shared.currency.CurrencyType;
 import java.math.BigDecimal;
 import java.time.YearMonth;
 import java.util.List;
+import java.util.Objects;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
 
 /** Runs the complete native RYCZALT, VAT, ZUS and obligation cycle for one month. */
 @Service
@@ -40,7 +43,7 @@ public class NativeMonthCalculationService {
   private final RyczaltObligationJpaRepository obligations;
   private final SettlementService settlement;
   private final RyczaltCalculationJpaRepository calculationRows;
-  private final ObjectMapper json = new ObjectMapper();
+  private final ObjectMapper json;
 
   @Autowired
   public NativeMonthCalculationService(
@@ -49,22 +52,15 @@ public class NativeMonthCalculationService {
       RyczaltCalculationPersistenceAdapter calculations,
       RyczaltObligationJpaRepository obligations,
       SettlementService settlement,
-      RyczaltCalculationJpaRepository calculationRows) {
+      RyczaltCalculationJpaRepository calculationRows,
+      ObjectMapper json) {
     this.periods = periods;
     this.inputAggregator = inputAggregator;
     this.calculations = calculations;
     this.obligations = obligations;
     this.settlement = settlement;
     this.calculationRows = calculationRows;
-  }
-
-  NativeMonthCalculationService(
-      RyczaltPeriodJpaRepository periods,
-      NativeMonthInputAggregator inputAggregator,
-      RyczaltCalculationPersistenceAdapter calculations,
-      RyczaltObligationJpaRepository obligations,
-      SettlementService settlement) {
-    this(periods, inputAggregator, calculations, obligations, settlement, null);
+    this.json = Objects.requireNonNull(json, "json");
   }
 
   @Transactional
@@ -219,17 +215,15 @@ public class NativeMonthCalculationService {
       long profileId, YearMonth month, NativeMonthCalculationInput input) {
     YearMonth previousMonth = month.minusMonths(1);
     BigDecimal carry =
-        calculationRows == null
-            ? BigDecimal.ZERO
-            : periods
-                .findByProfileIdAndYearAndMonth(
-                    profileId, previousMonth.getYear(), previousMonth.getMonthValue())
-                .flatMap(
-                    previous ->
-                        calculationRows.findByProfileIdAndPeriodIdAndTypeAndCurrentTrue(
-                            profileId, previous.id(), CalculationType.VAT))
-                .map(row -> readCarryForward(row.getResultJson()))
-                .orElse(BigDecimal.ZERO);
+        periods
+            .findByProfileIdAndYearAndMonth(
+                profileId, previousMonth.getYear(), previousMonth.getMonthValue())
+            .flatMap(
+                previous ->
+                    calculationRows.findByProfileIdAndPeriodIdAndTypeAndCurrentTrue(
+                        profileId, previous.id(), CalculationType.VAT))
+            .map(row -> readCarryForward(row.getResultJson()))
+            .orElse(BigDecimal.ZERO);
     var vat = input.vat();
     var withCarry =
         new com.smartbox.investory.ryczalt.calculation.vat.VatCalculationInput(
@@ -244,9 +238,15 @@ public class NativeMonthCalculationService {
 
   private BigDecimal readCarryForward(String resultJson) {
     try {
-      return json.readTree(resultJson).path("excessVatCarryForward").decimalValue();
-    } catch (Exception exception) {
-      return BigDecimal.ZERO;
+      var result = json.readTree(resultJson);
+      var carryForward = result.get("excessVatCarryForward");
+      if (carryForward == null || !carryForward.isNumber()) {
+        throw new IllegalStateException(
+            "Previous VAT calculation is missing a numeric excessVatCarryForward");
+      }
+      return carryForward.decimalValue();
+    } catch (JacksonException exception) {
+      throw new IllegalStateException("Previous VAT calculation result is not valid JSON", exception);
     }
   }
 }

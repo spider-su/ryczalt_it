@@ -90,6 +90,38 @@ class RyczaltCalculatorTest {
     assertAmount("7329", result.calculatedTax());
   }
 
+  @Test
+  void allocatesRemainingDeductionProportionallyAfterPreviouslyConsumedAmount() {
+    Map<BigDecimal, BigDecimal> revenue = new LinkedHashMap<>();
+    revenue.put(new BigDecimal("0.12"), new BigDecimal("300"));
+    revenue.put(new BigDecimal("0.03"), new BigDecimal("100"));
+
+    RyczaltCalculationResult result =
+        calculator.calculate(
+            new RyczaltCalculationInput(
+                revenue, new BigDecimal("40"), BigDecimal.ZERO, new BigDecimal("10")));
+
+    assertAmount("30", result.deductionsAvailable());
+    assertAmount("30", result.deductionsUsed());
+    assertAmount("0", result.deductionsCarryForward());
+    assertAmount("93", result.taxableByRate().get(new BigDecimal("0.03")));
+    assertAmount("278", result.taxableByRate().get(new BigDecimal("0.12")));
+    assertAmount("36", result.calculatedTax());
+  }
+
+  @Test
+  void roundsTaxableBaseBeforeTaxAtHalfZlotyBoundary() {
+    RyczaltCalculationResult result =
+        calculator.calculate(
+            new RyczaltCalculationInput(
+                Map.of(new BigDecimal("0.12"), new BigDecimal("12.50")),
+                BigDecimal.ZERO,
+                BigDecimal.ZERO));
+
+    assertAmount("13", result.taxableBase());
+    assertAmount("2", result.calculatedTax());
+  }
+
   private static void assertAmount(String expected, BigDecimal actual) {
     assertEquals(0, new BigDecimal(expected).compareTo(actual));
   }

@@ -19,24 +19,24 @@ and writes use canonical `ryczalt_*` tables.
 
 Investory remains a modular monolith, not a microservice. The accounting month is the primary
 processing unit. The domain uses simple canonical models; external/source-specific models must not
-leak into it. Future calculators will contain pure accounting and tax math, checkers will contain
-validation and reconciliation, application services will orchestrate use cases, ports will define
-data requirements, and adapters will provide configurable sources.
+leak into it. Pure calculators contain accounting and tax math, checkers contain validation and
+reconciliation, application services orchestrate use cases, ports define data requirements, and
+adapters provide configurable sources.
 
 Calculations should be persisted rather than repeatedly recomputed. Normally only open or dirty
 periods are recalculated; paid and frozen historical periods are immutable facts. Historical
 reference data, including FX rates, is persisted. Reopening or correction is explicit. Calculation
-results will carry rule/calculator versions. Rounding belongs to versioned calculation rules, not
+results carry rule/calculator versions. Rounding belongs to versioned calculation rules, not
 generic formatting.
 
-The intended flow is:
+The active flow is:
 
 ```text
 sources -> adapters -> ports -> AccountingPeriod -> calculators
         -> obligations/results -> checkers -> persisted/frozen accounting state
 ```
 
-## Staged migration
+## Migration history
 
 1. foundation/domain
 2. calculators + rules
@@ -49,7 +49,7 @@ sources -> adapters -> ports -> AccountingPeriod -> calculators
 9. application cutover
 10. remove accounting
 
-## Current stage: native accounting runtime
+## Current runtime: native accounting
 
 Stage 2 added pure calculators over already-normalized facts. Stage 3 added separate JPA persistence;
 the one-way legacy import utility has since been removed:
@@ -63,7 +63,15 @@ the one-way legacy import utility has since been removed:
 
 The versioned rule sets are `RyczaltRules2026`, `VatRules2026`, and `ZusRules2026`. The shared
 `RoundingPolicy` exposes named semantic operations for FX, contributions, deductions, ryczałt, and
-VAT settlement. Inputs are normalized PLN facts. Source acquisition, persistence, reconciliation, native REST, Web, and mobile-facing accounting contracts are active; remaining work is lifecycle and historical-data cleanup.
+VAT settlement. Inputs are normalized PLN facts. Source acquisition, persistence, reconciliation,
+native REST, Web, and mobile-facing accounting contracts are active. Remaining limitations include
+the deliberately narrow tax-profile coverage, incomplete historical bootstrap semantics, and
+external payment verification.
+
+The detailed calculation rules, persisted version identifiers, regression-test map, and known
+carry-forward boundary are documented in [`docs/calculation-rules.md`](docs/calculation-rules.md).
+The old `_POC_V1` rule-version names are persisted identifiers; keep them stable unless an explicit
+migration/recalculation plan is approved.
 
 Stage 4 added revisioned calculation history, deterministic fingerprints, targeted invalidation,
 explicit freeze/reopen/correction services, and audit events. Stage 5 added pure payment and period

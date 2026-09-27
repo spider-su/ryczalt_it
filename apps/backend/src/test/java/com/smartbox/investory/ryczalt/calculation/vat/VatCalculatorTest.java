@@ -34,6 +34,29 @@ class VatCalculatorTest {
     assertEquals(VatRules2026.VERSION, adjusted.ruleVersion());
   }
 
+  @Test
+  void appliesSalesCorrectionBeforeRoundingAndCarriesForwardExcessInputVat() {
+    VatCalculationResult corrected =
+        calculator.calculate(
+            new VatCalculationInput(
+                new BigDecimal("100.49"),
+                new BigDecimal("-0.50"),
+                new BigDecimal("10.49"),
+                new BigDecimal("0.49"),
+                new BigDecimal("20.50")));
+    VatCalculationResult excess =
+        calculator.calculate(
+            new VatCalculationInput(
+                new BigDecimal("100.49"), BigDecimal.ZERO, new BigDecimal("80.49"),
+                BigDecimal.ZERO, new BigDecimal("30.50")));
+
+    assertAmount("99.99", corrected.outputVat());
+    assertAmount("69", corrected.calculatedVat());
+    assertAmount("100.49", excess.outputVat());
+    assertAmount("0", excess.calculatedVat());
+    assertAmount("11", excess.excessVatCarryForward());
+  }
+
   private static void assertAmount(String expected, BigDecimal actual) {
     assertEquals(0, new BigDecimal(expected).compareTo(actual));
   }
