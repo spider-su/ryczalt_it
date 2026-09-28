@@ -38,3 +38,27 @@ Core screens use shared sections, list groups, key/value rows, month
 navigation, segmented controls, search, sheet headers, settings rows, form
 fields, and primary actions. Automation and Notifications now use the same
 settings-sheet family. Physical-device verification remains a release gate.
+
+## Android stabilization follow-up
+
+- The backend `outstandingAmount` is a monetary balance. An exact zero balance
+  is displayed as settled even if a stale or contradictory payment status and
+  due date would otherwise label it overdue. Null and positive balances retain
+  their source status semantics.
+- Outstanding summaries include overdue unpaid obligations and never combine
+  values with different or missing currencies. If a single currency cannot be
+  established, the total is shown as unavailable.
+- Home preserves previously loaded data for a section whose refresh fails,
+  surfaces that section's error and retry, and keeps setup-status retry
+  independent from accounting-data refresh.
+- Home and Settlements use the same overall period status, including unresolved
+  reconciliation. Settlements keeps detailed component statuses expandable;
+  More no longer duplicates an incomplete-only health label.
+- The current backend source has no `/api/profiles/{profileId}/accounting/readiness`
+  or `/api/profiles/{profileId}/onboarding` route. Setup-status load errors remain
+  visible and retryable until that authoritative setup contract exists. Mobile
+  does not synthesize configuration success.
+- Android content density was reduced in shared page headers, section spacing,
+  month controls, invoice rows, and bottom navigation. Counterparties opens as a
+  full-screen modal destination with Android back handling; biometric controls
+  now live in Settings.

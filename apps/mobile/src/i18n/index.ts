@@ -272,6 +272,8 @@ const translations = {
       cancel: "Anuluj",
       select: "Wybierz",
       today: "Dzisiaj",
+      showDetails: "Pokaż szczegóły",
+      hideDetails: "Ukryj szczegóły",
     },
     month: {
       selector: "Wybrany miesiąc",
@@ -387,6 +389,7 @@ const translations = {
     },
     settlements: {
       title: "Rozliczenia",
+      outstanding: "Do zapłaty",
       upcoming: "Najbliższe płatności",
       history: "Historia",
       noPayments: "Brak nadchodzących płatności w tym okresie",
@@ -418,6 +421,7 @@ const translations = {
       status: "Status",
       statusUnavailable: "Status niedostępny",
       accountingStatus: "Status rozliczenia",
+      overallHealth: "Stan księgowości",
       periodStatus: "Status okresu",
       completeness: "Kompletność księgowania",
       actions: "Dostępne działania",
@@ -767,6 +771,8 @@ const translations = {
       cancel: "Cancel",
       select: "Select",
       today: "Today",
+      showDetails: "Show details",
+      hideDetails: "Hide details",
     },
     month: {
       selector: "Selected month",
@@ -884,6 +890,7 @@ const translations = {
     },
     settlements: {
       title: "Settlements",
+      outstanding: "Amount due",
       upcoming: "Upcoming payments",
       history: "History",
       noPayments: "No upcoming payments for this period",
@@ -915,6 +922,7 @@ const translations = {
       status: "Status",
       statusUnavailable: "Status unavailable",
       accountingStatus: "Accounting status",
+      overallHealth: "Accounting health",
       periodStatus: "Period status",
       completeness: "Accounting completeness",
       actions: "Available actions",
@@ -1452,6 +1460,7 @@ export const translationsByLocale = {
       biometricEnabled: "Biometria włączona",
       biometricDisabled: "Włącz biometrię",
       biometricDescription: "Odblokowuj aplikację odciskiem palca lub Face ID.",
+      biometricUnavailable: "Niedostępne na tym urządzeniu",
     },
     invoices: {
       ...translations.pl.invoices,
@@ -1545,6 +1554,7 @@ export const translationsByLocale = {
       biometricEnabled: "Biometric login enabled",
       biometricDisabled: "Enable biometric login",
       biometricDescription: "Unlock the app with your fingerprint or Face ID.",
+      biometricUnavailable: "Unavailable on this device",
     },
     invoices: {
       ...translations.en.invoices,

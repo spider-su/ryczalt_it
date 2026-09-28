@@ -92,10 +92,10 @@ const bannerColors = { success: theme.colors.success, info: theme.colors.info, w
 const styles = createThemeStyles({
   screen: { flex: 1, backgroundColor: theme.colors.background },
   content: { flex: 1, paddingHorizontal: theme.spacing.xl, paddingTop: theme.spacing.lg, paddingBottom: theme.spacing.xxl },
-  pageHeader: { marginTop: theme.spacing.sm, marginBottom: theme.spacing.lg },
-  pageTitle: { color: theme.colors.textPrimary, fontSize: theme.typography.pageTitle, lineHeight: 34, fontWeight: '800', letterSpacing: -0.4 },
+  pageHeader: { marginTop: 0, marginBottom: theme.spacing.sm },
+  pageTitle: { color: theme.colors.textPrimary, fontSize: 24, lineHeight: 30, fontWeight: '800', letterSpacing: -0.4 },
   pageSubtitle: { color: theme.colors.textSecondary, fontSize: theme.typography.supporting, lineHeight: 19, marginTop: theme.spacing.xs },
-  section: { marginTop: theme.spacing.xxl },
+  section: { marginTop: theme.spacing.xl },
   sectionHeading: { minHeight: 28, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: theme.spacing.sm, marginBottom: theme.spacing.sm },
   sectionTitle: { color: theme.colors.textPrimary, fontSize: theme.typography.section, lineHeight: 24, fontWeight: '800' },
   sectionTitleSecondary: { color: theme.colors.textSecondary, fontSize: theme.typography.body, fontWeight: '700' },

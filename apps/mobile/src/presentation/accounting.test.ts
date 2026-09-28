@@ -58,7 +58,11 @@ describe('canonical accounting presentation', () => {
   it('shares one exact total and currency across Home and Settlements without injecting a currency', () => {
     const make = (status: string, amount: string, currency: string | null) => ({ id: status + amount, title: status, period: '2026-08', dueDate: null, amount: { amount, currency }, paidAmount: { amount: '0', currency }, outstandingAmount: { amount, currency }, status });
     expect(outstandingObligationsMoney([make('OPEN', '100.00', 'PLN'), make('PARTIALLY_PAID', '32.00', 'PLN')])).toEqual({ amount: '132.00', currency: 'PLN' });
-    expect(outstandingObligationsMoney([make('OPEN', '100.00', null)])).toEqual({ amount: '100.00', currency: null });
+    expect(outstandingObligationsMoney([make('OPEN', '100.00', null)])).toEqual({ amount: null, currency: null });
+  });
+  it('does not add outstanding obligations denominated in different currencies', () => {
+    const make = (id: string, amount: string, currency: string) => ({ id, title: 'VAT', period: '2026-08', dueDate: null, amount: { amount, currency }, paidAmount: { amount: '0', currency }, outstandingAmount: { amount, currency }, status: 'OPEN' });
+    expect(outstandingObligationsMoney([make('eur', '100.00', 'EUR'), make('pln', '200.00', 'PLN')])).toEqual({ amount: null, currency: null });
   });
   it('keeps invoice review independent from period completeness and payment state', () => {
     expect(invoiceReviewPresentation([])).toBeNull();
@@ -72,6 +76,23 @@ describe('canonical accounting presentation', () => {
     expect(paymentStatusForDisplay({ status: 'OPEN', dueDate: null }, '2026-09-25')).toBe('OPEN');
     expect(paymentStatusForDisplay({ status: 'PAID', dueDate: '2026-01-01' }, '2026-09-25')).toBe('PAID');
     expect(paymentStatusForDisplay({ status: 'OPEN', dueDate: '2026-09-25' }, '2026-09-25')).toBe('OPEN');
+  });
+  it('treats a canonical zero outstanding balance as settled, not overdue or partially paid', () => {
+    const zeroRemaining = { id: 'zus', title: 'ZUS', period: '2026-07', dueDate: '2026-07-20', amount: { amount: '1495.00', currency: 'PLN' }, paidAmount: { amount: '1495.00', currency: 'PLN' }, outstandingAmount: { amount: '0.00', currency: 'PLN' }, status: 'PARTIALLY_PAID' };
+    expect(paymentStatusForDisplay(zeroRemaining, '2026-09-27')).toBe('PAID');
+    expect(obligationStatusText(zeroRemaining, '2026-09-27')).toBe('Opłacone');
+    expect(isUpcomingPayment(zeroRemaining)).toBe(false);
+    expect(isPaymentHistoryItem(zeroRemaining)).toBe(true);
+  });
+  it('does not treat unknown or missing balances as paid', () => {
+    expect(paymentStatusForDisplay({ status: 'OPEN', dueDate: '2026-07-20', outstandingAmount: { amount: null } }, '2026-09-27')).toBe('OVERDUE');
+    expect(paymentStatusForDisplay({ status: 'OPEN', dueDate: '2026-07-20', outstandingAmount: { amount: '0.01' } }, '2026-09-27')).toBe('OVERDUE');
+  });
+  it('keeps reconciliation review out of the complete overall health state', () => {
+    const period = { status: 'OPEN', completeness: { status: 'COMPLETE', blockingIssueCount: 0 }, calculations: [{ type: 'ZUS', status: 'CURRENT', amount: { amount: '0.00' } }], obligations: [{ title: 'ZUS' }], settlement: { fullySettled: true }, issues: [], allowedActions: [] };
+    expect(statusForMonth({ ...period, reconciliation: { state: 'healthy' } })).toBe('resolved');
+    expect(statusForMonth({ ...period, reconciliation: { state: 'missing_evidence' } })).toBe('requires_action');
+    expect(statusForMonth({ ...period, reconciliation: { state: 'mismatch' } })).toBe('requires_action');
   });
   it('shows the full partial obligation amount and only the remaining balance in its status', () => {
     expect(obligationStatusText({ id: 'vat', title: 'VAT', period: '2026-08', dueDate: null, amount: { amount: '2412.00', currency: 'PLN' }, paidAmount: { amount: '2380.00', currency: 'PLN' }, outstandingAmount: { amount: '32.00', currency: 'PLN' }, status: 'PARTIALLY_PAID' }, '2026-09-25')).toBe('Częściowo opłacone (32 pozostało)');

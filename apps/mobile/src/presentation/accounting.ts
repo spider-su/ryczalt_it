@@ -39,13 +39,14 @@ export function calculationsReady(
   });
 }
 
-export function statusForMonth(month: Pick<AccountingPeriod, 'completeness' | 'status' | 'issues' | 'allowedActions' | 'calculations'> & { obligations: Pick<Obligation, 'title'>[]; settlement: Pick<AccountingPeriod['settlement'], 'fullySettled'> }): PresentationStatus {
+export function statusForMonth(month: Pick<AccountingPeriod, 'completeness' | 'status' | 'issues' | 'allowedActions' | 'calculations'> & { obligations: Pick<Obligation, 'title'>[]; settlement: Pick<AccountingPeriod['settlement'], 'fullySettled'>; reconciliation?: Pick<AccountingPeriod['reconciliation'], 'state'> }): PresentationStatus {
   const actionableIssues = month.issues.filter((issue) => !isQuietIssue(issue));
   if (actionableIssues.some((issue) => statusForIssue(issue) === 'error')) return 'error';
   if (actionableIssues.some((issue) => statusForIssue(issue) === 'requires_action' || statusForIssue(issue) === 'setup_required')) return 'requires_action';
   const status = month.status.toUpperCase();
   if (['PROCESSING', 'SYNCING', 'IN_PROGRESS', 'CALCULATING'].includes(status)) return 'processing';
   if (!month.settlement.fullySettled && !calculationsReady(month.calculations, month.obligations)) return 'calculations_pending';
+  if (month.reconciliation && ['mismatch', 'missing_evidence'].includes(month.reconciliation.state)) return 'requires_action';
   if (actionableIssues.some((issue) => statusForIssue(issue) === 'informational')) return 'informational';
   if (month.settlement.fullySettled === false) return 'settlement_pending';
   if (month.completeness.status.toUpperCase() === 'COMPLETE' && month.completeness.blockingIssueCount === 0) return 'resolved';
@@ -125,8 +126,9 @@ export function statusForPayment(payment: Obligation): PresentationStatus {
   return 'unknown';
 }
 
-export function paymentStatusForDisplay(payment: Pick<Obligation, 'status' | 'dueDate'>, today = localToday()): string {
+export function paymentStatusForDisplay(payment: Pick<Obligation, 'status'> & Partial<Pick<Obligation, 'dueDate' | 'outstandingAmount'>>, today = localToday()): string {
   const status = String(payment.status ?? '').trim().toUpperCase();
+  if (['OPEN', 'DUE', 'PARTIALLY_PAID', 'OVERDUE'].includes(status) && isExactZero(payment.outstandingAmount?.amount)) return 'PAID';
   const dueDate = payment.dueDate;
   if (['OPEN', 'DUE', 'PARTIALLY_PAID'].includes(status) && dueDate && /^\d{4}-\d{2}-\d{2}$/.test(dueDate) && dueDate < today) return 'OVERDUE';
   return status;
@@ -134,7 +136,7 @@ export function paymentStatusForDisplay(payment: Pick<Obligation, 'status' | 'du
 
 export function obligationStatusText(payment: Obligation, today?: string): string {
   const status = paymentStatusForDisplay(payment, today);
-  const partiallyPaid = String(payment.status ?? '').trim().toUpperCase() === 'PARTIALLY_PAID';
+  const partiallyPaid = ['PARTIALLY_PAID', 'OVERDUE'].includes(status) && isPositiveDecimal(payment.outstandingAmount.amount);
   const label = paymentStatusLabel(status);
   return partiallyPaid ? `${label} (${formatCurrency(payment.outstandingAmount.amount)} ${t('settlements.remainingShort')})` : label;
 }
@@ -157,10 +159,12 @@ export function outstandingObligationsTotal(payments: Obligation[]): string {
   return `${digits.slice(0, -scale)}.${digits.slice(-scale)}`;
 }
 
-export function outstandingObligationsMoney(payments: Obligation[]): { amount: string; currency: string | null } {
-  const eligible = payments.filter((payment) => ['OPEN', 'DUE', 'OVERDUE', 'PARTIALLY_PAID'].includes(String(payment.status ?? '').trim().toUpperCase()));
-  const currencies = [...new Set(eligible.map((payment) => payment.outstandingAmount.currency || payment.amount.currency).filter((value): value is string => Boolean(value)))];
-  return { amount: outstandingObligationsTotal(payments), currency: currencies.length === 1 ? currencies[0]! : null };
+export function outstandingObligationsMoney(payments: Obligation[]): { amount: string | null; currency: string | null } {
+  const eligible = payments.filter((payment) => ['OPEN', 'DUE', 'OVERDUE', 'PARTIALLY_PAID'].includes(paymentStatusForDisplay(payment)));
+  if (eligible.length === 0) return { amount: '0', currency: null };
+  const currencies = [...new Set(eligible.map((payment) => payment.outstandingAmount.currency || payment.amount.currency || null))];
+  if (currencies.length !== 1 || currencies[0] == null) return { amount: null, currency: null };
+  return { amount: outstandingObligationsTotal(eligible), currency: currencies[0] };
 }
 
 export function invoiceReviewPresentation(invoices: Pick<Invoice, 'approvalStatus'>[]): { labelKey: string; state: 'success' | 'attention' | 'unknown' } | null {
@@ -175,16 +179,24 @@ export function homeInvoiceDirection(group: 'income' | 'costs'): 'SALE' | 'PURCH
   return group === 'income' ? 'SALE' : 'PURCHASE';
 }
 
-export function isUpcomingPayment(payment: Pick<Obligation, 'status'>): boolean {
-  return ['OPEN', 'PARTIALLY_PAID', 'DUE', 'OVERDUE'].includes(String(payment.status ?? '').trim().toUpperCase());
+export function isUpcomingPayment(payment: Pick<Obligation, 'status'> & Partial<Pick<Obligation, 'dueDate' | 'outstandingAmount'>>): boolean {
+  return ['OPEN', 'PARTIALLY_PAID', 'DUE', 'OVERDUE'].includes(paymentStatusForDisplay(payment));
 }
 
-export function isPaymentHistoryItem(payment: Pick<Obligation, 'status'>): boolean {
-  return ['PAID', 'OVERPAID'].includes(String(payment.status ?? '').trim().toUpperCase());
+export function isPaymentHistoryItem(payment: Pick<Obligation, 'status'> & Partial<Pick<Obligation, 'dueDate' | 'outstandingAmount'>>): boolean {
+  return ['PAID', 'OVERPAID'].includes(paymentStatusForDisplay(payment));
 }
 
-export function areAllObligationsPaid(payments: Pick<Obligation, 'status'>[]): boolean {
+export function areAllObligationsPaid(payments: (Pick<Obligation, 'status'> & Partial<Pick<Obligation, 'dueDate' | 'outstandingAmount'>>)[]): boolean {
   return payments.length > 0 && payments.every(isPaymentHistoryItem);
+}
+
+function isExactZero(value: string | null | undefined): boolean {
+  return value != null && /^[+-]?0+(?:\.0+)?$/.test(value.trim());
+}
+
+function isPositiveDecimal(value: string | null | undefined): boolean {
+  return value != null && /^\d+(?:\.\d+)?$/.test(value.trim()) && /[1-9]/.test(value.replace('.', ''));
 }
 
 export type StatusTone = 'success' | 'warning' | 'muted';

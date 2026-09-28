@@ -1,0 +1,9 @@
+Sanitized Android logcat evidence:
+
+Before the fix, with the current repository bundle:
+ReactNativeJS: [runtime not ready]: Error: Cannot find native module 'ExpoClipboard'
+
+After adding expo-clipboard 57.0.2 and rebuilding:
+ReactNativeJS: Running "main" with {"rootTag":1,"initialProps":{},"fabric":true}
+
+The debug build then showed a development-mode TypeError: "property is not configurable" in deepFreezeAndThrowInDev.js. The release APK launched to the Investory Accounting sign-in screen without that error or the ExpoClipboard error.

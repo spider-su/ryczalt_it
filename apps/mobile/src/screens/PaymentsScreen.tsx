@@ -69,16 +69,22 @@ export function PaymentsScreen() {
     } finally { setManualPaymentBusyId(null); }
   }
 
-  const visible = payments.filter((item) => isUpcomingPayment(item) && (filter === 'ALL' || item.title.toUpperCase() === filter) && matchesStatusFilter(item, statusFilter));
+  const visible = payments.filter((item) => isUpcomingPayment(item) && (filter === 'ALL' || item.title.toUpperCase() === filter) && matchesStatusFilter(item, statusFilter)).sort((left, right) => {
+    const leftOverdue = paymentStatusForDisplay(left) === 'OVERDUE';
+    const rightOverdue = paymentStatusForDisplay(right) === 'OVERDUE';
+    if (leftOverdue !== rightOverdue) return leftOverdue ? -1 : 1;
+    return (left.dueDate ?? '9999-12-31').localeCompare(right.dueDate ?? '9999-12-31');
+  });
   const visibleHistory = history.filter((item) => isPaymentHistoryItem(item) && matchesStatusFilter(item, statusFilter));
   const allPaid = areAllObligationsPaid(payments);
   const total = outstandingObligationsMoney(payments);
   const openCount = payments.filter(isUpcomingPayment).length;
+  const overdueCount = payments.filter((item) => paymentStatusForDisplay(item) === 'OVERDUE').length;
   const filterOptions = [{ value: 'ALL' as const, label: t('common.all') }, { value: 'RYCZALT' as const, label: paymentLabel('RYCZALT') }, { value: 'VAT' as const, label: paymentLabel('VAT') }, { value: 'ZUS' as const, label: paymentLabel('ZUS') }];
 
   return <SafeAreaView style={styles.safe}><ScrollView contentContainerStyle={styles.content}><PageHeader title={t('settlements.title')} /><MonthSelector loading={obligationsLoading || historyLoading} />
-    <Section title={allPaid ? t('settlements.completedPeriod') : t('settlements.upcoming')} trailing={<FilterButton onPress={() => setFilterSheet(true)} active={statusFilter !== 'ALL'} />}>
-      {!allPaid && payments.length > 0 ? <View style={styles.summary}><Text style={styles.total}>{formatMoneyWithCurrencyCode(total)}{total.currency ? '' : ` ${t('common.unknown')}`}</Text><Text style={styles.summaryNote}>{formatMonth(month)} · {openCount} {t('settlements.unpaidObligations')}</Text></View> : null}
+    <Section title={allPaid ? t('settlements.completedPeriod') : t('settlements.outstanding')} trailing={<FilterButton onPress={() => setFilterSheet(true)} active={statusFilter !== 'ALL'} />}>
+      {!allPaid && payments.length > 0 ? <View style={styles.summary}><Text style={styles.total}>{total.amount == null ? t('home.amountUnavailable') : formatMoneyWithCurrencyCode(total)}{total.amount != null && !total.currency ? ` ${t('common.unknown')}` : ''}</Text><Text style={styles.summaryNote}>{formatMonth(month)} · {openCount} {t('settlements.unpaidObligations')}{overdueCount > 0 ? ` · ${overdueCount} ${t('common.overdue').toLowerCase()}` : ''}</Text></View> : null}
       <SegmentedControl options={filterOptions} selected={filter} onSelect={setFilter} />
       {obligationsLoading ? <LoadingState /> : obligationsError ? <ErrorState title={t('common.unavailable')} onRetry={() => setObligationsRetry((value) => value + 1)} /> : visible.length === 0 ? <Text style={styles.empty}>{allPaid ? t('settlements.completedPeriod') : t('settlements.noPayments')}</Text> : <ListGroup>{visible.map((payment, index) => <PaymentRow key={`${payment.id}-${index}`} payment={payment} last={index === visible.length - 1} amountKind="outstanding" onPress={() => setSelected(payment)} />)}</ListGroup>}
     </Section>
@@ -89,7 +95,7 @@ export function PaymentsScreen() {
   </ScrollView>{paymentFeedback ? <StatusBanner kind="success" title={t('settlements.manualPaidSuccess')} body={t('settlements.manualPaidRefresh')} /> : null}<PaymentFilterSheet visible={filterSheet} selected={statusFilter} onSelect={setStatusFilter} onClose={() => setFilterSheet(false)} /><ObligationDetailsModal item={selected} busy={manualPaymentBusyId === selected?.id} onClose={() => setSelected(null)} onMarkManuallyPaid={markObligationManuallyPaid} /></SafeAreaView>;
 }
 
-function matchesStatusFilter(payment: Pick<Obligation, 'status' | 'dueDate'>, filter: StatusFilter): boolean {
+function matchesStatusFilter(payment: Pick<Obligation, 'status' | 'dueDate'> & Partial<Pick<Obligation, 'outstandingAmount'>>, filter: StatusFilter): boolean {
   if (filter === 'ALL') return true;
   const normalized = paymentStatusForDisplay(payment);
   if (filter === 'PAID') return ['PAID', 'OVERPAID', 'MATCHED'].includes(normalized);

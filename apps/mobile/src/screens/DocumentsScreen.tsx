@@ -90,7 +90,7 @@ function DocumentRow({ item, last, onPress }: { item: Invoice; last: boolean; on
     <View style={styles.sourceLine}><Ionicons name={source.kind === 'ksef' ? 'shield-checkmark-outline' : 'document-text-outline'} size={16} color={sourceColor} accessibilityElementsHidden importantForAccessibility="no" /><Text style={styles.sourceText} numberOfLines={1}>{identity}</Text></View>
     {classification ? <Text style={styles.classification} numberOfLines={1}>{classification}</Text> : null}
     <View style={styles.footer}>
-      <View style={styles.badges}>{approval ? <View style={[styles.badge, { backgroundColor: approval.tone === 'success' ? theme.colors.successSoft : approval.tone === 'warning' ? theme.colors.warningSoft : theme.colors.surfaceSecondary }]}><Text style={[styles.badgeText, { color: approvalColor }]} numberOfLines={1}>{approval.automatic ? <Ionicons name="sparkles-outline" size={12} color={approvalColor} /> : null}{approval.automatic ? ' ' : ''}{t(`invoices.approval.${approval.label}`)}</Text></View> : null}{paymentText ? <View style={[styles.badge, { backgroundColor: paymentTone === 'success' ? theme.colors.successSoft : paymentTone === 'warning' ? theme.colors.warningSoft : paymentTone === 'info' ? theme.colors.infoSoft : theme.colors.surfaceSecondary }]}><Text style={[styles.badgeText, { color: paymentTone === 'success' ? theme.colors.success : paymentTone === 'warning' ? theme.colors.warning : paymentTone === 'info' ? theme.colors.info : theme.colors.textMuted }]} numberOfLines={1}>{paymentText}</Text></View> : null}</View>
+      <View style={styles.badges}>{approval?.label === 'approved' ? <Ionicons name="checkmark-circle" size={17} color={approvalColor} accessibilityElementsHidden importantForAccessibility="no" /> : approval ? <View style={[styles.badge, { backgroundColor: approval.tone === 'warning' ? theme.colors.warningSoft : theme.colors.surfaceSecondary }]}><Text style={[styles.badgeText, { color: approvalColor }]} numberOfLines={1}>{t(`invoices.approval.${approval.label}`)}</Text></View> : null}{paymentText ? <View style={[styles.badge, { backgroundColor: paymentTone === 'success' ? theme.colors.successSoft : paymentTone === 'warning' ? theme.colors.warningSoft : paymentTone === 'info' ? theme.colors.infoSoft : theme.colors.surfaceSecondary }]}><Text style={[styles.badgeText, { color: paymentTone === 'success' ? theme.colors.success : paymentTone === 'warning' ? theme.colors.warning : paymentTone === 'info' ? theme.colors.info : theme.colors.textMuted }]} numberOfLines={1}>{paymentText}</Text></View> : null}</View>
       <Text style={styles.amount} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>{formatMoneyWithCurrencyCode(item.amount)}</Text>
     </View>
   </Pressable>;
@@ -123,10 +123,10 @@ const styles = createThemeStyles({
   content: { width: '100%', maxWidth: 640, alignSelf: 'center', paddingHorizontal: theme.spacing.xl, paddingTop: theme.spacing.lg, paddingBottom: theme.spacing.xxxl },
   searchWrap: { marginTop: theme.spacing.xl },
   direction: { marginTop: theme.spacing.md },
-  groups: { marginTop: theme.spacing.xxl, gap: theme.spacing.xl },
+  groups: { marginTop: theme.spacing.xl, gap: theme.spacing.md },
   monthGroup: { gap: theme.spacing.sm },
   monthTitle: { color: theme.colors.textSecondary, fontSize: theme.typography.supporting, fontWeight: '600', letterSpacing: 0.5, textTransform: 'uppercase', marginLeft: theme.spacing.xs },
-  row: { paddingVertical: theme.spacing.lg, paddingHorizontal: theme.spacing.lg, gap: theme.spacing.xs },
+  row: { paddingVertical: theme.spacing.md, paddingHorizontal: theme.spacing.lg, gap: theme.spacing.xs },
   divider: { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: theme.colors.divider },
   pressed: { backgroundColor: theme.colors.surfaceSecondary },
   rowTitle: { color: theme.colors.textPrimary, fontSize: theme.typography.rowTitle, lineHeight: 22, fontWeight: '700' },

@@ -18,7 +18,6 @@ import { formatMoneyWithCurrencyCode } from "../utils/money";
 import { createThemeStyles, theme, useTheme } from "../theme/theme";
 import {
   areAllObligationsPaid,
-  calculationsReady,
   homeStatusCopy,
   issuePresentation,
   orderedIssues,
@@ -49,7 +48,7 @@ import {
   receivedInvoiceGroups,
 } from "../presentation/invoiceList";
 import { useAuth } from "../auth/AuthContext";
-import type { AccountingMonthParts } from "../data/accountingRepository";
+import { mergeAccountingMonthParts, type AccountingMonthParts } from "../data/accountingRepository";
 import type { AppTabParamList } from "../navigation/AppNavigator";
 import {
   obligationStatusText,
@@ -78,6 +77,7 @@ export function HomeScreen({ navigation }: Props) {
   const loadedMonthRef = useRef<string | null>(null);
   const [actionBusy, setActionBusy] = useState<string | null>(null);
   const [retry, setRetry] = useState(0);
+  const [readinessRetry, setReadinessRetry] = useState(0);
   const [manualPaymentBusyId, setManualPaymentBusyId] = useState<string | null>(
     null,
   );
@@ -110,7 +110,9 @@ export function HomeScreen({ navigation }: Props) {
       .getMonthParts(monthId)
       .then((value) => {
         if (!active) return;
-        setParts(value);
+        setParts((current) =>
+          mergeAccountingMonthParts(current, value, loadedMonthRef.current, monthId),
+        );
         setLoadedMonth(monthId);
         loadedMonthRef.current = monthId;
         // A missing period is a section-level failure. Other successful parts
@@ -129,7 +131,7 @@ export function HomeScreen({ navigation }: Props) {
     setReadiness(null);
     setReadinessError(false);
     if (isDemo) {
-      setReadiness(demoReadiness(monthId, retry));
+      setReadiness(demoReadiness(monthId, readinessRetry));
       return () => {
         active = false;
       };
@@ -147,7 +149,7 @@ export function HomeScreen({ navigation }: Props) {
     return () => {
       active = false;
     };
-  }, [isDemo, monthId, profileId, token, refreshVersion, retry]);
+  }, [isDemo, monthId, profileId, token, refreshVersion, readinessRetry]);
 
   function reload() {
     setRetry((value) => value + 1);
@@ -158,7 +160,7 @@ export function HomeScreen({ navigation }: Props) {
     setReadinessBusy(true);
     try {
       await onboardingApi(token).confirmNoActivity(profileId, monthId);
-      setRetry((value) => value + 1);
+      setReadinessRetry((value) => value + 1);
     } catch {
       setReadinessError(true);
     } finally {
@@ -267,11 +269,14 @@ export function HomeScreen({ navigation }: Props) {
           showsVerticalScrollIndicator={false}
         >
           <MonthSelector loading={refreshing} />
+          {parts.failures.period ? (
+            <ErrorState title={t("home.sectionUnavailable")} onRetry={reload} />
+          ) : null}
           {readinessError ? (
             <Section title={t("home.readinessTitle")}>
               <ErrorState
                 title={t("home.readinessUnavailable")}
-                onRetry={() => setRetry((value) => value + 1)}
+                onRetry={() => setReadinessRetry((value) => value + 1)}
               />
             </Section>
           ) : readiness ? (
@@ -281,10 +286,13 @@ export function HomeScreen({ navigation }: Props) {
               onAddInvoice={() => navigation.navigate("Actions")}
               onReviewInvoices={() => navigation.navigate("Documents")}
               onConfirmNoActivity={confirmNoActivity}
-              onRetry={() => setRetry((value) => value + 1)}
+              onRetry={() => setReadinessRetry((value) => value + 1)}
             />
           ) : null}
           <Section title={t("home.payments")}>
+            {parts.failures.obligations ? (
+              <ErrorState title={t("home.sectionUnavailable")} onRetry={reload} />
+            ) : null}
             {parts.obligations ? (
               <ListGroup>
                 {parts.obligations.length ? (
@@ -300,12 +308,12 @@ export function HomeScreen({ navigation }: Props) {
                   <Text style={styles.unavailable}>{t("home.noPayments")}</Text>
                 )}
               </ListGroup>
-            ) : (
+            ) : !parts.failures.obligations ? (
               <ErrorState
                 title={t("home.sectionUnavailable")}
                 onRetry={reload}
               />
-            )}
+            ) : null}
           </Section>
           {parts.invoices ? (
             <PartialInvoices
@@ -313,14 +321,14 @@ export function HomeScreen({ navigation }: Props) {
               navigation={navigation}
               onSelect={setSelectedDocument}
             />
-          ) : (
+          ) : !parts.failures.invoices ? (
             <Section title={t("home.invoices")}>
               <ErrorState
                 title={t("home.sectionUnavailable")}
                 onRetry={reload}
               />
             </Section>
-          )}
+          ) : null}
         </ScrollView>
         <DocumentDetailsModal
           item={selectedDocument}
@@ -358,9 +366,6 @@ export function HomeScreen({ navigation }: Props) {
             ? "unknown"
             : "info";
   const allPaymentsPaid = areAllObligationsPaid(month.obligations);
-  const paymentsReady =
-    calculationsReady(month.calculations, month.obligations) ||
-    month.settlement.fullySettled;
   const outstandingTotal = allPaymentsPaid
     ? null
     : outstandingObligationsMoney(month.obligations);
@@ -375,11 +380,14 @@ export function HomeScreen({ navigation }: Props) {
         showsVerticalScrollIndicator={false}
       >
         <MonthSelector loading={refreshing} />
+        {parts.failures.period ? (
+          <ErrorState title={t("home.sectionUnavailable")} onRetry={reload} />
+        ) : null}
         {readinessError ? (
           <Section title={t("home.readinessTitle")}>
             <ErrorState
               title={t("home.readinessUnavailable")}
-              onRetry={() => setRetry((value) => value + 1)}
+              onRetry={() => setReadinessRetry((value) => value + 1)}
             />
           </Section>
         ) : readiness && shouldShowReadiness(readiness) ? (
@@ -389,7 +397,7 @@ export function HomeScreen({ navigation }: Props) {
             onAddInvoice={() => navigation.navigate("Actions")}
             onReviewInvoices={() => navigation.navigate("Documents")}
             onConfirmNoActivity={confirmNoActivity}
-            onRetry={() => setRetry((value) => value + 1)}
+            onRetry={() => setReadinessRetry((value) => value + 1)}
           />
         ) : null}
         {paymentFeedback ? (
@@ -403,7 +411,7 @@ export function HomeScreen({ navigation }: Props) {
           <Section title={t("home.payments")}>
             <ErrorState title={t("home.sectionUnavailable")} onRetry={reload} />
           </Section>
-        ) : paymentsReady ? (
+        ) : (
           <Section
             title={allPaymentsPaid ? t("common.paid") : t("home.payments")}
             trailing={
@@ -413,12 +421,19 @@ export function HomeScreen({ navigation }: Props) {
                   numberOfLines={1}
                   adjustsFontSizeToFit
                 >
-                  {formatMoneyWithCurrencyCode(outstandingTotal)}
-                  {outstandingTotal.currency ? "" : ` ${t("common.unknown")}`}
+                  {outstandingTotal.amount == null
+                    ? t("home.amountUnavailable")
+                    : formatMoneyWithCurrencyCode(outstandingTotal)}
+                  {outstandingTotal.amount != null && !outstandingTotal.currency
+                    ? ` ${t("common.unknown")}`
+                    : ""}
                 </Text>
               ) : null
             }
           >
+            {parts.failures.obligations ? (
+              <ErrorState title={t("home.sectionUnavailable")} onRetry={reload} />
+            ) : null}
             <ListGroup>
               {month.obligations.length ? (
                 month.obligations.map((payment, index) => (
@@ -433,10 +448,6 @@ export function HomeScreen({ navigation }: Props) {
                 <Text style={styles.unavailable}>{t("home.noPayments")}</Text>
               )}
             </ListGroup>
-          </Section>
-        ) : (
-          <Section title={t("home.payments")}>
-            <ErrorState title={t("home.sectionUnavailable")} onRetry={reload} />
           </Section>
         )}
 
@@ -468,6 +479,9 @@ export function HomeScreen({ navigation }: Props) {
           </Section>
         ) : received.income.length + received.costs.length > 0 ? (
           <Section title={t("home.invoices")}>
+            {parts.failures.invoices ? (
+              <ErrorState title={t("home.sectionUnavailable")} onRetry={reload} />
+            ) : null}
             {received.income.length > 0 ? (
               <ReceivedInvoiceGroup
                 title={t("home.incomeInvoices")}
