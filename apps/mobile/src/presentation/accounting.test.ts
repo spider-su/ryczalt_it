@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { areAllObligationsPaid, calculationsReady, dateMatches, homeInvoiceDirection, invoicePaymentMatches, invoiceReviewPresentation, isPaymentHistoryItem, isQuietIssue, isUpcomingPayment, issuePresentation, obligationStatusText, outstandingObligationsMoney, outstandingObligationsTotal, paymentStatusForDisplay, statusForIssue, statusForMonth } from './accounting';
+import { areAllObligationsPaid, calculationsReady, dateMatches, homeInvoiceDirection, invoicePaymentMatches, invoiceReviewPresentation, isPaymentHistoryItem, isQuietIssue, isUpcomingPayment, issuePresentation, obligationStatusText, outstandingObligationsMoney, outstandingObligationsTotal, paymentStatusForDisplay, statusForIssue, statusForMonth, statusForPayment } from './accounting';
 
 describe('canonical accounting presentation', () => {
   it('shows pending settlement only when calculations are ready', () => { expect(statusForMonth({ status: 'OPEN', completeness: { status: 'COMPLETE', blockingIssueCount: 0 }, calculations: [{ type: 'RYCZALT', status: 'CURRENT', amount: { amount: '10.00' } }], obligations: [{ title: 'RYCZALT' }], settlement: { fullySettled: false }, issues: [], allowedActions: [] })).toBe('settlement_pending'); expect(statusForMonth({ status: 'OPEN', completeness: { status: 'COMPLETE', blockingIssueCount: 0 }, calculations: [], obligations: [{ title: 'RYCZALT' }, { title: 'VAT' }, { title: 'ZUS' }], settlement: { fullySettled: false }, issues: [], allowedActions: [] })).toBe('calculations_pending'); });
@@ -77,12 +77,40 @@ describe('canonical accounting presentation', () => {
     expect(paymentStatusForDisplay({ status: 'PAID', dueDate: '2026-01-01' }, '2026-09-25')).toBe('PAID');
     expect(paymentStatusForDisplay({ status: 'OPEN', dueDate: '2026-09-25' }, '2026-09-25')).toBe('OPEN');
   });
-  it('treats a canonical zero outstanding balance as settled, not overdue or partially paid', () => {
-    const zeroRemaining = { id: 'zus', title: 'ZUS', period: '2026-07', dueDate: '2026-07-20', amount: { amount: '1495.00', currency: 'PLN' }, paidAmount: { amount: '1495.00', currency: 'PLN' }, outstandingAmount: { amount: '0.00', currency: 'PLN' }, status: 'PARTIALLY_PAID' };
-    expect(paymentStatusForDisplay(zeroRemaining, '2026-09-27')).toBe('PAID');
-    expect(obligationStatusText(zeroRemaining, '2026-09-27')).toBe('Opłacone');
-    expect(isUpcomingPayment(zeroRemaining)).toBe(false);
-    expect(isPaymentHistoryItem(zeroRemaining)).toBe(true);
+  it('preserves backend unpaid statuses when outstanding is zero and keeps the obligation actionable', () => {
+    const zeroRemaining = (status: string, dueDate: string | null = null) => ({ id: status, title: 'ZUS', period: '2026-07', dueDate, amount: { amount: '0.04', currency: 'PLN' }, paidAmount: { amount: '0.00', currency: 'PLN' }, outstandingAmount: { amount: '0.00', currency: 'PLN' }, status });
+    for (const status of ['OPEN', 'DUE', 'PARTIALLY_PAID']) {
+      const obligation = zeroRemaining(status);
+      expect(paymentStatusForDisplay(obligation, '2026-09-27')).toBe(status);
+      expect(statusForPayment(obligation)).toBe('requires_action');
+      expect(isUpcomingPayment(obligation)).toBe(true);
+      expect(isPaymentHistoryItem(obligation)).toBe(false);
+      expect(areAllObligationsPaid([obligation])).toBe(false);
+      expect(outstandingObligationsMoney([obligation])).toEqual({ amount: '0.00', currency: 'PLN' });
+    }
+  });
+  it('recognizes only authoritative paid and overpaid statuses as payment history', () => {
+    expect(paymentStatusForDisplay({ status: 'PAID', outstandingAmount: { amount: '0.00' } })).toBe('PAID');
+    expect(isPaymentHistoryItem({ status: 'PAID', outstandingAmount: { amount: '0.00' } })).toBe(true);
+    expect(paymentStatusForDisplay({ status: 'OVERPAID', outstandingAmount: { amount: '-0.01' } })).toBe('OVERPAID');
+    expect(isPaymentHistoryItem({ status: 'OVERPAID', outstandingAmount: { amount: '-0.01' } })).toBe(true);
+    expect(areAllObligationsPaid([{ status: 'PAID' }, { status: 'OVERPAID' }])).toBe(true);
+  });
+  it('keeps overdue presentation for an OPEN obligation past its due date, even with zero outstanding', () => {
+    const obligation = { id: 'overdue-zero', title: 'ZUS', period: '2026-07', dueDate: '2026-09-24', amount: { amount: '0.04', currency: 'PLN' }, paidAmount: { amount: '0.00', currency: 'PLN' }, outstandingAmount: { amount: '0.00', currency: 'PLN' }, status: 'OPEN' };
+    expect(paymentStatusForDisplay(obligation, '2026-09-25')).toBe('OVERDUE');
+    expect(statusForPayment(obligation)).toBe('error');
+    expect(isUpcomingPayment(obligation)).toBe(true);
+    expect(isPaymentHistoryItem(obligation)).toBe(false);
+    expect(areAllObligationsPaid([obligation])).toBe(false);
+  });
+  it('keeps an obligation with inconsistent zero balance out of history and visible as outstanding', () => {
+    const obligation = { id: 'zus', title: 'ZUS', period: '2026-07', dueDate: null, amount: { amount: '0.04', currency: 'PLN' }, paidAmount: { amount: '0.00', currency: 'PLN' }, outstandingAmount: { amount: '0.00', currency: 'PLN' }, status: 'OPEN' };
+    expect(isUpcomingPayment(obligation)).toBe(true);
+    expect(isPaymentHistoryItem(obligation)).toBe(false);
+    expect(areAllObligationsPaid([obligation])).toBe(false);
+    expect(statusForPayment(obligation)).toBe('requires_action');
+    expect(outstandingObligationsMoney([obligation])).toEqual({ amount: '0.00', currency: 'PLN' });
   });
   it('does not treat unknown or missing balances as paid', () => {
     expect(paymentStatusForDisplay({ status: 'OPEN', dueDate: '2026-07-20', outstandingAmount: { amount: null } }, '2026-09-27')).toBe('OVERDUE');

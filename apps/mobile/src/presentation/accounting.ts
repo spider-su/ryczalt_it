@@ -128,7 +128,6 @@ export function statusForPayment(payment: Obligation): PresentationStatus {
 
 export function paymentStatusForDisplay(payment: Pick<Obligation, 'status'> & Partial<Pick<Obligation, 'dueDate' | 'outstandingAmount'>>, today = localToday()): string {
   const status = String(payment.status ?? '').trim().toUpperCase();
-  if (['OPEN', 'DUE', 'PARTIALLY_PAID', 'OVERDUE'].includes(status) && isExactZero(payment.outstandingAmount?.amount)) return 'PAID';
   const dueDate = payment.dueDate;
   if (['OPEN', 'DUE', 'PARTIALLY_PAID'].includes(status) && dueDate && /^\d{4}-\d{2}-\d{2}$/.test(dueDate) && dueDate < today) return 'OVERDUE';
   return status;
@@ -189,10 +188,6 @@ export function isPaymentHistoryItem(payment: Pick<Obligation, 'status'> & Parti
 
 export function areAllObligationsPaid(payments: (Pick<Obligation, 'status'> & Partial<Pick<Obligation, 'dueDate' | 'outstandingAmount'>>)[]): boolean {
   return payments.length > 0 && payments.every(isPaymentHistoryItem);
-}
-
-function isExactZero(value: string | null | undefined): boolean {
-  return value != null && /^[+-]?0+(?:\.0+)?$/.test(value.trim());
 }
 
 function isPositiveDecimal(value: string | null | undefined): boolean {

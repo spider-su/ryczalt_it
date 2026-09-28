@@ -1,4 +1,4 @@
 interface:
   display_name: "Build Accounting APK"
   short_description: "Build a standalone Investory Accounting Android APK"
-  default_prompt: "Build a standalone release APK for the current Investory Accounting checkout, repair any obvious low-risk build dependency issue, then report package, signature, size, and checksum."
+  default_prompt: "Build a standalone release APK for the current Investory Accounting checkout using the committed dependency manifests. Report package, signature, size, and checksum; stop with a diagnostic if a dependency manifest repair is required."
