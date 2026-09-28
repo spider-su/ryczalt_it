@@ -53,21 +53,34 @@ class CustomerWebAuthenticationTest {
     String html = response.getResponse().getContentAsString();
 
     org.assertj.core.api.Assertions.assertThat(html)
-        .contains("Ryczałt z najmu prywatnego — prosto, bez Excela")
-        .contains("Ryczałt od najmu prywatnego – aplikacja do czynszu i podatku | Ryczałt")
+        .contains("Ryczałt od najmu prywatnego 2026 — kalkulator i prosta ewidencja wpłat")
+        .contains("Ryczałt od najmu 2026 – kalkulator podatku, czynsz i PIT-28 | Ryczałt")
+        .contains("Oblicz ryczałt od najmu prywatnego 2026. Stawki 8,5% i 12,5%, terminy podatku, PIT-28 i prosta ewidencja faktycznie otrzymanych wpłat.")
         .contains("name=\"robots\" content=\"index,follow\"")
         .contains("rel=\"canonical\" href=\"https://ryczalt.example.test/ryczalt-najem\"")
+        .contains("property=\"og:url\" content=\"https://ryczalt.example.test/ryczalt-najem\"")
+        .contains("property=\"og:image\" content=\"https://ryczalt.example.test/rental-og.svg\"")
+        .contains("name=\"twitter:card\" content=\"summary_large_image\"")
         .contains("application/ld+json")
         .contains("FAQPage")
+        .contains("SoftwareApplication")
+        .contains("inLanguage\":\"pl-PL\"")
         .contains("Kalkulator ryczałtu od najmu")
+        .contains("Stawka 8,5% i 12,5%")
+        .contains("Źródła i stan prawny")
+        .contains("https://www.podatki.gov.pl/podatki-osobiste/pit/informacje-podstawowe/co-jest-opodatkowane/dochody-z-najmu")
         .contains("monthly-rent")
+        .contains("spouse-threshold")
         .doesNotContain("server-only-token", "SPRING_SECURITY_CONTEXT", "profileId");
+
+    org.assertj.core.api.Assertions.assertThat(html.split("<h1(?:\\s|>)", -1)).hasSize(2);
   }
 
   @Test
   void landingAssetsArePubliclyServed() throws Exception {
     mvc.perform(get("/js/rental-calculator.js")).andExpect(status().isOk());
     mvc.perform(get("/css/rental-landing.css")).andExpect(status().isOk());
+    mvc.perform(get("/rental-og.svg")).andExpect(status().isOk());
   }
 
   @Test
