@@ -1,7 +1,25 @@
 import { describe, expect, it, vi } from 'vitest';
 import { ApiAccountingRepository, PartialAccountingError } from './apiAccountingRepository';
+import { mergeAccountingMonthParts } from './accountingRepository';
 
 describe('ApiAccountingRepository', () => {
+  it('retains successful home sections when a refresh fails in another section', () => {
+    const previous = { period: { id: '2026-09' } as never, invoices: [{ id: 'kept' }] as never, transactions: [] as never, obligations: [{ id: 'zus' }] as never, issues: [] as never, failures: {} };
+    const incoming = { period: null, invoices: null, transactions: [], obligations: null, issues: [], failures: { period: new Error('offline'), invoices: new Error('offline'), obligations: new Error('offline') } };
+    const merged = mergeAccountingMonthParts(previous, incoming, '2026-09', '2026-09');
+    expect(merged.period?.id).toBe('2026-09');
+    expect(merged.invoices?.[0]?.id).toBe('kept');
+    expect(merged.obligations?.[0]?.id).toBe('zus');
+    expect(merged.transactions).toEqual([]);
+    expect(merged.failures.period).toBeInstanceOf(Error);
+  });
+
+  it('does not carry data from a different selected accounting month', () => {
+    const previous = { period: { id: '2026-08' } as never, invoices: [] as never, transactions: [] as never, obligations: [] as never, issues: [] as never, failures: {} };
+    const incoming = { period: null, invoices: null, transactions: [], obligations: null, issues: [], failures: { period: new Error('offline') } };
+    expect(mergeAccountingMonthParts(previous, incoming, '2026-08', '2026-09')).toBe(incoming);
+  });
+
   it('fetches canonical invoices for each selected month', async () => {
     const api = { getInvoices: vi.fn(async (_profileId: number, month: string) => [{ id: month, direction: 'INCOME', reference: null, issueDate: `${month}-10`, accountingDate: `${month}-10`, netAmount: '81.30', vatAmount: '18.70', grossAmount: '100.00', currency: 'PLN', bookedNetPln: '81.30', ryczaltRate: '3.00', deductibleVat: '18.70', counterparty: null, approvalStatus: 'APPROVED', approvalMethod: 'MANUAL', paymentVerificationPolicy: 'REQUIRED' }]) };
     const repository = new ApiAccountingRepository(api as never, 1);

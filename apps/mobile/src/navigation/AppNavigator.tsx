@@ -49,7 +49,7 @@ export function AppNavigator() {
           fontWeight: '600',
           letterSpacing: -0.15
         },
-        tabBarItemStyle: { minHeight: 56 },
+        tabBarItemStyle: { minHeight: 48 },
         tabBarStyle: {
           ...tabBarLayout,
           borderTopWidth: 1,
@@ -75,7 +75,7 @@ export function AppNavigator() {
               accessibilityRole="button"
               accessibilityLabel={t('actions.title')}
               accessibilityState={accessibilityState}
-              style={({ pressed }) => ({ alignItems: 'center', justifyContent: 'center', width: 56, height: 56, marginTop: -14, borderRadius: 28, backgroundColor: pressed ? theme.colors.accentPressed : theme.colors.primary })}
+              style={({ pressed }) => ({ alignItems: 'center', justifyContent: 'center', width: 52, height: 52, marginTop: -6, borderRadius: 26, backgroundColor: pressed ? theme.colors.accentPressed : theme.colors.primary })}
             >
               <Ionicons name="add" size={28} color={theme.colors.onAccent} />
             </Pressable>

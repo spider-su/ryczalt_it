@@ -1,0 +1,4 @@
+interface:
+  display_name: "Accounting Android Audit"
+  short_description: "Repeat the authenticated read-only Android accounting review"
+  default_prompt: "Run the read-only Android accounting audit on a dedicated emulator, fix obvious low-risk build/startup issues and continue, then save private evidence for this checkout."

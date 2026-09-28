@@ -3,16 +3,12 @@ import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-nati
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../auth/AuthContext';
-import { completenessStatusLabel, formatMonth, t } from '../i18n';
+import { t } from '../i18n';
 import { useLocale } from '../i18n/LocaleContext';
 import { createThemeStyles, theme, useTheme, type AppearancePreference } from '../theme/theme';
-import { createAccountingRepository } from '../api/config';
-import { AccountingPeriod } from '../model/accounting';
-import { useAccountingMonth } from '../navigation/AccountingMonthContext';
 import { CounterpartiesScreen } from './CounterpartiesScreen';
 import { NotificationSettingsScreen } from './NotificationSettingsScreen';
-import { KeyValueRow, ListGroup, ListRow, PageHeader, Section, SheetHeader } from '../components/ui';
-import { ErrorState, LoadingState } from '../components/ui';
+import { ListGroup, ListRow, PageHeader, SheetHeader } from '../components/ui';
 
 export function MoreScreen() {
   useTheme();
@@ -21,39 +17,20 @@ export function MoreScreen() {
   const [settingsOpen, setSettingsOpen] = React.useState(false);
   const [counterpartiesOpen, setCounterpartiesOpen] = React.useState(false);
   const [notificationsOpen, setNotificationsOpen] = React.useState(false);
-  const [status, setStatus] = React.useState<AccountingPeriod | null>(null);
-  const [statusLoading, setStatusLoading] = React.useState(true);
-  const [statusError, setStatusError] = React.useState(false);
-  const repository = React.useMemo(() => createAccountingRepository(), []);
-  const { month, refreshVersion } = useAccountingMonth();
-  const completeness = status?.completeness.status.trim().toUpperCase();
-  const completenessTone = status?.completeness.blockingIssueCount ? 'attention' : completeness === 'COMPLETE' ? 'success' : completeness === 'INCOMPLETE' ? 'attention' : 'unknown';
-
-  React.useEffect(() => {
-    let active = true;
-    setStatus(null); setStatusError(false); setStatusLoading(true);
-    repository.getMonth(month).then((value) => active && setStatus(value)).catch(() => active && setStatusError(true)).finally(() => active && setStatusLoading(false));
-    return () => { active = false; };
-  }, [repository, month, refreshVersion]);
-
   const rows: { icon: keyof typeof Ionicons.glyphMap; label: string; onPress?: () => void; disabled?: boolean }[] = [
     { icon: 'business-outline', label: t('more.counterparties'), onPress: () => setCounterpartiesOpen(true) },
     { icon: 'settings-outline', label: t('more.settings'), onPress: () => setSettingsOpen(true) },
-    { icon: 'finger-print-outline', label: biometricEnabled ? t('settings.biometricEnabled') : t('settings.biometric'), onPress: biometricAvailable ? () => { void (biometricEnabled ? disableBiometricLogin() : enableBiometricLogin()).catch(() => undefined); } : undefined, disabled: !biometricAvailable },
-    { icon: 'notifications-outline', label: t('more.notifications'), onPress: () => setNotificationsOpen(true) },
-    { icon: 'download-outline', label: t('more.reports'), disabled: true },
-    { icon: 'help-circle-outline', label: t('more.help'), disabled: true }
+    { icon: 'notifications-outline', label: t('more.notifications'), onPress: () => setNotificationsOpen(true) }
   ];
 
   return <SafeAreaView style={styles.safe}><ScrollView contentContainerStyle={styles.content}><PageHeader title={t('more.title')} />{isDemo ? <View style={styles.demoBanner}><Ionicons name="flask-outline" size={20} color={theme.colors.primary} /><View style={styles.demoCopy}><Text style={styles.demoTitle}>{t('more.demoProfile')}</Text><Text style={styles.demoDescription}>{t('more.demoDescription')}</Text></View></View> : null}<ListGroup>{rows.map((row, index) => <ListRow key={row.label} icon={row.icon} title={row.label} onPress={row.onPress} disabled={row.disabled} disabledLabel={row.disabled ? t('more.comingSoon') : undefined} last={index === rows.length - 1} />)}</ListGroup>
-    <Section title={t('more.health')}>{statusLoading ? <LoadingState /> : statusError ? <ErrorState title={t('more.healthUnavailable')} /> : <ListGroup><KeyValueRow label={formatMonth(month)} value={completenessStatusLabel(status?.completeness.status)} state={completenessTone} /></ListGroup>}</Section>
     <Pressable style={({ pressed }) => [styles.signOut, pressed && styles.signOutPressed]} onPress={signOut} accessibilityRole="button" accessibilityLabel={t('more.signOut')}><Ionicons name="log-out-outline" size={21} color={theme.colors.danger} /><Text style={styles.signOutText}>{t('more.signOut')}</Text></Pressable>
-  </ScrollView><SettingsModal visible={settingsOpen} locale={locale} onClose={() => setSettingsOpen(false)} onLocale={setLocale} /><CounterpartiesScreen visible={counterpartiesOpen} onClose={() => setCounterpartiesOpen(false)} /><NotificationSettingsScreen visible={notificationsOpen} onClose={() => setNotificationsOpen(false)} /></SafeAreaView>;
+  </ScrollView><SettingsModal visible={settingsOpen} locale={locale} onClose={() => setSettingsOpen(false)} onLocale={setLocale} biometricAvailable={biometricAvailable} biometricEnabled={biometricEnabled} onToggleBiometric={async () => { if (biometricEnabled) await disableBiometricLogin(); else await enableBiometricLogin(); }} /><CounterpartiesScreen visible={counterpartiesOpen} onClose={() => setCounterpartiesOpen(false)} /><NotificationSettingsScreen visible={notificationsOpen} onClose={() => setNotificationsOpen(false)} /></SafeAreaView>;
 }
 
-function SettingsModal({ visible, locale, onClose, onLocale }: { visible: boolean; locale: 'pl' | 'en'; onClose: () => void; onLocale: (locale: 'pl' | 'en') => Promise<void> }) {
+function SettingsModal({ visible, locale, onClose, onLocale, biometricAvailable, biometricEnabled, onToggleBiometric }: { visible: boolean; locale: 'pl' | 'en'; onClose: () => void; onLocale: (locale: 'pl' | 'en') => Promise<void>; biometricAvailable: boolean; biometricEnabled: boolean; onToggleBiometric: () => Promise<void> }) {
   const { preference, setPreference } = useTheme();
-  return <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}><View style={styles.overlay}><View style={styles.sheet}><SheetHeader title={t('settings.title')} onClose={onClose} /><Text style={styles.description}>{t('settings.languageDescription')}</Text><Text style={styles.languageHeading}>{t('settings.language')}</Text><ListGroup><LanguageRow label={t('settings.polish')} selected={locale === 'pl'} onPress={() => { void onLocale('pl').catch(() => undefined); }} /><LanguageRow label={t('settings.english')} selected={locale === 'en'} last onPress={() => { void onLocale('en').catch(() => undefined); }} /></ListGroup><Text style={[styles.description, styles.appearanceDescription]}>{t('settings.appearanceDescription')}</Text><Text style={styles.languageHeading}>{t('settings.appearance')}</Text><ListGroup><AppearanceRow label={t('settings.light')} value="light" selected={preference === 'light'} onPress={() => { void setPreference('light'); }} /><AppearanceRow label={t('settings.dark')} value="dark" selected={preference === 'dark'} onPress={() => { void setPreference('dark'); }} /><AppearanceRow label={t('settings.system')} value="system" selected={preference === 'system'} last onPress={() => { void setPreference('system'); }} /></ListGroup><Text style={styles.systemDescription}>{t('settings.systemDescription')}</Text></View></View></Modal>;
+  return <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}><View style={styles.overlay}><View style={styles.sheet}><SheetHeader title={t('settings.title')} onClose={onClose} /><Text style={styles.description}>{t('settings.languageDescription')}</Text><Text style={styles.languageHeading}>{t('settings.language')}</Text><ListGroup><LanguageRow label={t('settings.polish')} selected={locale === 'pl'} onPress={() => { void onLocale('pl').catch(() => undefined); }} /><LanguageRow label={t('settings.english')} selected={locale === 'en'} last onPress={() => { void onLocale('en').catch(() => undefined); }} /></ListGroup><Text style={[styles.description, styles.appearanceDescription]}>{t('settings.appearanceDescription')}</Text><Text style={styles.languageHeading}>{t('settings.appearance')}</Text><ListGroup><AppearanceRow label={t('settings.light')} value="light" selected={preference === 'light'} onPress={() => { void setPreference('light'); }} /><AppearanceRow label={t('settings.dark')} value="dark" selected={preference === 'dark'} onPress={() => { void setPreference('dark'); }} /><AppearanceRow label={t('settings.system')} value="system" selected={preference === 'system'} last onPress={() => { void setPreference('system'); }} /></ListGroup><Text style={styles.systemDescription}>{t('settings.systemDescription')}</Text><Text style={[styles.languageHeading, styles.appearanceDescription]}>{t('settings.biometric')}</Text><ListGroup><ListRow icon="finger-print-outline" title={biometricEnabled ? t('settings.biometricEnabled') : t('settings.biometric')} disabled={!biometricAvailable} disabledLabel={!biometricAvailable ? t('settings.biometricUnavailable') : undefined} onPress={biometricAvailable ? () => { void onToggleBiometric().catch(() => undefined); } : undefined} last /></ListGroup></View></View></Modal>;
 }
 
 function LanguageRow({ label, selected, onPress, last = false }: { label: string; selected: boolean; onPress: () => void; last?: boolean }) {
