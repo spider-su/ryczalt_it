@@ -19,3 +19,6 @@
 /apps/backend/src/main/resources/application-local.yml
 /out/
 /apps/customer-web/src/main/resources/application-local.yml
+# Generated evidence from Android emulator audits; keep the readable reports.
+/artifacts/android-audit/logs/
+/artifacts/android-audit/screenshots/
