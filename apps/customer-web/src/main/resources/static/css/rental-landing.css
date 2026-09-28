@@ -53,6 +53,11 @@ body.rental-landing { margin:0; background:var(--land-bg); color:var(--land-ink)
 .calculator-card { padding:25px; border:1px solid var(--land-border); border-radius:18px; background:#fff; }
 .calculator-fields { display:grid; grid-template-columns:1fr 1fr; gap:16px; }.calculator-fields label { display:flex; flex-direction:column; gap:7px; color:var(--land-ink); font-size:13px; font-weight:700; }.calculator-fields label:last-child { grid-column:1/-1; }
 .calculator-fields input { width:100%; min-height:46px; padding:0 12px; border:1px solid #ccd5e1; border-radius:10px; color:var(--land-ink); background:#fff; font:inherit; font-size:16px; }
+.calculator-fields .checkbox-field { grid-column:1/-1; flex-direction:row; align-items:flex-start; gap:10px; font-weight:600; }
+.calculator-fields .checkbox-field input { width:20px; min-height:20px; height:20px; flex:none; margin:2px 0 0; accent-color:var(--land-red); }
+.calculator-fields .checkbox-field small { display:block; margin-top:4px; color:var(--land-muted); font-size:12px; font-weight:500; line-height:1.45; }
+.freshness-note { display:inline-block; padding:5px 9px; border:1px solid var(--land-border); border-radius:999px; background:#fff; color:var(--land-muted); font-size:11px; }
+.sources-section a { color:var(--land-red-dark); font-weight:700; }
 .calculator-results { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:20px; }.calculator-results>div { padding:15px; border-radius:13px; background:#f4f6fa; }.calculator-results span,.calculator-results strong { display:block; }.calculator-results span { color:var(--land-muted); font-size:12px; }.calculator-results strong { margin-top:4px; font-size:20px; letter-spacing:-.03em; }
 .calculator-disclaimer,.calculator-cta { color:var(--land-muted); font-size:12px; }.calculator-cta { margin-bottom:0; font-size:14px; }.calculator-cta a { color:var(--land-red-dark); font-weight:750; }.calculator-error { margin:10px 0 0; color:#a4232a; font-size:13px; }
 .comparison-section { display:grid; grid-template-columns:1fr .85fr; align-items:start; gap:55px; }.comparison-section .section-heading { margin:0; }
