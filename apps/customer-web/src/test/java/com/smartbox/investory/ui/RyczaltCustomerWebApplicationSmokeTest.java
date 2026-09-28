@@ -47,7 +47,16 @@ class RyczaltCustomerWebApplicationSmokeTest {
           "/css/tabler.min.css",
           "/css/accounting.css",
           "/js/theme.js",
-          "/favicon.svg"
+          "/favicon.svg",
+          "/favicon.ico",
+          "/favicon-16.png",
+          "/favicon-32.png",
+          "/favicon-48.png",
+          "/apple-touch-icon.png",
+          "/favicon-najem.ico",
+          "/favicon-najem-16.png",
+          "/favicon-najem-32.png",
+          "/favicon-najem-48.png"
         }) {
       HttpResponse<String> response =
           httpClient.send(
