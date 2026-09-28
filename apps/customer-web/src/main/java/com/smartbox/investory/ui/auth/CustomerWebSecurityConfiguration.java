@@ -61,6 +61,15 @@ public class CustomerWebSecurityConfiguration implements WebMvcConfigurer {
                         "/css/**",
                         "/js/**",
                         "/favicon.svg",
+                        "/favicon.ico",
+                        "/favicon-16.png",
+                        "/favicon-32.png",
+                        "/favicon-48.png",
+                        "/apple-touch-icon.png",
+                        "/favicon-najem.ico",
+                        "/favicon-najem-16.png",
+                        "/favicon-najem-32.png",
+                        "/favicon-najem-48.png",
                         "/rental-og.svg",
                         "/actuator/health")
                     .permitAll()

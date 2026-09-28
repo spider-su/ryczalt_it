@@ -18,14 +18,14 @@
       "package": "pl.investory.accounting",
       "adaptiveIcon": {
         "foregroundImage": "assets/brand/adaptive-foreground.png",
-        "backgroundColor": "#1769E0"
+        "backgroundColor": "#E30620"
       }
     },
     "web": {
       "name": "Investory",
       "shortName": "Investory",
       "lang": "en",
-      "themeColor": "#1769E0",
+      "themeColor": "#E30620",
       "backgroundColor": "#F5F7FC",
       "display": "standalone",
       "startUrl": "/",

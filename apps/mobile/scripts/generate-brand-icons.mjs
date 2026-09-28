@@ -1,96 +1,133 @@
-import { deflateSync } from 'node:zlib';
-import { mkdirSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
+import { PNG } from 'pngjs';
+import { jimpAsync } from '@expo/image-utils';
 
-const root = resolve(import.meta.dirname, '..');
-const blue = [23, 105, 224];
-const white = [255, 255, 255];
-const pale = [207, 226, 255];
-const dark = [21, 34, 56];
+const mobileRoot = resolve(import.meta.dirname, '..');
+const customerRoot = resolve(mobileRoot, '../customer-web/src/main/resources/static');
+const red = '#E30620';
+const sourcePath = resolve(mobileRoot, 'assets/brand/ryczalt-it-app-icon.png');
+const source = PNG.sync.read(readFileSync(sourcePath));
 
-const segments = [
-  { a: [13, 13], b: [29, 13], width: 4, color: null },
-  { a: [21, 13], b: [21, 35], width: 4, color: null },
-  { a: [13, 35], b: [27, 35], width: 4, color: null },
-  { a: [24, 30], b: [31, 23], width: 3.2, color: 'accent' },
-  { a: [31, 23], b: [34, 25], width: 3.2, color: 'accent' },
-  { a: [34, 25], b: [41, 16], width: 3.2, color: 'accent' },
-  { a: [35, 16], b: [41, 16], width: 3.2, color: 'accent' },
-  { a: [41, 16], b: [41, 22], width: 3.2, color: 'accent' }
-];
-
-function distanceToSegment(x, y, [ax, ay], [bx, by]) {
-  const dx = bx - ax; const dy = by - ay;
-  const lengthSquared = dx * dx + dy * dy;
-  const t = lengthSquared === 0 ? 0 : Math.max(0, Math.min(1, ((x - ax) * dx + (y - ay) * dy) / lengthSquared));
-  return Math.hypot(x - (ax + t * dx), y - (ay + t * dy));
+async function resize(input, size) {
+  const result = await jimpAsync(
+    { input: PNG.sync.write(input), originalInput: sourcePath, quality: 100, format: 'image/png' },
+    [{ operation: 'resize', width: size, height: size, fit: 'contain' }]
+  );
+  return PNG.sync.read(result);
 }
 
-function sampleAt(nx, ny, { background, mark, splash = false, adaptive = false }) {
-  const coords = splash ? [nx * 64 - 8, ny * 64 - 8] : [nx * 48, ny * 48];
-  const [x, y] = coords;
-  let color = background ? blue : null;
-  if (mark) {
-    for (const segment of segments) {
-      if (distanceToSegment(x, y, segment.a, segment.b) <= segment.width / 2) {
-        color = segment.color ? (mark === 'white' ? pale : mark === 'dark' ? dark : blue) : mark === 'white' ? white : mark === 'dark' ? dark : blue;
+function savePng(root, relative, png) {
+  const path = resolve(root, relative);
+  mkdirSync(dirname(path), { recursive: true });
+  writeFileSync(path, PNG.sync.write(png));
+}
+
+async function adaptiveForeground(size = 1024) {
+  const clean = PNG.sync.read(PNG.sync.write(source));
+  const count = clean.width * clean.height;
+  const visited = new Uint8Array(count);
+  const queue = new Int32Array(count);
+  const components = [];
+  const isMark = index => {
+    const offset = index * 4;
+    const r = clean.data[offset], g = clean.data[offset + 1], b = clean.data[offset + 2];
+    return clean.data[offset + 3] > 0 && Math.min(r, g, b) > 90 && Math.max(r, g, b) - Math.min(r, g, b) < 100;
+  };
+  for (let index = 0; index < count; index++) {
+    if (visited[index] || !isMark(index)) continue;
+    let head = 0, tail = 0;
+    visited[index] = 1;
+    queue[tail++] = index;
+    while (head < tail) {
+      const current = queue[head++];
+      const x = current % clean.width, y = Math.floor(current / clean.width);
+      for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+        const xx = x + dx, yy = y + dy, neighbor = yy * clean.width + xx;
+        if (xx < 0 || yy < 0 || xx >= clean.width || yy >= clean.height || visited[neighbor] || !isMark(neighbor)) continue;
+        visited[neighbor] = 1;
+        queue[tail++] = neighbor;
       }
     }
+    components.push(tail > 50000 ? queue.slice(0, tail) : null);
   }
-  if (adaptive && !color) return [0, 0, 0, 0];
-  return color ? [...color, 255] : [0, 0, 0, 0];
-}
-
-function crc32(data) {
-  let crc = 0xffffffff;
-  for (const byte of data) {
-    crc ^= byte;
-    for (let bit = 0; bit < 8; bit++) crc = (crc >>> 1) ^ (0xedb88320 & -(crc & 1));
-  }
-  return (crc ^ 0xffffffff) >>> 0;
-}
-
-function chunk(type, data) {
-  const name = Buffer.from(type);
-  const length = Buffer.alloc(4); length.writeUInt32BE(data.length);
-  const checksum = Buffer.alloc(4); checksum.writeUInt32BE(crc32(Buffer.concat([name, data])));
-  return Buffer.concat([length, name, data, checksum]);
-}
-
-function renderPng(size, options) {
-  const supersample = size <= 48 ? 4 : 2;
-  const width = size * supersample;
-  const raw = Buffer.alloc((size * 4 + 1) * size);
-  for (let y = 0; y < size; y++) {
-    const row = y * (size * 4 + 1); raw[row] = 0;
-    for (let x = 0; x < size; x++) {
-      const sums = [0, 0, 0, 0];
-      for (let sy = 0; sy < supersample; sy++) for (let sx = 0; sx < supersample; sx++) {
-        const sample = sampleAt((x + (sx + 0.5) / supersample) / size, (y + (sy + 0.5) / supersample) / size, options);
-        for (let channel = 0; channel < 4; channel++) sums[channel] += sample[channel];
-      }
-      const offset = row + 1 + x * 4;
-      for (let channel = 0; channel < 4; channel++) raw[offset + channel] = Math.round(sums[channel] / (supersample * supersample));
+  const kept = new Uint8Array(count);
+  for (const component of components) if (component) for (const index of component) kept[index] = 1;
+  for (let index = 0; index < count; index++) if (!kept[index]) clean.data[index * 4 + 3] = 0;
+  const scaledSize = Math.round(size * 0.72);
+  const scaled = await resize(clean, scaledSize);
+  const result = new PNG({ width: size, height: size });
+  const left = Math.floor((size - scaledSize) / 2);
+  const top = Math.floor((size - scaledSize) / 2);
+  for (let y = 0; y < scaledSize; y++) {
+    for (let x = 0; x < scaledSize; x++) {
+      const from = (y * scaledSize + x) * 4;
+      const to = ((top + y) * size + left + x) * 4;
+      scaled.data.copy(result.data, to, from, from + 4);
     }
   }
-  const ihdr = Buffer.alloc(13);
-  ihdr.writeUInt32BE(size, 0); ihdr.writeUInt32BE(size, 4);
-  ihdr[8] = 8; ihdr[9] = 6;
-  return Buffer.concat([Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]), chunk('IHDR', ihdr), chunk('IDAT', deflateSync(raw)), chunk('IEND', Buffer.alloc(0))]);
+  return result;
 }
 
-function save(path, size, options) {
-  const target = resolve(root, path);
-  mkdirSync(dirname(target), { recursive: true });
-  writeFileSync(target, renderPng(size, options));
+async function maskableIcon(size = 512) {
+  const foreground = await resize(await adaptiveForeground(), size);
+  const result = new PNG({ width: size, height: size });
+  const rgb = [227, 6, 32];
+  for (let i = 0; i < result.data.length; i += 4) {
+    result.data[i] = rgb[0]; result.data[i + 1] = rgb[1]; result.data[i + 2] = rgb[2]; result.data[i + 3] = 255;
+  }
+  for (let i = 0; i < result.data.length; i += 4) {
+    const a = foreground.data[i + 3] / 255;
+    for (let c = 0; c < 3; c++) result.data[i + c] = Math.round(foreground.data[i + c] * a + rgb[c] * (1 - a));
+  }
+  return result;
 }
 
-for (const size of [16, 32, 48]) save(`public/favicon-${size}.png`, size, { background: true, mark: 'white' });
-save('public/apple-touch-icon.png', 180, { background: true, mark: 'white' });
-save('public/pwa-192.png', 192, { background: true, mark: 'white' });
-save('public/pwa-512.png', 512, { background: true, mark: 'white' });
-save('public/pwa-maskable-512.png', 512, { background: true, mark: 'white' });
-save('assets/brand/app-icon.png', 1024, { background: true, mark: 'white' });
-save('assets/brand/adaptive-foreground.png', 1024, { mark: 'white', adaptive: true });
-save('assets/brand/splash.png', 512, { mark: 'blue', splash: true });
-console.log('Generated Investory icon assets at 16, 32, 48, 180, 192, 512, and 1024 px.');
+function ico(images) {
+  const header = Buffer.alloc(6 + images.length * 16);
+  header.writeUInt16LE(0, 0);
+  header.writeUInt16LE(1, 2);
+  header.writeUInt16LE(images.length, 4);
+  let offset = header.length;
+  const payloads = images.map(({ size, png }, index) => {
+    const entry = 6 + index * 16;
+    header[entry] = size === 256 ? 0 : size;
+    header[entry + 1] = size === 256 ? 0 : size;
+    header[entry + 2] = 0;
+    header[entry + 3] = 0;
+    header.writeUInt16LE(1, entry + 4);
+    header.writeUInt16LE(32, entry + 6);
+    header.writeUInt32LE(png.length, entry + 8);
+    header.writeUInt32LE(offset, entry + 12);
+    offset += png.length;
+    return png;
+  });
+  return Buffer.concat([header, ...payloads]);
+}
+
+const iconSizes = [16, 32, 48, 180, 192, 512, 1024];
+const resized = new Map(await Promise.all(iconSizes.map(async size => [size, await resize(source, size)])));
+for (const [size, png] of resized) {
+  if (size <= 48) {
+    savePng(resolve(mobileRoot, 'public'), `favicon-${size}.png`, png);
+    savePng(customerRoot, `favicon-${size}.png`, png);
+  } else if (size === 180) {
+    savePng(resolve(mobileRoot, 'public'), 'apple-touch-icon.png', png);
+    savePng(customerRoot, 'apple-touch-icon.png', png);
+  } else if (size === 192 || size === 512) {
+    savePng(resolve(mobileRoot, 'public'), `pwa-${size}.png`, png);
+  }
+}
+
+const adaptive = await adaptiveForeground();
+savePng(resolve(mobileRoot, 'assets/brand'), 'app-icon.png', resized.get(1024));
+savePng(resolve(mobileRoot, 'assets/brand'), 'adaptive-foreground.png', adaptive);
+savePng(resolve(mobileRoot, 'public'), 'pwa-maskable-512.png', await maskableIcon(512));
+
+for (const root of [resolve(mobileRoot, 'public'), customerRoot]) {
+  const entries = [16, 32, 48].map(size => ({ size, png: PNG.sync.write(resized.get(size)) }));
+  writeFileSync(resolve(root, 'favicon.ico'), ico(entries));
+  writeFileSync(resolve(root, 'favicon.svg'), '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48"><image width="48" height="48" href="/favicon-48.png"/></svg>\n');
+}
+
+console.log(`Generated Ryczałt IT icon variants from ${sourcePath} (primary red ${red}).`);
