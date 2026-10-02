@@ -12,7 +12,7 @@ import { createThemeStyles, theme, useTheme } from '../theme/theme';
 import { useAccountingMonth } from '../navigation/AccountingMonthContext';
 import { MonthSelector } from '../components/MonthSelector';
 import { useLocale } from '../i18n/LocaleContext';
-import { EmptyState, ErrorState, ListGroup, LoadingState, PageHeader, SearchField, SegmentedControl, SelectionList, SheetHeader } from '../components/ui';
+import { EmptyState, ErrorState, ListGroup, LoadingState, PageHeader, SearchField, SegmentedControl, SelectionList, SheetHeader, useModalBottomInsetStyle } from '../components/ui';
 import { DocumentDetailsModal } from '../components/DocumentDetailsModal';
 import { groupInvoicesByMonth, invoiceApprovalMatches, invoiceApprovalPresentation, invoiceClassificationLabel, invoicePaymentPresentation, invoiceSourceMatches, invoiceSourcePresentation, type InvoiceApprovalFilter, type InvoiceMonthGroup, type InvoiceSourceFilter } from '../presentation/invoiceList';
 import type { AppTabParamList } from '../navigation/AppNavigator';
@@ -60,7 +60,7 @@ export function DocumentsScreen({ route, navigation }: Props) {
   const openFilterSheet = () => { setDraftFilters(filters); setSheet(true); };
   const directionOptions = [{ value: 'ALL' as const, label: t('common.all') }, { value: 'SALE' as const, label: t('common.sales') }, { value: 'PURCHASE' as const, label: t('common.purchases') }];
 
-  return <SafeAreaView style={styles.safe}><ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+  return <SafeAreaView edges={[]} style={styles.safe}><ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
     <PageHeader title={t('invoices.title')} />
     <MonthSelector loading={loading} />
     <View style={styles.searchWrap}><SearchField value={query} onChangeText={setQuery} placeholder={t('invoices.search')} onFilter={openFilterSheet} filterActive={hasOptionalFilters} /></View>
@@ -101,6 +101,7 @@ function Empty({ filtered, onClear }: { filtered: boolean; onClear: () => void }
 }
 
 function FilterSheet({ visible, filters, currencies, classifications, onChange, onReset, onApply, onClose }: { visible: boolean; filters: Filters; currencies: string[]; classifications: string[]; onChange: (value: Filters) => void; onReset: () => void; onApply: () => void; onClose: () => void }) {
+  const modalBottomInsetStyle = useModalBottomInsetStyle();
   const set = (value: Partial<Filters>) => onChange({ ...filters, ...value });
   const dateOptions = [{ value: 'SELECTED_MONTH' as const, label: t('invoices.selectedMonth') }, { value: 'PREVIOUS_MONTH' as const, label: t('common.previousMonth') }, { value: 'LAST_3_MONTHS' as const, label: t('common.last3Months') }];
   const paymentOptions = [{ value: 'ALL' as const, label: t('common.all') }, { value: 'UNPAID' as const, label: t('common.unpaid') }, { value: 'PARTIALLY_PAID' as const, label: t('common.partial') }, { value: 'PAID' as const, label: t('common.paid') }, { value: 'NOT_REQUIRED' as const, label: t('invoices.paymentNotRequiredShort') }];
@@ -108,7 +109,7 @@ function FilterSheet({ visible, filters, currencies, classifications, onChange, 
   const sourceOptions = [{ value: 'ALL' as const, label: t('common.all') }, { value: 'KSEF' as const, label: t('invoices.sourceKsef') }, { value: 'UPLOAD' as const, label: t('invoices.sourceUpload') }];
   const currencyOptions = ['ALL', ...currencies].map((value) => ({ value, label: value === 'ALL' ? t('common.all') : value }));
   const classificationOptions = [{ value: 'ALL', label: t('common.all') }, ...classifications.map((value) => ({ value, label: invoiceClassificationLabel(filters.direction === 'ALL' ? 'UNKNOWN' : filters.direction, value) ?? t('common.unknown') }))];
-  return <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}><View style={styles.overlay}><View style={styles.sheet}><SheetHeader title={t('invoices.filterTitle')} onClose={onClose} /><ScrollView style={styles.filterScroll} keyboardShouldPersistTaps="handled">
+  return <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}><View style={[styles.overlay, modalBottomInsetStyle]}><View style={styles.sheet}><SheetHeader title={t('invoices.filterTitle')} onClose={onClose} /><ScrollView style={styles.filterScroll} keyboardShouldPersistTaps="handled">
     <Text style={styles.filterTitle}>{t('invoices.reviewFilter')}</Text><SelectionList options={approvalOptions} selected={filters.approval} onSelect={(approval) => set({ approval })} />
     <Text style={styles.filterTitle}>{t('invoices.status')}</Text><SelectionList options={paymentOptions} selected={filters.payment} onSelect={(payment) => set({ payment })} />
     <Text style={styles.filterTitle}>{t('invoices.source')}</Text><SelectionList options={sourceOptions} selected={filters.source} onSelect={(source) => set({ source })} />

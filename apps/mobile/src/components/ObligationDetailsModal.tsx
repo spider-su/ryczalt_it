@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { modalSafeAreaEdges } from '../navigation/safeAreaLayout';
 import type { Obligation } from '../model/accounting';
 import { formatDate, formatMonth, paymentLabel, paymentStatusLabel, t } from '../i18n';
 import { formatMoney } from '../utils/money';
@@ -26,7 +27,7 @@ export function ObligationDetailsModal({ item, busy, onClose, onMarkManuallyPaid
     try { await onMarkManuallyPaid(item!); onClose(); } catch { setError(true); }
   }
 
-  return <Modal visible transparent animationType="slide" onRequestClose={onClose}><SafeAreaView style={styles.overlay}><View style={styles.sheet}>
+  return <Modal visible transparent animationType="slide" onRequestClose={onClose}><SafeAreaView edges={modalSafeAreaEdges} style={styles.overlay}><View style={styles.sheet}>
     <SheetHeader title={paymentLabel(item.title)} onClose={onClose} />
     <Text style={styles.amount}>{formatMoney(item.amount)}</Text>
     <ListGroup>

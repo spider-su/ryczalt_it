@@ -1,5 +1,5 @@
 import { NavigationContainer } from '@react-navigation/native';
-import { StatusBar } from 'expo-status-bar';
+import { StatusBar, setStatusBarStyle } from 'expo-status-bar';
 import { ActivityIndicator, Platform, Text, View } from 'react-native';
 import { NavigationBar } from 'expo-navigation-bar';
 import { AppNavigator } from './src/navigation/AppNavigator';
@@ -18,6 +18,7 @@ import { ThemeProvider, useTheme, theme } from './src/theme/theme';
 import { WebAppMetadata } from './src/components/WebAppMetadata';
 import { NetworkStatusBanner } from './src/components/NetworkStatusBanner';
 import { captureAppException, initializeCrashMonitoring } from './src/monitoring/sentry';
+import { appSafeAreaEdges, fallbackSafeAreaEdges } from './src/navigation/safeAreaLayout';
 
 initializeCrashMonitoring();
 
@@ -45,22 +46,25 @@ class AppErrorBoundary extends Component<PropsWithChildren, { failed: boolean }>
   }
   componentDidCatch(error: Error, info: ErrorInfo) {
     captureAppException(error, { componentStack: info.componentStack });
-    if (__DEV__) console.error('Investory UI error', error.message, info.componentStack);
+    if (__DEV__) console.error('Ryczałt IT UI error', error.message, info.componentStack);
   }
   render() {
     if (this.state.failed)
       return (
         <SafeAreaProvider>
+          <SafeAreaView edges={fallbackSafeAreaEdges} style={{ flex: 1, justifyContent: 'center', backgroundColor: theme.colors.background }}>
+          <StatusBar style={theme.mode === 'dark' ? 'light' : 'dark'} />
+          {Platform.OS === 'android' ? <NavigationBar style={theme.mode === 'dark' ? 'dark' : 'light'} /> : null}
           <Text
             style={{
-              flex: 1,
               textAlign: 'center',
               textAlignVertical: 'center',
               padding: 24
             }}
           >
-            Investory could not display this screen. Please restart the app.
+            Ryczałt IT could not display this screen. Please restart the app.
           </Text>
+          </SafeAreaView>
         </SafeAreaProvider>
       );
     return this.props.children;
@@ -72,6 +76,9 @@ function AppContent() {
   const { token, profileId, isDemo, loading } = useAuth();
   const { ready: localeReady } = useLocale();
   const { mode } = useTheme();
+  useEffect(() => {
+    setStatusBarStyle(mode === 'dark' ? 'light' : 'dark');
+  }, [mode]);
   useEffect(() => {
     if (loading || !localeReady) return;
     if (ACCOUNTING_DATA_SOURCE === 'api' && !isDemo && (!token || profileId == null)) {
@@ -92,7 +99,9 @@ function AppContent() {
   }, [loading, localeReady, profileId, token, isDemo]);
   if (loading || !localeReady)
     return (
-      <SafeAreaView style={{ flex: 1, backgroundColor: theme.colors.background }}>
+      <SafeAreaView edges={fallbackSafeAreaEdges} style={{ flex: 1, backgroundColor: theme.colors.background }}>
+        <StatusBar style={mode === 'dark' ? 'light' : 'dark'} />
+        {Platform.OS === 'android' ? <NavigationBar style={mode === 'dark' ? 'dark' : 'light'} /> : null}
         <View
           style={{
             flex: 1,
@@ -108,14 +117,15 @@ function AppContent() {
     );
   if (ACCOUNTING_DATA_SOURCE === 'api' && !isDemo && (!token || profileId == null))
     return (
-      <>
+      <SafeAreaView edges={fallbackSafeAreaEdges} style={{ flex: 1, backgroundColor: theme.colors.background }}>
+        <StatusBar style={mode === 'dark' ? 'light' : 'dark'} />
+        {Platform.OS === 'android' ? <NavigationBar style={mode === 'dark' ? 'dark' : 'light'} /> : null}
         <NetworkStatusBanner />
         <AuthScreen />
-      </>
+      </SafeAreaView>
     );
   return (
     <>
-      <NetworkStatusBanner />
       <AccountingMonthProvider>
         <NavigationContainer
           ref={navigationRef}
@@ -128,7 +138,10 @@ function AppContent() {
         >
           <StatusBar style={mode === 'dark' ? 'light' : 'dark'} />
           {Platform.OS === 'android' ? <NavigationBar style={mode === 'dark' ? 'dark' : 'light'} /> : null}
-          <AppNavigator />
+          <SafeAreaView edges={appSafeAreaEdges} style={{ flex: 1, backgroundColor: theme.colors.background }}>
+            <NetworkStatusBanner />
+            <AppNavigator />
+          </SafeAreaView>
         </NavigationContainer>
       </AccountingMonthProvider>
     </>
