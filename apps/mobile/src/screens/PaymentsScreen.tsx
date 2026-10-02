@@ -10,7 +10,7 @@ import { createThemeStyles, theme, useTheme } from '../theme/theme';
 import { useAccountingMonth } from '../navigation/AccountingMonthContext';
 import { MonthSelector } from '../components/MonthSelector';
 import { useLocale } from '../i18n/LocaleContext';
-import { ErrorState, FilterButton, ListGroup, LoadingState, PageHeader, Section, SegmentedControl, SelectionList, SheetHeader, StatusBanner } from '../components/ui';
+import { ErrorState, FilterButton, ListGroup, LoadingState, PageHeader, Section, SegmentedControl, SelectionList, SheetHeader, StatusBanner, useModalBottomInsetStyle } from '../components/ui';
 import { AccountingStatusSection } from '../components/AccountingStatusSection';
 import { useAuth } from '../auth/AuthContext';
 import { getNotificationPreferences, reconcilePaymentReminders } from '../notifications/notificationService';
@@ -82,7 +82,7 @@ export function PaymentsScreen() {
   const overdueCount = payments.filter((item) => paymentStatusForDisplay(item) === 'OVERDUE').length;
   const filterOptions = [{ value: 'ALL' as const, label: t('common.all') }, { value: 'RYCZALT' as const, label: paymentLabel('RYCZALT') }, { value: 'VAT' as const, label: paymentLabel('VAT') }, { value: 'ZUS' as const, label: paymentLabel('ZUS') }];
 
-  return <SafeAreaView style={styles.safe}><ScrollView contentContainerStyle={styles.content}><PageHeader title={t('settlements.title')} /><MonthSelector loading={obligationsLoading || historyLoading} />
+  return <SafeAreaView edges={[]} style={styles.safe}><ScrollView contentContainerStyle={styles.content}><PageHeader title={t('settlements.title')} /><MonthSelector loading={obligationsLoading || historyLoading} />
     <Section title={allPaid ? t('settlements.completedPeriod') : t('settlements.outstanding')} trailing={<FilterButton onPress={() => setFilterSheet(true)} active={statusFilter !== 'ALL'} />}>
       {!allPaid && payments.length > 0 ? <View style={styles.summary}><Text style={styles.total}>{total.amount == null ? t('home.amountUnavailable') : formatMoneyWithCurrencyCode(total)}{total.amount != null && !total.currency ? ` ${t('common.unknown')}` : ''}</Text><Text style={styles.summaryNote}>{formatMonth(month)} · {openCount} {t('settlements.unpaidObligations')}{overdueCount > 0 ? ` · ${overdueCount} ${t('common.overdue').toLowerCase()}` : ''}</Text></View> : null}
       <SegmentedControl options={filterOptions} selected={filter} onSelect={setFilter} />
@@ -105,8 +105,9 @@ function matchesStatusFilter(payment: Pick<Obligation, 'status' | 'dueDate'> & P
 }
 
 function PaymentFilterSheet({ visible, selected, onSelect, onClose }: { visible: boolean; selected: StatusFilter; onSelect: (value: StatusFilter) => void; onClose: () => void }) {
+  const modalBottomInsetStyle = useModalBottomInsetStyle();
   const options = [{ value: 'ALL' as const, label: t('common.all') }, { value: 'PAID' as const, label: t('common.paid') }, { value: 'UNPAID' as const, label: t('common.unpaid') }, { value: 'PARTIALLY_PAID' as const, label: t('common.partial') }, { value: 'OVERDUE' as const, label: t('common.overdue') }];
-  return <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}><View style={styles.overlay}><View style={styles.sheet}><SheetHeader title={t('common.filters')} onClose={onClose} /><Text style={styles.filterTitle}>{t('settlements.status')}</Text><SelectionList options={options} selected={selected} onSelect={onSelect} /><Pressable style={styles.apply} onPress={onClose} accessibilityRole="button"><Text style={styles.applyText}>{t('common.close')}</Text></Pressable></View></View></Modal>;
+  return <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}><View style={[styles.overlay, modalBottomInsetStyle]}><View style={styles.sheet}><SheetHeader title={t('common.filters')} onClose={onClose} /><Text style={styles.filterTitle}>{t('settlements.status')}</Text><SelectionList options={options} selected={selected} onSelect={onSelect} /><Pressable style={styles.apply} onPress={onClose} accessibilityRole="button"><Text style={styles.applyText}>{t('common.close')}</Text></Pressable></View></View></Modal>;
 }
 
 function PaymentRow({ payment, last, amountKind, onPress }: { payment: Obligation; last: boolean; amountKind: 'outstanding' | 'total'; onPress: () => void }) {
