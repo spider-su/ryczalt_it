@@ -12,7 +12,7 @@
     "lint": "eslint App.tsx src",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "format:check": "prettier --check src/api/client.ts src/api/accountingApi.ts src/api/config.ts src/auth/authErrors.ts src/auth/AuthContext.tsx src/data/apiAccountingRepository.ts",
+    "format:check": "prettier --check src/api/client.ts src/api/accountingApi.ts src/api/accountingReadinessApi.ts src/api/config.ts src/auth/authErrors.ts src/auth/AuthContext.tsx src/data/apiAccountingRepository.ts src/screens/HomeScreen.tsx",
     "ci": "npm run typecheck && npm run lint && npm run format:check && npm test"
   },
   "dependencies": {

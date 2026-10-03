@@ -65,11 +65,12 @@ The versioned rule sets are `RyczaltRules2026`, `VatRules2026`, and `ZusRules202
 `RoundingPolicy` exposes named semantic operations for FX, contributions, deductions, ryczałt, and
 VAT settlement. Inputs are normalized PLN facts. Source acquisition, persistence, reconciliation,
 native REST, Web, and mobile-facing accounting contracts are active. Remaining limitations include
-the deliberately narrow tax-profile coverage, incomplete historical bootstrap semantics, and
-external payment verification.
+the deliberately narrow tax-profile coverage, the missing customer-facing opening-state setup UX,
+and external payment verification. The backend input contract now supports explicit historical
+opening facts and refuses calculations when they are incomplete.
 
-The detailed calculation rules, persisted version identifiers, regression-test map, and known
-carry-forward boundary are documented in [`docs/calculation-rules.md`](docs/calculation-rules.md).
+The detailed calculation rules, opening-state contract, carry-forward behavior, persisted version
+identifiers, and regression-test map are documented in [`docs/calculation-rules.md`](docs/calculation-rules.md).
 The old `_POC_V1` rule-version names are persisted identifiers; keep them stable unless an explicit
 migration/recalculation plan is approved.
 

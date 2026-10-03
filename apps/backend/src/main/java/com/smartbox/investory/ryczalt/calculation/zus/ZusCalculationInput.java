@@ -14,7 +14,7 @@ public record ZusCalculationInput(
     BigDecimal healthContributionOverride,
     BigDecimal healthContributionPaidOverride) {
   public ZusCalculationInput {
-    ytdRyczaltRevenue = ytdRyczaltRevenue == null ? BigDecimal.ZERO : ytdRyczaltRevenue;
+    if (ytdRyczaltRevenue == null) throw new IllegalArgumentException("Cumulative ryczałt revenue is required");
     fullJdgSocial = fullJdgSocial == null ? ZusRules2026.FULL_JDG_SOCIAL : fullJdgSocial;
     explicitHealthBand =
         explicitHealthBand == null

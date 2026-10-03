@@ -11,7 +11,8 @@ public record NativeMonthCalculationInput(
     Map<BigDecimal, BigDecimal> revenueByRate,
     VatCalculationInput vat,
     ZusCalculationInput zus,
-    BigDecimal deductionsAlreadyConsumed) {
+    BigDecimal deductionsAlreadyConsumed,
+    BigDecimal deductionCarryForward) {
   public NativeMonthCalculationInput {
     revenueByRate = Map.copyOf(Objects.requireNonNull(revenueByRate, "revenueByRate"));
     vat = Objects.requireNonNull(vat, "vat");
@@ -21,5 +22,12 @@ public record NativeMonthCalculationInput(
     if (deductionsAlreadyConsumed.signum() < 0) {
       throw new IllegalArgumentException("deductionsAlreadyConsumed must not be negative");
     }
+    if (deductionCarryForward != null && deductionCarryForward.signum() < 0)
+      throw new IllegalArgumentException("deductionCarryForward must not be negative");
+  }
+
+  public NativeMonthCalculationInput(Map<BigDecimal, BigDecimal> revenueByRate,
+      VatCalculationInput vat, ZusCalculationInput zus, BigDecimal deductionsAlreadyConsumed) {
+    this(revenueByRate, vat, zus, deductionsAlreadyConsumed, BigDecimal.ZERO);
   }
 }

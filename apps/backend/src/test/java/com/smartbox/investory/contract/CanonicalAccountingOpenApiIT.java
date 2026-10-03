@@ -48,6 +48,8 @@ class CanonicalAccountingOpenApiIT extends FastDatabaseTest {
             "/api/profiles/{profileId}/accounting/invoices/{invoiceId}/manual-paid",
             "/api/profiles/{profileId}/accounting/counterparties",
             "/api/profiles/{profileId}/accounting/periods/{month}/freeze",
+            "/api/profiles/{profileId}/accounting/readiness",
+            "/api/profiles/{profileId}/accounting/periods/{month}/activity-confirmation",
             "/api/v1/auth/login",
             "/api/v1/auth/me")
         .forEach(path -> assertThat(paths.has(path)).as("OpenAPI route %s", path).isTrue());

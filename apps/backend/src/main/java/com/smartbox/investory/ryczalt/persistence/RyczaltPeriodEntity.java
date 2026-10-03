@@ -36,6 +36,15 @@ public class RyczaltPeriodEntity extends RyczaltEntity {
   @Column(name = "reopen_reason", length = 1000)
   private String reopenReason;
 
+  @Column(name = "activity_confirmation_type", length = 32)
+  private String activityConfirmationType;
+
+  @Column(name = "activity_confirmed_at")
+  private Instant activityConfirmedAt;
+
+  @Column(name = "activity_confirmed_by", length = 255)
+  private String activityConfirmedBy;
+
   protected RyczaltPeriodEntity() {}
 
   public RyczaltPeriodEntity(long profileId, int year, int month, PeriodStatus status) {
@@ -83,6 +92,25 @@ public class RyczaltPeriodEntity extends RyczaltEntity {
     this.status = PeriodStatus.FROZEN;
     this.frozenAt = at;
   }
+
+  public void confirmNoRevenue(String actor, Instant at) {
+    if (status.isFrozen()) throw new IllegalStateException("Frozen period cannot be changed");
+    this.activityConfirmationType = "NO_REVENUE";
+    this.activityConfirmedAt = at;
+    this.activityConfirmedBy = actor;
+  }
+
+  public boolean clearActivityConfirmation() {
+    if (activityConfirmationType == null) return false;
+    activityConfirmationType = null;
+    activityConfirmedAt = null;
+    activityConfirmedBy = null;
+    return true;
+  }
+
+  public String getActivityConfirmationType() { return activityConfirmationType; }
+  public Instant getActivityConfirmedAt() { return activityConfirmedAt; }
+  public String getActivityConfirmedBy() { return activityConfirmedBy; }
 
   public Instant getCalculatedAt() {
     return calculatedAt;
