@@ -37,6 +37,12 @@ export function useTheme() { const value = useContext(ThemeContext); if (!value)
 // Keep module-created styles tied to semantic tokens when the palette changes.
 export function createThemeStyles<T extends StyleSheet.NamedStyles<T>>(styles: T): T {
   const entries = [...Object.entries(lightColors), ...Object.entries(darkColors)] as [keyof Colors, string][]; const tokenFor = (value: unknown) => entries.find(([, color]) => color === value)?.[0];
-  const convert = (value: any): any => { if (Array.isArray(value)) return value.map(convert); if (!value || typeof value !== 'object') return value; const result: any = {}; for (const [key, child] of Object.entries(value)) { const token = tokenFor(child); if (token) Object.defineProperty(result, key, { enumerable: true, get: () => theme.colors[token] }); else result[key] = convert(child); } return result; };
-  return convert(styles) as T;
+  const convert = (value: any): any => { if (Array.isArray(value)) return value.map(convert); if (!value || typeof value !== 'object') return value; const result: any = {}; for (const [key, child] of Object.entries(value)) { const token = tokenFor(child); result[key] = token ? theme.colors[token] : convert(child); } return result; };
+  const converted = convert(styles);
+  return new Proxy(converted, {
+    get(target, property, receiver) {
+      if (typeof property === 'string' && Object.prototype.hasOwnProperty.call(styles, property)) return convert((styles as any)[property]);
+      return Reflect.get(target, property, receiver);
+    }
+  }) as T;
 }

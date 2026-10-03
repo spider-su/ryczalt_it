@@ -230,7 +230,7 @@ export function HomeScreen({ navigation }: Props) {
 
   if (error)
     return (
-      <SafeAreaView style={styles.safe}>
+      <SafeAreaView edges={[]} style={styles.safe}>
         <ErrorState
           title={t("common.unavailable")}
           onRetry={() => {
@@ -242,7 +242,7 @@ export function HomeScreen({ navigation }: Props) {
     );
   if (!parts && !refreshing)
     return (
-      <SafeAreaView style={styles.safe}>
+      <SafeAreaView edges={[]} style={styles.safe}>
         <ErrorState
           title={t("common.unavailable")}
           onRetry={() => {
@@ -254,13 +254,13 @@ export function HomeScreen({ navigation }: Props) {
     );
   if (!parts || loadedMonth !== monthId)
     return (
-      <SafeAreaView style={styles.safe}>
+      <SafeAreaView edges={[]} style={styles.safe}>
         <LoadingState />
       </SafeAreaView>
     );
   if (!parts.period)
     return (
-      <SafeAreaView style={styles.safe}>
+      <SafeAreaView edges={[]} style={styles.safe}>
         <ScrollView
           refreshControl={
             <RefreshControl refreshing={refreshing} onRefresh={reload} />
@@ -371,7 +371,7 @@ export function HomeScreen({ navigation }: Props) {
     : outstandingObligationsMoney(month.obligations);
 
   return (
-    <SafeAreaView style={styles.safe}>
+    <SafeAreaView edges={[]} style={styles.safe}>
       <ScrollView
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={reload} />

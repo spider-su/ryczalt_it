@@ -31,7 +31,7 @@ export function AuthScreen() {
 
   async function unlock() { setBusy(true); try { await unlockWithBiometrics(); } finally { setBusy(false); } }
 
-  return <SafeAreaView style={styles.safe}>
+  return <SafeAreaView edges={[]} style={styles.safe}>
     <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
         <View style={styles.brand}>
