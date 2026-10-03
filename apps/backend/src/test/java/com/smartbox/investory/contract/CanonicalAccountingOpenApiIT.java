@@ -64,6 +64,13 @@ class CanonicalAccountingOpenApiIT extends FastDatabaseTest {
         .forEach(path -> assertThat(paths.has(path)).as("OpenAPI route %s", path).isTrue());
 
     JsonNode schemas = document.path("components").path("schemas");
+    JsonNode candidate = schemas.path("CandidateView").path("properties");
+    assertThat(candidate.has("sourceState")).isTrue();
+    assertThat(candidate.has("ruleMatchStatus")).isTrue();
+    assertThat(candidate.has("duplicate")).isFalse();
+    assertThat(schemas.path("RequiredInput").path("properties").has("field")).isTrue();
+    assertThat(schemas.path("ApprovalRequest").path("properties").has("vatDeductionRatio"))
+        .isTrue();
     assertThat(propertyEnumValuesContaining(schemas, "status", "OPEN", "FROZEN"))
         .containsExactlyInAnyOrder("OPEN", "FROZEN");
     assertThat(
