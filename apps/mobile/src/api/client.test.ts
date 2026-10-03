@@ -50,6 +50,31 @@ describe('HttpClient authentication lifecycle', () => {
     expect(onUnauthorized).not.toHaveBeenCalled();
   });
 
+  it('logs safe API diagnostics in development without response or auth data', async () => {
+    const originalDev = (globalThis as { __DEV__?: boolean }).__DEV__;
+    Object.defineProperty(globalThis, '__DEV__', { value: true, configurable: true });
+    const warning = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const fetchImpl = vi.fn(async () => new Response(JSON.stringify({ message: 'Taxpayer NIP 1234567890' }), { status: 404 }));
+    const client = new HttpClient({ baseUrl: 'https://api.example.test', token: 'secret-token', fetchImpl });
+
+    try {
+      await expect(client.get('/api/profiles/42/accounting/readiness?month=2026-10')).rejects.toMatchObject({ kind: 'not-found', status: 404 });
+      expect(warning).toHaveBeenCalledWith('[Investory API] request failed', {
+        path: '/api/profiles/42/accounting/readiness?month=2026-10',
+        status: 404,
+        kind: 'not-found',
+        exceptionType: 'ApiError',
+        message: 'The requested API resource was not found',
+      });
+      expect(JSON.stringify(warning.mock.calls)).not.toContain('1234567890');
+      expect(JSON.stringify(warning.mock.calls)).not.toContain('secret-token');
+    } finally {
+      warning.mockRestore();
+      if (originalDev === undefined) delete (globalThis as { __DEV__?: boolean }).__DEV__;
+      else Object.defineProperty(globalThis, '__DEV__', { value: originalDev, configurable: true });
+    }
+  });
+
   it.each([
     ['HTTP error', async () => new Response('{}', { status: 500 }), 'response'],
     ['network error', async () => { throw new Error('offline'); }, 'unavailable'],

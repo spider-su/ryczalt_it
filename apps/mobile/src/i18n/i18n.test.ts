@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import {
   completenessStatusLabel, formatCurrency, invoicePaymentStatusKey, invoicePaymentStatusLabel,
-  paymentStatusKey, paymentVerificationLabel, periodActionLabel, periodStatusLabel,
+  paymentStatusKey, paymentStatusLabel, paymentVerificationLabel, periodActionLabel, periodStatusLabel,
   setActiveLocale, t, translationsByLocale
 } from './index';
 import { formatMoneyWithCurrencyCode } from '../utils/money';
@@ -50,6 +50,8 @@ describe('canonical localized presentation', () => {
   it('keeps obligation and invoice payment vocabularies distinct and localized', () => {
     expect(paymentStatusKey('PARTIALLY_PAID')).toBe('partial');
     expect(paymentStatusKey('OPEN')).toBe('unpaid');
+    expect(paymentStatusKey('BALANCE_REVIEW')).toBe('balanceReview');
+    expect(paymentStatusLabel('BALANCE_REVIEW')).toBe('Do weryfikacji');
     expect(paymentStatusKey('MANUALLY_CONFIRMED')).toBe('unknown');
     const cases = [
       ['MATCHED', 'matched', 'Opłacone'],

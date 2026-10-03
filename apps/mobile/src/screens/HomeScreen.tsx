@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useReducer, useRef, useState } from "react";
 import type { BottomTabScreenProps } from "@react-navigation/bottom-tabs";
 import { Ionicons } from "@expo/vector-icons";
 import {
@@ -63,6 +63,7 @@ import {
   accountingReadinessApi,
   type Readiness,
 } from "../api/accountingReadinessApi";
+import { initialReadinessState, readinessReducer } from "./readinessState";
 
 type Props = BottomTabScreenProps<AppTabParamList, "Home">;
 export function HomeScreen({ navigation }: Props) {
@@ -94,8 +95,13 @@ export function HomeScreen({ navigation }: Props) {
     refreshAccounting,
   } = useAccountingMonth();
   const { isDemo, profileId, token } = useAuth();
-  const [readiness, setReadiness] = useState<Readiness | null>(null);
-  const [readinessError, setReadinessError] = useState(false);
+  const [readinessState, dispatchReadiness] = useReducer(
+    readinessReducer,
+    initialReadinessState,
+  );
+  const readiness =
+    readinessState.status === "ready" ? readinessState.value : null;
+  const readinessError = readinessState.status === "error";
   const [readinessBusy, setReadinessBusy] = useState(false);
   const [calculationBusy, setCalculationBusy] = useState(false);
   const [calculationError, setCalculationError] = useState(false);
@@ -139,24 +145,26 @@ export function HomeScreen({ navigation }: Props) {
 
   useEffect(() => {
     let active = true;
-    setReadiness(null);
-    setReadinessError(false);
+    dispatchReadiness({ type: "start" });
     if (isDemo) {
-      setReadiness(demoReadiness(monthId, readinessRetry));
+      dispatchReadiness({
+        type: "success",
+        value: demoReadiness(monthId, readinessRetry),
+      });
       return () => {
         active = false;
       };
     }
     if (profileId == null || !token) {
-      setReadinessError(true);
+      dispatchReadiness({ type: "failure" });
       return () => {
         active = false;
       };
     }
     accountingReadinessApi(token)
       .getReadiness(profileId, monthId)
-      .then((value) => active && setReadiness(value))
-      .catch(() => active && setReadinessError(true));
+      .then((value) => active && dispatchReadiness({ type: "success", value }))
+      .catch(() => active && dispatchReadiness({ type: "failure" }));
     return () => {
       active = false;
     };
@@ -173,7 +181,7 @@ export function HomeScreen({ navigation }: Props) {
       await accountingReadinessApi(token).confirmNoActivity(profileId, monthId);
       setReadinessRetry((value) => value + 1);
     } catch {
-      setReadinessError(true);
+      dispatchReadiness({ type: "failure" });
     } finally {
       setReadinessBusy(false);
     }
