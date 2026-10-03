@@ -10,6 +10,8 @@ public interface RyczaltNativeMonthInputJpaRepository
   Optional<RyczaltNativeMonthInputEntity> findByProfileIdAndYearAndMonth(
       long profileId, int year, int month);
 
+  Optional<RyczaltNativeMonthInputEntity> findFirstByProfileIdAndAccountingStartDateIsNotNullOrderByYearAscMonthAsc(long profileId);
+
   @Query(
       "select input from RyczaltNativeMonthInputEntity input "
           + "where input.profileId = :profileId "

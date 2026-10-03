@@ -18,8 +18,14 @@ public final class ZusCalculator {
 
   public ZusCalculationResult calculate(ZusCalculationInput input) {
     Objects.requireNonNull(input, "input");
-    if (input.zusRegime() != null && !"JDG".equals(input.zusRegime())) {
+    if (input.zusRegime() == null || input.zusRegime().isBlank()) {
+      throw new IllegalArgumentException("zusRegime is required");
+    }
+    if (!"JDG".equals(input.zusRegime())) {
       throw new IllegalArgumentException("Unsupported ZUS regime: " + input.zusRegime());
+    }
+    if (input.voluntarySickness() && (!input.jdgActive() || input.qualifyingUop())) {
+      throw new IllegalArgumentException("Voluntary sickness is supported only for active JDG primary insurance");
     }
     BigDecimal social =
         input.jdgActive() && !input.qualifyingUop()
@@ -34,10 +40,14 @@ public final class ZusCalculator {
                 .subtract(ZusRules2026.LABOUR_FUND)
                 .add(input.voluntarySickness() ? ZusRules2026.VOLUNTARY_SICKNESS : BigDecimal.ZERO)
             : BigDecimal.ZERO;
-    BigDecimal deductibleSocial =
-        input.socialContributionDeduction() == null
-            ? calculatedDeductibleSocial
-            : input.socialContributionDeduction();
+    if (input.socialContributionDeduction() == null) {
+      throw new IllegalArgumentException("Actual paid social contribution amount is required; use zero if unpaid");
+    }
+    if (input.healthContributionPaidOverride() == null) {
+      throw new IllegalArgumentException("Actual paid health contribution amount is required; use zero if unpaid");
+    }
+    BigDecimal deductibleSocial = input.socialContributionDeduction()
+        .min(calculatedDeductibleSocial);
     BigDecimal health =
         input.jdgActive()
             ? input.healthContributionOverride() == null
@@ -48,9 +58,7 @@ public final class ZusCalculator {
     health = RoundingPolicy.roundZusContribution(health);
     BigDecimal healthPaidForDeduction =
         RoundingPolicy.roundZusContribution(
-            input.healthContributionPaidOverride() == null
-                ? health
-                : input.healthContributionPaidOverride());
+            input.healthContributionPaidOverride());
     return new ZusCalculationResult(
         social,
         health,

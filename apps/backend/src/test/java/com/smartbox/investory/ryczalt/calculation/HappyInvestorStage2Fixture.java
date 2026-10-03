@@ -20,7 +20,8 @@ final class February2026CalculatorFixture {
   static final VatCalculationInput FEBRUARY_VAT =
       new VatCalculationInput(new BigDecimal("6808"), BigDecimal.ZERO, new BigDecimal("68.54"));
   static final ZusCalculationInput FEBRUARY_ZUS_UOP =
-      new ZusCalculationInput(true, true, "JDG", false, new BigDecimal("60000"), null);
+      new ZusCalculationInput(true, true, "JDG", false, new BigDecimal("60000"), null,
+          null, BigDecimal.ZERO, null, BigDecimal.ZERO);
 
   private February2026CalculatorFixture() {}
 }

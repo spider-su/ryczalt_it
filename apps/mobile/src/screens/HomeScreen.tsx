@@ -48,7 +48,10 @@ import {
   receivedInvoiceGroups,
 } from "../presentation/invoiceList";
 import { useAuth } from "../auth/AuthContext";
-import { mergeAccountingMonthParts, type AccountingMonthParts } from "../data/accountingRepository";
+import {
+  mergeAccountingMonthParts,
+  type AccountingMonthParts,
+} from "../data/accountingRepository";
 import type { AppTabParamList } from "../navigation/AppNavigator";
 import {
   obligationStatusText,
@@ -56,7 +59,10 @@ import {
   homeInvoiceDirection,
   paymentStatusForDisplay,
 } from "../presentation/accounting";
-import { onboardingApi, type Readiness } from "../api/onboardingApi";
+import {
+  accountingReadinessApi,
+  type Readiness,
+} from "../api/accountingReadinessApi";
 
 type Props = BottomTabScreenProps<AppTabParamList, "Home">;
 export function HomeScreen({ navigation }: Props) {
@@ -111,7 +117,12 @@ export function HomeScreen({ navigation }: Props) {
       .then((value) => {
         if (!active) return;
         setParts((current) =>
-          mergeAccountingMonthParts(current, value, loadedMonthRef.current, monthId),
+          mergeAccountingMonthParts(
+            current,
+            value,
+            loadedMonthRef.current,
+            monthId,
+          ),
         );
         setLoadedMonth(monthId);
         loadedMonthRef.current = monthId;
@@ -142,7 +153,7 @@ export function HomeScreen({ navigation }: Props) {
         active = false;
       };
     }
-    onboardingApi(token)
+    accountingReadinessApi(token)
       .getReadiness(profileId, monthId)
       .then((value) => active && setReadiness(value))
       .catch(() => active && setReadinessError(true));
@@ -159,7 +170,7 @@ export function HomeScreen({ navigation }: Props) {
     if (isDemo || profileId == null || !token || readinessBusy) return;
     setReadinessBusy(true);
     try {
-      await onboardingApi(token).confirmNoActivity(profileId, monthId);
+      await accountingReadinessApi(token).confirmNoActivity(profileId, monthId);
       setReadinessRetry((value) => value + 1);
     } catch {
       setReadinessError(true);
@@ -291,7 +302,10 @@ export function HomeScreen({ navigation }: Props) {
           ) : null}
           <Section title={t("home.payments")}>
             {parts.failures.obligations ? (
-              <ErrorState title={t("home.sectionUnavailable")} onRetry={reload} />
+              <ErrorState
+                title={t("home.sectionUnavailable")}
+                onRetry={reload}
+              />
             ) : null}
             {parts.obligations ? (
               <ListGroup>
@@ -432,7 +446,10 @@ export function HomeScreen({ navigation }: Props) {
             }
           >
             {parts.failures.obligations ? (
-              <ErrorState title={t("home.sectionUnavailable")} onRetry={reload} />
+              <ErrorState
+                title={t("home.sectionUnavailable")}
+                onRetry={reload}
+              />
             ) : null}
             <ListGroup>
               {month.obligations.length ? (
@@ -480,7 +497,10 @@ export function HomeScreen({ navigation }: Props) {
         ) : received.income.length + received.costs.length > 0 ? (
           <Section title={t("home.invoices")}>
             {parts.failures.invoices ? (
-              <ErrorState title={t("home.sectionUnavailable")} onRetry={reload} />
+              <ErrorState
+                title={t("home.sectionUnavailable")}
+                onRetry={reload}
+              />
             ) : null}
             {received.income.length > 0 ? (
               <ReceivedInvoiceGroup

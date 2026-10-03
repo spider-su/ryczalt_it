@@ -67,28 +67,40 @@ public class RyczaltPeriodLifecycleService {
 
   @Transactional
   public void invalidate(long profileId, YearMonth month, InputChange change, String actor) {
-    RyczaltPeriodEntity period = findLocked(profileId, month);
-    if (period.getStatus().isFrozen()) {
-      throw new FrozenPeriodMutationException(profileId, month.getYear(), month.getMonthValue());
-    }
+    invalidateFrom(profileId, month, change, actor);
+  }
+
+  @Transactional
+  public void invalidateFrom(long profileId, YearMonth month, InputChange change, String actor) {
     Set<CalculationType> affected = CalculationInvalidationPolicy.affectedBy(change);
-    affected.forEach(
-        type ->
-            calculations
-                .findByProfileIdAndPeriodIdAndTypeAndCurrentTrue(profileId, period.id(), type)
-                .ifPresent(
-                    calculation -> {
-                      calculation.markStale();
-                      calculations.save(calculation);
-                    }));
-    // A change that no calculation depends on (for example a bank transaction) must not force a
-    // recalculation of already-current tax figures. It still records provenance for reconciliation.
-    if (!affected.isEmpty() && period.getStatus() != PeriodStatus.OPEN) {
-      period.markDirty();
-      periods.save(period);
+    var chain = periods.findByProfileIdOrderByYearDescMonthDesc(profileId).stream()
+        .filter(period -> !YearMonth.of(period.getYear(), period.getMonth()).isBefore(month))
+        .sorted(java.util.Comparator.comparing(p -> YearMonth.of(p.getYear(), p.getMonth())))
+        .toList();
+    for (var period : chain) {
+      if (!affected.isEmpty() && period.getStatus().isFrozen()
+          && calculations.findByProfileIdAndPeriodIdAndCurrentTrue(profileId, period.id()).stream()
+              .anyMatch(row -> affected.contains(row.getType()))) {
+        throw new FrozenPeriodMutationException(profileId, period.getYear(), period.getMonth());
+      }
     }
-    auditEvents.write(
-        profileId, period.id(), "CALCULATION_INVALIDATED", change.name(), actor, Instant.now());
+    for (var period : chain) {
+      boolean activityConfirmationCleared = period.clearActivityConfirmation();
+      affected.forEach(type -> calculations
+          .findByProfileIdAndPeriodIdAndTypeAndCurrentTrue(profileId, period.id(), type)
+          .ifPresent(calculation -> { calculation.markStale(); calculations.save(calculation); }));
+      if (!affected.isEmpty() && period.getStatus() != PeriodStatus.OPEN) {
+        period.markDirty();
+      }
+      if (!affected.isEmpty() || activityConfirmationCleared) {
+        periods.save(period);
+      }
+      if (activityConfirmationCleared) {
+        auditEvents.write(profileId, period.id(), "ACTIVITY_CONFIRMATION_CLEARED",
+            change.name(), actor, Instant.now());
+      }
+      auditEvents.write(profileId, period.id(), "CALCULATION_INVALIDATED", change.name(), actor, Instant.now());
+    }
   }
 
   private RyczaltPeriodEntity findLocked(long profileId, YearMonth month) {

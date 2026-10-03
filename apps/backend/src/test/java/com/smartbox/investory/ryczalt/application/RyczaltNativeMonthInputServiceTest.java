@@ -21,6 +21,46 @@ class RyczaltNativeMonthInputServiceTest {
       new RyczaltNativeMonthInputService(inputs, lifecycle);
 
   @Test
+  void openingStateRequiresEveryExplicitValueAndAllowsKnownZero() {
+    var zero = new RyczaltNativeMonthInputService.Command(true, false, "JDG", false,
+        null, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO,
+        BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO,
+        java.time.LocalDate.of(2026, 1, 1), BigDecimal.ZERO, BigDecimal.ZERO,
+        BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO);
+    org.junit.jupiter.api.Assertions.assertEquals(BigDecimal.ZERO, zero.openingVatCarryForward());
+    org.junit.jupiter.api.Assertions.assertThrows(NullPointerException.class,
+        () -> new RyczaltNativeMonthInputService.Command(true, false, "JDG", false,
+            null, null, BigDecimal.ZERO, null, BigDecimal.ZERO, BigDecimal.ZERO,
+            BigDecimal.ZERO, BigDecimal.ZERO, java.time.LocalDate.of(2026, 7, 1),
+            new BigDecimal("42000"), null, BigDecimal.ZERO, BigDecimal.ZERO,
+            new BigDecimal("125")));
+  }
+
+  @Test
+  void rejectsASecondAccountingStartDateForTheProfile() {
+    var july = YearMonth.of(2026, 7);
+    var existing = new RyczaltNativeMonthInputEntity(7L, july,
+        new RyczaltNativeMonthInputService.Command(true, false, "JDG", false,
+            null, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO,
+            BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO,
+            july.atDay(1), BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO,
+            BigDecimal.ZERO, BigDecimal.ZERO));
+    when(inputs.findFirstByProfileIdAndAccountingStartDateIsNotNullOrderByYearAscMonthAsc(7L))
+        .thenReturn(Optional.of(existing));
+    var september = YearMonth.of(2026, 9);
+    var command = new RyczaltNativeMonthInputService.Command(true, false, "JDG", false,
+        null, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO,
+        BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO,
+        september.atDay(1), BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO,
+        BigDecimal.ZERO, BigDecimal.ZERO);
+
+    org.junit.jupiter.api.Assertions.assertThrows(IllegalArgumentException.class,
+        () -> service.save(7L, september, command));
+
+    verifyNoInteractions(lifecycle);
+  }
+
+  @Test
   void sameValuesDoNotInvalidate() {
     var command = command(BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO);
     var entity = new RyczaltNativeMonthInputEntity(7L, YearMonth.of(2026, 9), command);
@@ -57,15 +97,15 @@ class RyczaltNativeMonthInputServiceTest {
     service.save(7L, YearMonth.of(2026, 9), newCommand);
 
     verify(lifecycle)
-        .invalidate(7L, YearMonth.of(2026, 9), InputChange.ZUS_INPUT_CHANGED, "native-month-input");
+        .invalidateFrom(7L, YearMonth.of(2026, 9), InputChange.ZUS_INPUT_CHANGED, "native-month-input");
     verify(lifecycle)
-        .invalidate(
+        .invalidateFrom(
             7L,
             YearMonth.of(2026, 9),
             InputChange.RYCZALT_DEDUCTIONS_CHANGED,
             "native-month-input");
     verify(lifecycle)
-        .invalidate(
+        .invalidateFrom(
             7L, YearMonth.of(2026, 9), InputChange.VAT_ADJUSTMENT_CHANGED, "native-month-input");
   }
 

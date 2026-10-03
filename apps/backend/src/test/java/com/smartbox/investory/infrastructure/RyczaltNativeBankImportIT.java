@@ -178,7 +178,11 @@ class RyczaltNativeBankImportIT {
                     "JDG",
                     false,
                     new java.math.BigDecimal("10000"),
-                    new java.math.BigDecimal("2000")),
+                    new java.math.BigDecimal("2000"),
+                    null,
+                    new java.math.BigDecimal("1649.82"),
+                    null,
+                    new java.math.BigDecimal("830.58")),
                 java.math.BigDecimal.ZERO));
 
     assertThat(result.ryczalt()).isPositive();

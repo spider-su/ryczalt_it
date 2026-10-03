@@ -49,7 +49,13 @@ public class RyczaltNativeMonthInputRestController {
       BigDecimal healthContributionPaidOverride,
       BigDecimal deductionsAlreadyConsumed,
       BigDecimal salesCorrections,
-      BigDecimal explicitVatAdjustments) {
+      BigDecimal explicitVatAdjustments,
+      java.time.LocalDate accountingStartDate,
+      BigDecimal openingYtdRevenue,
+      BigDecimal openingSocialContributionsPaid,
+      BigDecimal openingHealthContributionsPaid,
+      BigDecimal openingDeductionsConsumed,
+      BigDecimal openingVatCarryForward) {
     RyczaltNativeMonthInputService.Command command() {
       return new RyczaltNativeMonthInputService.Command(
           jdgActive,
@@ -63,7 +69,13 @@ public class RyczaltNativeMonthInputRestController {
           healthContributionPaidOverride,
           deductionsAlreadyConsumed,
           salesCorrections,
-          explicitVatAdjustments);
+          explicitVatAdjustments,
+          accountingStartDate,
+          openingYtdRevenue,
+          openingSocialContributionsPaid,
+          openingHealthContributionsPaid,
+          openingDeductionsConsumed,
+          openingVatCarryForward);
     }
   }
 }

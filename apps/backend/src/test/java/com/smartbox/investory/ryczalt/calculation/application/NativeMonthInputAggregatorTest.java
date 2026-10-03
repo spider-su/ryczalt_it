@@ -13,11 +13,14 @@ import com.smartbox.investory.ryczalt.persistence.InvoiceDirection;
 import com.smartbox.investory.ryczalt.persistence.RyczaltInvoiceEntity;
 import com.smartbox.investory.ryczalt.persistence.RyczaltInvoiceJpaRepository;
 import com.smartbox.investory.ryczalt.persistence.RyczaltNativeMonthInputJpaRepository;
+import com.smartbox.investory.ryczalt.persistence.RyczaltNativeMonthInputEntity;
+import com.smartbox.investory.ryczalt.application.RyczaltNativeMonthInputService;
 import com.smartbox.investory.shared.currency.CurrencyType;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.YearMonth;
 import java.util.List;
+import java.util.Optional;
 import org.junit.jupiter.api.Test;
 
 class NativeMonthInputAggregatorTest {
@@ -26,6 +29,28 @@ class NativeMonthInputAggregatorTest {
       mock(RyczaltNativeMonthInputJpaRepository.class);
   private final NativeMonthInputAggregator aggregator =
       new NativeMonthInputAggregator(invoices, monthInputs);
+
+  @Test
+  void includesMidYearOpeningRevenueAndContributionAndVatBalances() {
+    YearMonth start = YearMonth.of(2026, 7);
+    var command = new RyczaltNativeMonthInputService.Command(true, false, "JDG", false,
+        null, null, new BigDecimal("100"), null, new BigDecimal("30"), BigDecimal.ZERO,
+        BigDecimal.ZERO, BigDecimal.ZERO, start.atDay(1), new BigDecimal("42000"),
+        new BigDecimal("3000"), new BigDecimal("1000"), new BigDecimal("200"),
+        new BigDecimal("125"));
+    var settings = new RyczaltNativeMonthInputEntity(7L, start, command);
+    when(monthInputs.findFirstByProfileIdAndAccountingStartDateIsNotNullOrderByYearAscMonthAsc(7L))
+        .thenReturn(Optional.of(settings));
+    when(monthInputs.findByProfileIdAndYearAndMonth(7L, 2026, 7)).thenReturn(Optional.of(settings));
+    when(invoices.findByProfileIdOrderByAccountingDateAscIdAsc(7L)).thenReturn(List.of());
+    when(invoices.findByProfileIdAndPeriodIdOrderByAccountingDateAscIdAsc(7L, 70L)).thenReturn(List.of());
+
+    var input = aggregator.aggregate(7L, 70L, start);
+
+    assertEquals(new BigDecimal("42000"), input.zus().ytdRyczaltRevenue());
+    assertEquals(new BigDecimal("125"), input.vat().carryForwardInputVat());
+    assertEquals(0, new BigDecimal("3300.00").compareTo(input.deductionCarryForward()));
+  }
 
   @Test
   void groupsApprovedIncomeAndCostVatIntoNormalizedFacts() {

@@ -36,6 +36,47 @@ class NativeMonthCalculationServiceTest {
       mock(RyczaltObligationJpaRepository.class);
   private final SettlementService settlement = mock(SettlementService.class);
 
+  @org.junit.jupiter.api.Test
+  void rejectsUnsupportedTaxYearsBeforeCreatingPeriods() {
+    var service = service();
+    for (int year : List.of(2025, 2027)) {
+      org.junit.jupiter.api.Assertions.assertThrows(IllegalArgumentException.class,
+          () -> service.calculate(7L, YearMonth.of(year, 1), null));
+    }
+    org.mockito.Mockito.verifyNoInteractions(periods);
+  }
+
+  @Test
+  void persistedZeroRevenueRequiresAnExplicitPeriodConfirmation() {
+    YearMonth month = YearMonth.of(2026, 9);
+    RyczaltPeriodEntity period = mock(RyczaltPeriodEntity.class);
+    when(period.id()).thenReturn(10L);
+    when(period.getStatus()).thenReturn(PeriodStatus.OPEN);
+    when(period.getActivityConfirmationType()).thenReturn(null);
+    when(periods.findLocked(7L, 2026, 9)).thenReturn(Optional.of(period));
+    when(inputAggregator.hasRevenueInvoices(7L, 10L)).thenReturn(false);
+
+    var exception = org.junit.jupiter.api.Assertions.assertThrows(
+        com.smartbox.investory.ryczalt.application.NeedsReviewException.class,
+        () -> service().calculateFromPersistedInvoices(7L, month));
+
+    org.junit.jupiter.api.Assertions.assertTrue(exception.getMessage().contains("explicit no-revenue confirmation"));
+    verify(inputAggregator, org.mockito.Mockito.never()).aggregate(7L, 10L, month);
+  }
+
+  @Test
+  void rejectsUnsupportedRyczaltRateBeforeCreatingPeriod() {
+    var input = new NativeMonthCalculationInput(
+        Map.of(new BigDecimal("0.08"), new BigDecimal("100")),
+        new VatCalculationInput(BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO),
+        paidInput(), BigDecimal.ZERO);
+
+    assertEquals("Only the 12% ryczałt rate is supported",
+        org.junit.jupiter.api.Assertions.assertThrows(IllegalArgumentException.class,
+            () -> service().calculate(7L, YearMonth.of(2026, 9), input)).getMessage());
+    org.mockito.Mockito.verifyNoInteractions(periods);
+  }
+
   @Test
   void calculatesAllTaxesAndCreatesThreeObligationsForNewMonth() {
     YearMonth month = YearMonth.of(2026, 9);
@@ -73,7 +114,11 @@ class NativeMonthCalculationServiceTest {
                     "JDG",
                     false,
                     new BigDecimal("10000.00"),
-                    new BigDecimal("2000.00")),
+                    new BigDecimal("2000.00"),
+                    null,
+                    new BigDecimal("1861.53"),
+                    null,
+                    new BigDecimal("498.35")),
                 BigDecimal.ZERO));
 
     assertEquals(new BigDecimal("947"), result.ryczalt());
@@ -103,6 +148,11 @@ class NativeMonthCalculationServiceTest {
             7L, 10L, com.smartbox.investory.ryczalt.persistence.CalculationType.VAT))
         .thenReturn(Optional.of(previousVat));
     when(previousVat.getResultJson()).thenReturn("{\"excessVatCarryForward\":30}");
+    var previousRyczalt = mock(RyczaltCalculationEntity.class);
+    when(calculationRows.findByProfileIdAndPeriodIdAndTypeAndCurrentTrue(
+            7L, 10L, com.smartbox.investory.ryczalt.persistence.CalculationType.RYCZALT))
+        .thenReturn(Optional.of(previousRyczalt));
+    when(previousRyczalt.getResultJson()).thenReturn("{\"deductionsCarryForward\":25}");
     when(obligations.findByProfileIdAndPeriodIdOrderByTypeAsc(7L, 11L)).thenReturn(List.of());
     when(calculations.saveCurrent(any(), any(Long.TYPE), any(), any(), any(), any(), any()))
         .thenAnswer(invocation -> mock(RyczaltCalculationEntity.class));
@@ -115,11 +165,12 @@ class NativeMonthCalculationServiceTest {
                 Map.of(new BigDecimal("0.12"), new BigDecimal("1000")),
                 new VatCalculationInput(
                     new BigDecimal("100"), BigDecimal.ZERO, BigDecimal.ZERO),
-                new ZusCalculationInput(true, false, "JDG", false, BigDecimal.ZERO, null),
+                paidInput(),
                 BigDecimal.ZERO));
 
     assertEquals(new BigDecimal("30"), result.vatResult().carryForwardInputVat());
     assertEquals(new BigDecimal("70"), result.vat());
+    assertEquals(0, new BigDecimal("25").compareTo(result.ryczaltResult().deductionsAvailable()));
   }
 
   @Test
@@ -150,8 +201,26 @@ class NativeMonthCalculationServiceTest {
                         Map.of(),
                         new VatCalculationInput(
                             BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO),
-                        new ZusCalculationInput(true, false, "JDG", false, BigDecimal.ZERO, null),
+                        paidInput(),
                         BigDecimal.ZERO)));
+  }
+
+  @Test
+  void rejectsLaterMonthWhenPreviousCurrentVatResultIsMissing() {
+    YearMonth month = YearMonth.of(2026, 10);
+    var current = mock(RyczaltPeriodEntity.class);
+    var previous = mock(RyczaltPeriodEntity.class);
+    when(current.getYear()).thenReturn(2026);
+    when(current.getMonth()).thenReturn(10);
+    when(current.getStatus()).thenReturn(PeriodStatus.OPEN);
+    when(periods.findLocked(7L, 2026, 10)).thenReturn(Optional.of(current));
+    when(periods.findByProfileIdAndYearAndMonth(7L, 2026, 9)).thenReturn(Optional.of(previous));
+    when(previous.id()).thenReturn(9L);
+
+    org.junit.jupiter.api.Assertions.assertThrows(IllegalStateException.class,
+        () -> service().calculate(7L, month, new NativeMonthCalculationInput(Map.of(),
+            new VatCalculationInput(BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO),
+            paidInput(), BigDecimal.ZERO)));
   }
 
   private NativeMonthCalculationService service() {
@@ -163,5 +232,10 @@ class NativeMonthCalculationServiceTest {
         settlement,
         calculationRows,
         JsonMapper.builder().build());
+  }
+
+  private static ZusCalculationInput paidInput() {
+    return new ZusCalculationInput(true, false, "JDG", false, BigDecimal.ZERO, null,
+        null, BigDecimal.ZERO, null, BigDecimal.ZERO);
   }
 }
