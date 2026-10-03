@@ -8,6 +8,10 @@ export type ManualCostDraft = { counterparty: string; taxIdentifier: string; ref
 export type ManualCostDraftError = 'counterparty' | 'reference' | 'issueDate' | 'dueDate' | 'currency' | 'netAmount' | 'vatAmount' | 'grossAmount';
 const PURCHASE_TYPES = new Set(['PURCHASE_INVOICE', 'RECEIPT', 'PURCHASE']);
 
+function inputKey(field: string): string {
+  return field.toLowerCase().replace(/_([a-z])/g, (_, letter: string) => letter.toUpperCase());
+}
+
 export function normalizeManualDecimal(value: string): string | null {
   const input = value.trim();
   if (input.includes('.') && input.includes(',')) return null;
@@ -38,12 +42,12 @@ export function validateManualCostDraft(draft: ManualCostDraft): ManualCostDraft
 }
 
 function mapOptions(inputs: RequiredInputDto[]): CostOption[] { return (inputs.find((input) => input.field.toUpperCase() === 'CLASSIFICATION')?.options ?? inputs.find((input) => input.field.toUpperCase() === 'VAT_TREATMENT')?.options ?? []).map((option) => ({ value: option.value, label: option.labelKey || option.value, recommended: false })); }
-export function isRequiredInputActive(input: RequiredInputDto, values: Record<string, string | null>): boolean { return !input.dependsOn || input.dependsOnValues.includes(values[input.dependsOn] ?? ''); }
-export function missingRequiredInput(inputs: RequiredInputDto[], values: Record<string, string | null>): RequiredInputDto | null { return inputs.find((input) => isRequiredInputActive(input, values) && input.required && !values[input.field]?.trim()) ?? null; }
+export function isRequiredInputActive(input: RequiredInputDto, values: Record<string, string | null>): boolean { return !input.dependsOn || input.dependsOnValues.includes(values[input.dependsOn] ?? values[inputKey(input.dependsOn)] ?? ''); }
+export function missingRequiredInput(inputs: RequiredInputDto[], values: Record<string, string | null>): RequiredInputDto | null { return inputs.find((input) => isRequiredInputActive(input, values) && input.required && !(values[input.field] ?? values[inputKey(input.field)])?.trim()) ?? null; }
 export function mapRecognizedCost(candidate: InvoiceCandidateDto): CostReview {
   const requiredInputs = candidate.requiredInputs ?? [];
-  const requiresInput = candidate.direction.toUpperCase() === 'COST' && Boolean(missingRequiredInput(requiredInputs, { classification: candidate.classification, vatTreatment: candidate.vatTreatment, ryczaltRate: candidate.ryczaltRate }));
-  return { state: candidate.duplicate ? 'duplicate' : candidate.direction.toUpperCase() !== 'COST' ? 'unsupported' : requiresInput ? 'requires_input' : 'supported', candidate, supplier: '', documentNumber: candidate.reference, amount: candidate.grossAmount, currency: candidate.currency, issueDate: candidate.issueDate, requiresVatDecision: requiresInput, options: mapOptions(requiredInputs), requiredInputs };
+  const requiresInput = candidate.direction.toUpperCase() === 'COST' && Boolean(missingRequiredInput(requiredInputs, { CLASSIFICATION: candidate.classification, VAT_TREATMENT: candidate.vatTreatment, RYCZALT_RATE: candidate.ryczaltRate, COUNTERPARTY: candidate.counterpartyId == null ? null : String(candidate.counterpartyId), PAYMENT_VERIFICATION_POLICY: candidate.paymentVerificationPolicy }));
+  return { state: candidate.direction.toUpperCase() !== 'COST' ? 'unsupported' : requiresInput ? 'requires_input' : 'supported', candidate, supplier: '', documentNumber: candidate.reference, amount: candidate.grossAmount, currency: candidate.currency, issueDate: candidate.issueDate, requiresVatDecision: requiresInput, options: mapOptions(requiredInputs), requiredInputs };
 }
 export function invoiceFromCandidate(candidate: InvoiceCandidateDto, values: Record<string, string | null>): InvoiceCreateDto {
   return { candidateKey: candidate.candidateKey, counterpartyId: candidate.counterpartyId, classification: values.classification || candidate.classification, vatTreatment: candidate.vatTreatment, ryczaltRate: candidate.ryczaltRate, paymentVerificationPolicy: values.paymentVerificationPolicy || candidate.paymentVerificationPolicy, approve: true, rememberRule: false };
