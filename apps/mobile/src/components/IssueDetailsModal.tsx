@@ -1,4 +1,4 @@
-import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Modal, Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { modalSafeAreaEdges } from '../navigation/safeAreaLayout';
 import { AccountingIssue, Invoice } from '../model/accounting';

@@ -41,8 +41,6 @@ export type ManualCostDraftError =
   | "netAmount"
   | "vatAmount"
   | "grossAmount";
-const PURCHASE_TYPES = new Set(["PURCHASE_INVOICE", "RECEIPT", "PURCHASE"]);
-
 function inputKey(field: string): string {
   return field
     .toLowerCase()
