@@ -118,7 +118,7 @@ if [[ ! -s "$candidate" ]]; then
   exit 1
 fi
 unzip -t "$candidate" >/dev/null
-if ! unzip -Z1 "$candidate" | grep -Fxq 'assets/index.android.bundle'; then
+if ! unzip -Z1 "$candidate" | awk '$0 == "assets/index.android.bundle" { found = 1 } END { exit !found }'; then
   echo "APK does not contain the embedded Android JS bundle; refusing a non-standalone artifact." >&2
   exit 1
 fi
