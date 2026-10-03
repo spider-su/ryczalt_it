@@ -11,7 +11,7 @@ describe('native invoice recognition presentation', () => {
   it('renders backend-defined unresolved fields without hardcoding the decision set', () => {
     const review = mapRecognizedCost(recognitionWithRequiredInputs);
     expect(review.state).toBe('requires_input');
-    expect(missingRequiredInput(review.requiredInputs, { classification: null })).not.toBeNull();
+    expect(missingRequiredInput(review.requiredInputs, { CLASSIFICATION: null })).not.toBeNull();
     expect(missingRequiredInput(review.requiredInputs, { classification: 'FUEL' })).toBeNull();
   });
   it('validates required manual invoice fields and accepts optional due dates', () => {

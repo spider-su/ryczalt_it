@@ -40,6 +40,10 @@ class CanonicalAccountingOpenApiIT extends FastDatabaseTest {
             "/api/profiles/{profileId}/accounting/periods",
             "/api/profiles/{profileId}/accounting/periods/{month}",
             "/api/profiles/{profileId}/accounting/periods/{month}/invoices",
+            "/api/profiles/{profileId}/accounting/periods/{month}/transactions",
+            "/api/profiles/{profileId}/accounting/periods/{month}/obligations",
+            "/api/profiles/{profileId}/accounting/periods/{month}/reference-obligations",
+            "/api/profiles/{profileId}/accounting/periods/{month}/issues",
             "/api/profiles/{profileId}/accounting/invoices",
             "/api/profiles/{profileId}/accounting/invoices/recognize",
             "/api/profiles/{profileId}/accounting/invoices/manual-candidates",
@@ -47,11 +51,16 @@ class CanonicalAccountingOpenApiIT extends FastDatabaseTest {
             "/api/profiles/{profileId}/accounting/payments",
             "/api/profiles/{profileId}/accounting/invoices/{invoiceId}/manual-paid",
             "/api/profiles/{profileId}/accounting/counterparties",
+            "/api/profiles/{profileId}/accounting/counterparties/{id}/rules",
+            "/api/profiles/{profileId}/accounting/periods/{month}/calculate",
             "/api/profiles/{profileId}/accounting/periods/{month}/freeze",
+            "/api/profiles/{profileId}/accounting/periods/{month}/reopen",
             "/api/profiles/{profileId}/accounting/readiness",
             "/api/profiles/{profileId}/accounting/periods/{month}/activity-confirmation",
             "/api/v1/auth/login",
-            "/api/v1/auth/me")
+            "/api/v1/auth/me",
+            "/api/v1/auth/invitations/{token}/accept",
+            "/api/v1/admin/user-invitations")
         .forEach(path -> assertThat(paths.has(path)).as("OpenAPI route %s", path).isTrue());
 
     JsonNode schemas = document.path("components").path("schemas");

@@ -336,10 +336,6 @@ export function AuthProvider({ children }: PropsWithChildren) {
     setProfileId(DEMO_PROFILE_ID);
   }
   async function signOut() {
-    if (Platform.OS === "web")
-      await publicAuthClient()
-        .postVoid("/api/v1/auth/logout")
-        .catch(() => undefined);
     await invalidateSession();
     await disableBiometricLogin();
   }
