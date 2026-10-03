@@ -28,6 +28,7 @@ public final class RyczaltCalculator {
         input
             .socialContributionDeduction()
             .add(healthDeduction)
+            .add(input.deductionCarryForward())
             .subtract(input.deductionsAlreadyConsumed())
             .max(BigDecimal.ZERO);
     BigDecimal used = available.min(totalRevenue.max(BigDecimal.ZERO));

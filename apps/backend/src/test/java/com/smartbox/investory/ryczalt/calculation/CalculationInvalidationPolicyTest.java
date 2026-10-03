@@ -10,7 +10,7 @@ class CalculationInvalidationPolicyTest {
   @Test
   void mapsChangesOnlyToDependentCalculations() {
     assertEquals(
-        EnumSet.of(CalculationType.RYCZALT, CalculationType.VAT),
+        EnumSet.of(CalculationType.RYCZALT, CalculationType.VAT, CalculationType.ZUS),
         CalculationInvalidationPolicy.affectedBy(InputChange.INCOME_INVOICE_CHANGED));
     assertEquals(
         EnumSet.of(CalculationType.VAT),
