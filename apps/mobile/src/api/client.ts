@@ -263,28 +263,33 @@ export class HttpClient {
         );
       }
     } catch (error) {
-      if (error instanceof ApiError) throw error;
-      if (isAbortError(error)) {
-        if (timedOut)
-          throw new ApiError(
-            "Investory API request timed out",
-            undefined,
-            error,
-            "timeout",
-          );
-        throw new ApiError(
-          "Investory API request was cancelled",
+      let apiError: ApiError;
+      if (error instanceof ApiError) {
+        apiError = error;
+      } else if (isAbortError(error)) {
+        apiError = timedOut
+          ? new ApiError(
+              "Investory API request timed out",
+              undefined,
+              error,
+              "timeout",
+            )
+          : new ApiError(
+              "Investory API request was cancelled",
+              undefined,
+              error,
+              "cancelled",
+            );
+      } else {
+        apiError = new ApiError(
+          "Investory API is unavailable",
           undefined,
           error,
-          "cancelled",
+          "unavailable",
         );
       }
-      throw new ApiError(
-        "Investory API is unavailable",
-        undefined,
-        error,
-        "unavailable",
-      );
+      logApiFailure(path, apiError, error);
+      throw apiError;
     } finally {
       clearTimeout(timeout);
       externalSignal?.removeEventListener("abort", abortFromCaller);
@@ -308,6 +313,33 @@ export class HttpClient {
     }
     return null;
   }
+}
+
+function logApiFailure(path: string, error: ApiError, cause: unknown) {
+  if (typeof __DEV__ === "undefined" || !__DEV__) return;
+  const safeMessages: Record<ApiError["kind"], string> = {
+    authentication: "Authentication failed",
+    authorization: "Access was denied",
+    "not-found": "The requested API resource was not found",
+    conflict: "The request conflicts with current backend state",
+    validation: "The backend rejected the request as invalid",
+    timeout: "The request timed out",
+    cancelled: "The request was cancelled",
+    unavailable: "The backend could not be reached",
+    response: "The backend returned an unsuccessful or invalid response",
+  };
+  const rootCause = error.cause ?? cause;
+  const exceptionType =
+    rootCause && typeof rootCause === "object" && "name" in rootCause
+      ? String((rootCause as { name: unknown }).name)
+      : error.name;
+  console.warn("[Investory API] request failed", {
+    path,
+    status: error.status ?? null,
+    kind: error.kind,
+    exceptionType,
+    message: safeMessages[error.kind],
+  });
 }
 
 function isAbortError(error: unknown): boolean {

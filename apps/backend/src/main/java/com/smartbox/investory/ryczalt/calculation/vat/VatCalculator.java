@@ -16,6 +16,9 @@ public final class VatCalculator {
   }
 
   public VatCalculationResult calculate(VatCalculationInput input) {
+    if (input.carryForwardInputVat() == null) {
+      throw new IllegalArgumentException("VAT carry-forward must be supplied explicitly");
+    }
     BigDecimal output = input.outputVatBeforeCorrections().add(input.salesCorrections());
     BigDecimal availableInputVat =
         RoundingPolicy.roundVatSettlementAmount(input.deductibleInputVat())

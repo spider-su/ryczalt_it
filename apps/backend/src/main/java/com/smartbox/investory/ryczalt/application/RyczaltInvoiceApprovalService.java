@@ -3,8 +3,11 @@ package com.smartbox.investory.ryczalt.application;
 import com.smartbox.investory.ryczalt.calculation.InputChange;
 import com.smartbox.investory.ryczalt.domain.*;
 import com.smartbox.investory.ryczalt.persistence.*;
+import com.smartbox.investory.ryczalt.integration.fx.FxRate;
+import com.smartbox.investory.ryczalt.integration.fx.RyczaltFxRateService;
 import com.smartbox.investory.shared.currency.CurrencyType;
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.YearMonth;
 import java.util.UUID;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -21,6 +24,7 @@ public class RyczaltInvoiceApprovalService {
   private final RyczaltSourceReferenceJpaRepository sources;
   private final RyczaltPeriodLifecycleService lifecycle;
   private final RyczaltCounterpartyService counterpartyService;
+  private final RyczaltFxRateService fxRates;
 
   public RyczaltInvoiceApprovalService(
       RyczaltInvoiceCandidateJpaRepository candidates,
@@ -29,7 +33,8 @@ public class RyczaltInvoiceApprovalService {
       RyczaltPeriodJpaRepository periods,
       RyczaltSourceReferenceJpaRepository sources,
       RyczaltPeriodLifecycleService lifecycle,
-      RyczaltCounterpartyService counterpartyService) {
+      RyczaltCounterpartyService counterpartyService,
+      RyczaltFxRateService fxRates) {
     this.candidates = candidates;
     this.counterparties = counterparties;
     this.invoices = invoices;
@@ -37,6 +42,7 @@ public class RyczaltInvoiceApprovalService {
     this.sources = sources;
     this.lifecycle = lifecycle;
     this.counterpartyService = counterpartyService;
+    this.fxRates = fxRates;
   }
 
   @Transactional
@@ -110,6 +116,15 @@ public class RyczaltInvoiceApprovalService {
                 ? ApprovalMethod.COUNTERPARTY_RULE
                 : ApprovalMethod.MANUAL)
             : null;
+    CurrencyType currency = CurrencyType.valueOf(candidate.getCurrency());
+    FxRate fx =
+        currency == CurrencyType.PLN
+            ? null
+            : fxRates.rateFor(currency.name(), candidate.getSaleDate() == null
+                ? candidate.getIssueDate()
+                : candidate.getSaleDate());
+    BigDecimal bookedNetPln = convertToPln(candidate.getNetAmount(), fx);
+    BigDecimal bookedVatPln = convertToPln(candidate.getVatAmount(), fx);
     candidate.apply(classification, vatTreatment, ratio, rate, policy, status, method);
     candidate.setCounterpartyId(cpId);
     RyczaltInvoiceEntity invoice;
@@ -128,10 +143,19 @@ public class RyczaltInvoiceApprovalService {
                   candidate.getNetAmount(),
                   candidate.getVatAmount(),
                   candidate.getGrossAmount(),
-                  CurrencyType.valueOf(candidate.getCurrency()),
-                  null,
+                  currency,
+                  bookedNetPln,
                   rate,
                   ratio));
+      invoice.setBookedVatPln(bookedVatPln);
+      if (fx != null) {
+        invoice.setBookedNetPln(
+            bookedNetPln,
+            fx.rate(),
+            fx.effectiveDate(),
+            fx.provider(),
+            fx.providerReference());
+      }
       invoice.applyDecision(cp, classification, vatTreatment, ratio, rate, policy, status, method);
       invoices.save(invoice);
       sources.save(
@@ -192,6 +216,10 @@ public class RyczaltInvoiceApprovalService {
 
   private static boolean blank(String value) {
     return value == null || value.isBlank();
+  }
+
+  private static BigDecimal convertToPln(BigDecimal amount, FxRate rate) {
+    return rate == null ? amount : amount.multiply(rate.rate()).setScale(4, RoundingMode.HALF_UP);
   }
 
   private static boolean explicit(String value) {

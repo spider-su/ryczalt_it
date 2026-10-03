@@ -9,18 +9,18 @@ read models and profile-scoped repository queries. The common resources below ar
 
 ## Consumer evidence
 
-The mobile client was inspected in the companion `investory-accounting-mobile` checkout.
-Its API paths are defined in `src/api/accountingPaths.ts` and calls are made by
-`src/api/accountingApi.ts`. The mobile mapper is `src/api/mappers/accountingMapper.ts`.
+The mobile client is in `apps/mobile`. Its accounting API paths and calls are defined under
+`apps/mobile/src/api`, with presentation mapping in `apps/mobile/src/api/mappers`.
 
 | Current endpoint | Web | Mobile | Current owner | Target |
 | --- | --- | --- | --- | --- |
 | native period, invoice, transaction, obligation, issue, and payment routes | web/mobile target | native Ryczalt | `RyczaltAccountingRestController` | stable native contract |
 | native counterparty and invoice-recognition routes | web target | native Ryczalt | dedicated Ryczalt controllers | stable native contract |
 | `POST .../periods/{month}/calculate` | web/API | no current mobile use | native Ryczalt | aggregates persisted facts and completes one month |
+| `GET .../accounting/readiness` and `POST .../periods/{month}/activity-confirmation` | no current web use | readiness and explicit no-revenue declaration | `RyczaltMobileReadinessRestController` | profile-scoped, persisted, backend-authoritative |
 | `POST .../bank/import` and `POST .../ksef/sync` | web/API | no current mobile use | native Ryczalt adapters | source acquisition is native; filing remains separate |
 | old `/api/v1` mobile and `/accounting/months` routes | removed | none in active native path | none | historical docs only |
-| filing, confirmation, and JPK commands | not exposed | no current native consumer | none | outside the current native accounting scope |
+| filing/JPK commands | not exposed | no current native consumer | none | outside the current native accounting scope |
 
 The mobile client consumes monthly facts for revenue, Ryczałt/VAT/ZUS amounts, payment rows,
 issues, document rows, source/review/payment statuses, bank/reconciliation summaries, filing
@@ -59,9 +59,22 @@ GET  /api/profiles/{profileId}/accounting/invoices?month=YYYY-MM&counterpartyId=
 POST /api/profiles/{profileId}/accounting/periods/{month}/freeze
 POST /api/profiles/{profileId}/accounting/periods/{month}/reopen
 POST /api/profiles/{profileId}/accounting/periods/{month}/calculate
+PUT  /api/profiles/{profileId}/accounting/periods/{month}/input-settings
+GET  /api/profiles/{profileId}/accounting/readiness?month=YYYY-MM
+POST /api/profiles/{profileId}/accounting/periods/{month}/activity-confirmation
 POST /api/profiles/{profileId}/accounting/bank/import
 POST /api/profiles/{profileId}/accounting/ksef/sync
 ```
+
+Mobile readiness is derived from the persisted taxpayer identity, accounting start/opening state,
+monthly contribution facts, period invoices, and current calculation rows. A missing fact is
+reported as action required or historical data missing; the endpoint does not substitute zero.
+KSeF is returned as optional and unavailable unless an enabled integration supplies authoritative
+state. `POST .../activity-confirmation` accepts only `{ "type": "NO_REVENUE" }`, is profile-owner
+scoped, rejects a period containing income invoices, and records the actor and timestamp. It is
+idempotent. Any later accounting input mutation clears the confirmation and writes an audit event.
+Calculation from persisted invoices requires this explicit confirmation when the month has no
+income invoices.
 
 The top-level period response is a factual summary only:
 
@@ -103,6 +116,17 @@ Invoice responses expose a compact counterparty (`id`, `legalName`, `alias`, nul
 matching status, defaulting to `UNMATCHED` when no reliable invoice-level match exists.
 Counterparty-rule `vatDeductionRatio` and `ryczaltRate` are JSON strings on both
 responses and requests; responses use plain decimal notation without scientific notation.
+
+`PUT .../periods/{month}/input-settings` stores supported JDG inputs. The start-month request may
+include `accountingStartDate`, `openingYtdRevenue`, `openingSocialContributionsPaid`,
+`openingHealthContributionsPaid`, `openingDeductionsConsumed`, and `openingVatCarryForward`; when
+the date is supplied, every amount is required (zero is explicit known zero) and the date must
+belong to that path month in 2026. For every managed month, `socialContributionDeduction` and
+`healthContributionPaidOverride` are amounts actually paid that month, not amounts due; send zero
+when nothing was paid. Missing payment facts prevent calculation. `ytdRyczaltRevenue` is a legacy
+field and is ignored by cumulative aggregation, which recomputes from opening state and approved
+invoices. The API accepts only `zusRegime: "JDG"`; voluntary sickness requires active JDG primary
+insurance. Unsupported years/regimes and frozen downstream dependencies fail explicitly.
 
 `paymentStatus` is a stable enum: `MATCHED`, `PARTIALLY_MATCHED`, `UNMATCHED`,
 `MANUALLY_CONFIRMED`, or `NOT_REQUIRED`. `MANUALLY_CONFIRMED` is only for a cost invoice and is

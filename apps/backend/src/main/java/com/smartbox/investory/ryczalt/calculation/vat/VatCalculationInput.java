@@ -15,7 +15,8 @@ public record VatCalculationInput(
     salesCorrections = required(salesCorrections, "salesCorrections");
     deductibleInputVat = required(deductibleInputVat, "deductibleInputVat");
     explicitAdjustments = required(explicitAdjustments, "explicitAdjustments");
-    carryForwardInputVat = required(carryForwardInputVat, "carryForwardInputVat");
+    // Null is reserved for the persisted orchestration path: resolve from prior VAT or opening
+    // state before entering the pure calculator. Convenience constructors still mean zero.
   }
 
   public VatCalculationInput(

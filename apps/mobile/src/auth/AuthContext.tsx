@@ -36,7 +36,6 @@ import {
   biometricLoginAvailable,
   BIOMETRIC_ENABLED_KEY,
 } from "./biometric";
-import { onboardingApi, type OnboardingState } from "../api/onboardingApi";
 
 const TOKEN_KEY = "investory.authToken";
 const PROFILE_ID_KEY = "investory.accountingProfileId";
@@ -62,9 +61,6 @@ type AuthContextValue = {
   error: AuthErrorCode | null;
   biometricAvailable: boolean;
   biometricEnabled: boolean;
-  onboardingState: OnboardingState | null;
-  onboardingLoading: boolean;
-  refreshOnboarding: () => Promise<void>;
   signIn: (email: string, password: string) => Promise<void>;
   activateAccount: (token: string, password: string) => Promise<void>;
   unlockWithBiometrics: () => Promise<boolean>;
@@ -115,9 +111,6 @@ export function AuthProvider({ children }: PropsWithChildren) {
   const [error, setError] = useState<AuthErrorCode | null>(null);
   const [biometricAvailable, setBiometricAvailable] = useState(false);
   const [biometricEnabled, setBiometricEnabled] = useState(false);
-  const [onboardingState, setOnboardingState] =
-    useState<OnboardingState | null>(null);
-  const [onboardingLoading, setOnboardingLoading] = useState(false);
   const invalidateSession = useCallback(async () => {
     rotateAccountingSession();
     const activeProfileId = profileIdRef.current;
@@ -131,8 +124,6 @@ export function AuthProvider({ children }: PropsWithChildren) {
     setAccountingProfileId(null);
     setToken(null);
     setProfileId(null);
-    setOnboardingState(null);
-    setOnboardingLoading(false);
   }, []);
   async function resolveProfile(nextToken: string): Promise<ProfileIdentity> {
     try {
@@ -241,26 +232,6 @@ export function AuthProvider({ children }: PropsWithChildren) {
       cancelled = true;
     };
   }, [invalidateSession]);
-  const refreshOnboarding = useCallback(async () => {
-    if (profileId == null || !token || isDemo) {
-      setOnboardingState(
-        profileId == null
-          ? null
-          : { profileId, state: "COMPLETED", ksefState: "SKIPPED" },
-      );
-      setOnboardingLoading(false);
-      return;
-    }
-    setOnboardingLoading(true);
-    try {
-      setOnboardingState(await onboardingApi(token).get(profileId));
-    } finally {
-      setOnboardingLoading(false);
-    }
-  }, [isDemo, profileId, token]);
-  useEffect(() => {
-    void refreshOnboarding().catch(() => setOnboardingState(null));
-  }, [refreshOnboarding]);
   useEffect(() => {
     setAccountingAuthFailureHandler(() => {
       void invalidateSession();
@@ -365,10 +336,6 @@ export function AuthProvider({ children }: PropsWithChildren) {
     setProfileId(DEMO_PROFILE_ID);
   }
   async function signOut() {
-    if (Platform.OS === "web")
-      await publicAuthClient()
-        .postVoid("/api/v1/auth/logout")
-        .catch(() => undefined);
     await invalidateSession();
     await disableBiometricLogin();
   }
@@ -382,9 +349,6 @@ export function AuthProvider({ children }: PropsWithChildren) {
         error,
         biometricAvailable,
         biometricEnabled,
-        onboardingState,
-        onboardingLoading,
-        refreshOnboarding,
         signIn,
         activateAccount,
         unlockWithBiometrics,

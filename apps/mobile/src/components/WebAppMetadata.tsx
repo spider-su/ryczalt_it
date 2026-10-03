@@ -25,7 +25,7 @@ export function WebAppMetadata() {
       themeColor.name = 'theme-color';
       document.head.appendChild(themeColor);
     }
-    themeColor.content = '#1769E0';
+    themeColor.content = '#E30620';
     return () => document.head.querySelectorAll('[data-investory-brand="true"]').forEach((element) => element.remove());
   }, []);
   return null;

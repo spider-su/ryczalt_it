@@ -72,7 +72,8 @@ public class SecurityConfig {
     configuration.setAllowedOrigins(
         Arrays.stream(origins.split(",")).map(String::trim).filter(v -> !v.isBlank()).toList());
     configuration.setAllowedMethods(java.util.List.of("GET","POST","PUT","DELETE","OPTIONS"));
-    configuration.setAllowedHeaders(java.util.List.of("Authorization","Content-Type"));
+    configuration.setAllowedHeaders(
+        java.util.List.of("Authorization", "Content-Type", "X-Investory-Client"));
     configuration.setAllowCredentials(true);
     var source = new UrlBasedCorsConfigurationSource();
     source.registerCorsConfiguration("/api/**", configuration);

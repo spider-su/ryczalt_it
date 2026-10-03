@@ -3,6 +3,7 @@ import type { ReactNode } from 'react';
 import { Ionicons } from '@expo/vector-icons';
 import { createThemeStyles, theme } from '../theme/theme';
 import { t } from '../i18n';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export function Screen({ children, contentStyle }: { children: ReactNode; contentStyle?: object }) {
   return <View style={styles.screen}><View style={[styles.content, contentStyle]}>{children}</View></View>;
@@ -57,9 +58,15 @@ export function SheetHeader({ title, onClose, back = false }: { title: string; o
   return <View style={styles.sheetHeader}><Text style={styles.sheetTitle}>{title}</Text><Pressable onPress={onClose} accessibilityRole="button" accessibilityLabel={back ? t('common.back') : t('common.close')} hitSlop={10} style={styles.closeButton}><Ionicons name={back ? 'chevron-back' : 'close'} size={24} color={theme.colors.textPrimary} /></Pressable></View>;
 }
 
+/** Keep bottom sheets clear of the home indicator and Android navigation area. */
+export function useModalBottomInsetStyle() {
+  const { bottom } = useSafeAreaInsets();
+  return { paddingBottom: Math.max(0, bottom) };
+}
+
 export function StatusBanner({ kind, title, body, onDismiss, actionLabel, onAction }: { kind: 'success' | 'info' | 'warning' | 'error' | 'unknown'; title: string; body?: string; onDismiss?: () => void; actionLabel?: string; onAction?: () => void }) {
   const icon = kind === 'success' ? 'checkmark-circle-outline' : kind === 'error' ? 'alert-circle-outline' : kind === 'warning' ? 'warning-outline' : kind === 'unknown' ? 'help-circle-outline' : 'information-circle-outline';
-  return <View style={[styles.banner, styles[`banner_${kind}`]]}><Ionicons name={icon} size={24} color={bannerColors[kind]} /><View style={styles.bannerCopy}><Text style={styles.bannerTitle}>{title}</Text>{body ? <Text style={styles.bannerBody}>{body}</Text> : null}{onAction && actionLabel ? <Pressable onPress={onAction} accessibilityRole="button" style={styles.textButton}><Text style={styles.textButtonLabel}>{actionLabel}</Text></Pressable> : null}</View>{onDismiss ? <Pressable onPress={onDismiss} accessibilityRole="button" accessibilityLabel={t('common.close')} hitSlop={8}><Ionicons name="close" size={20} color={theme.colors.textSecondary} /></Pressable> : null}</View>;
+  return <View style={[styles.banner, styles[`banner_${kind}`]]}><Ionicons name={icon} size={24} color={bannerColor(kind)} /><View style={styles.bannerCopy}><Text style={styles.bannerTitle}>{title}</Text>{body ? <Text style={styles.bannerBody}>{body}</Text> : null}{onAction && actionLabel ? <Pressable onPress={onAction} accessibilityRole="button" style={styles.textButton}><Text style={styles.textButtonLabel}>{actionLabel}</Text></Pressable> : null}</View>{onDismiss ? <Pressable onPress={onDismiss} accessibilityRole="button" accessibilityLabel={t('common.close')} hitSlop={8}><Ionicons name="close" size={20} color={theme.colors.textSecondary} /></Pressable> : null}</View>;
 }
 
 export function EmptyState({ title, body, icon = 'file-tray-outline' }: { title: string; body?: string; icon?: keyof typeof Ionicons.glyphMap }) {
@@ -88,7 +95,7 @@ export function SettingsRow({ title, description, children, last = false }: { ti
 
 export function SettingsGroup({ children }: { children: ReactNode }) { return <ListGroup style={styles.settingsGroup}>{children}</ListGroup>; }
 
-const bannerColors = { success: theme.colors.success, info: theme.colors.info, warning: theme.colors.warning, error: theme.colors.danger, unknown: theme.colors.textSecondary } as const;
+const bannerColor = (kind: 'success' | 'info' | 'warning' | 'error' | 'unknown') => ({ success: theme.colors.success, info: theme.colors.info, warning: theme.colors.warning, error: theme.colors.danger, unknown: theme.colors.textSecondary })[kind];
 const styles = createThemeStyles({
   screen: { flex: 1, backgroundColor: theme.colors.background },
   content: { flex: 1, paddingHorizontal: theme.spacing.xl, paddingTop: theme.spacing.lg, paddingBottom: theme.spacing.xxl },

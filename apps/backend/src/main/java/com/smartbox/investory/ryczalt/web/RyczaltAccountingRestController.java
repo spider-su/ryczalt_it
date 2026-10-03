@@ -29,7 +29,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
 
-/** Native-only common accounting REST adapter. Legacy routes remain separate during migration. */
+/** Native common accounting REST adapter. */
 @RestController
 @RequestMapping("/api/profiles/{profileId}/accounting")
 public class RyczaltAccountingRestController {

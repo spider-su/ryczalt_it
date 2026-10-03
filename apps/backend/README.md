@@ -37,6 +37,8 @@ See:
 
 - [product strategy](../../docs/product/strategy.md)
 - [onboarding](../../docs/product/onboarding.md)
+- [calculation rules and limitations](../../docs/backend/docs/calculation-rules.md)
+- [product roadmap](../../docs/product/roadmap.md)
 - [migration plan](../../docs/migration/investory-extraction.md)
 - [release baseline](../../docs/operations/release-baseline.md)
 

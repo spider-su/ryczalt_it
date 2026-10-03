@@ -9,13 +9,15 @@ public record RyczaltCalculationInput(
     Map<BigDecimal, BigDecimal> revenueByRate,
     BigDecimal socialContributionDeduction,
     BigDecimal healthContributionPaid,
-    BigDecimal deductionsAlreadyConsumed) {
+    BigDecimal deductionsAlreadyConsumed,
+    BigDecimal deductionCarryForward) {
   public RyczaltCalculationInput {
     revenueByRate = Map.copyOf(Objects.requireNonNull(revenueByRate, "revenueByRate"));
     socialContributionDeduction =
         nonNegative(socialContributionDeduction, "socialContributionDeduction");
     healthContributionPaid = nonNegative(healthContributionPaid, "healthContributionPaid");
     deductionsAlreadyConsumed = nonNegative(deductionsAlreadyConsumed, "deductionsAlreadyConsumed");
+    deductionCarryForward = nonNegative(deductionCarryForward, "deductionCarryForward");
     revenueByRate.forEach(
         (rate, amount) -> {
           if (rate == null || rate.signum() < 0 || rate.compareTo(BigDecimal.ONE) > 0) {
@@ -27,11 +29,18 @@ public record RyczaltCalculationInput(
         });
   }
 
+  public RyczaltCalculationInput(Map<BigDecimal, BigDecimal> revenueByRate,
+      BigDecimal socialContributionDeduction, BigDecimal healthContributionPaid,
+      BigDecimal deductionsAlreadyConsumed) {
+    this(revenueByRate, socialContributionDeduction, healthContributionPaid,
+        deductionsAlreadyConsumed, BigDecimal.ZERO);
+  }
+
   public RyczaltCalculationInput(
       Map<BigDecimal, BigDecimal> revenueByRate,
       BigDecimal socialContributionDeduction,
       BigDecimal healthContributionPaid) {
-    this(revenueByRate, socialContributionDeduction, healthContributionPaid, BigDecimal.ZERO);
+    this(revenueByRate, socialContributionDeduction, healthContributionPaid, BigDecimal.ZERO, BigDecimal.ZERO);
   }
 
   private static BigDecimal nonNegative(BigDecimal value, String name) {

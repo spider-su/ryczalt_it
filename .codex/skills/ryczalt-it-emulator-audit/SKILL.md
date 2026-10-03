@@ -22,7 +22,7 @@ The skill's no-write boundary is strict: do not create/edit/delete invoices, mar
 
 ## Simple build/startup repairs
 
-Do not stop at the first build error when its technical cause is clear and low-risk. Fix a missing compatible dependency, unresolved import, typo, or generated-file issue in the smallest relevant source scope; run the targeted check/build again, then continue the audit if it passes. The APK helper automatically restores locked npm dependencies and adds the SDK-compatible `expo-clipboard` dependency when missing.
+Do not stop at the first build error when its technical cause is clear and low-risk. Fix an unresolved import, typo, or generated-file issue in the smallest relevant source scope; run the targeted check/build again, then continue the audit if it passes. The APK helper restores missing `node_modules` from the lockfile with `npm ci` and verifies that `expo-clipboard` is a direct dependency matching the lockfile. It does not repair or rewrite dependency manifests. If that check fails, stop and report the manifest repair needed; make any compatible dependency change explicitly outside the normal audit build.
 
 Keep the fix and audit evidence separate: preserve pre-existing work, record changed source files, and add/update a focused regression test when the repair changes application source behavior. Never silence an error, replace live API data with mocks, or alter accounting values/statuses to make the audit pass.
 

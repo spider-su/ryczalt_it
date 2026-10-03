@@ -11,8 +11,8 @@ expected_package="pl.investory.accounting"
 expected_owner="smart-box"
 expected_project_id="8fa28fb6-df62-4889-8e3a-8094de92bd59"
 
-if [[ ! -f "$app_config" || ! -f "$package_json" ]]; then
-  echo "Expected apps/mobile/app.json and package.json under '$repo_root'." >&2
+if [[ ! -f "$app_config" || ! -f "$package_json" || ! -f "$mobile_root/package-lock.json" ]]; then
+  echo "Expected apps/mobile/app.json, package.json, and package-lock.json under '$repo_root'." >&2
   exit 2
 fi
 
@@ -28,6 +28,21 @@ if (app?.owner !== expectedOwner) problems.push(`Expo owner must be ${expectedOw
 if (app?.extra?.eas?.projectId !== expectedProjectId) problems.push('Expo project ID does not match this checkout');
 if (problems.length) {
   console.error(problems.map((item) => `- ${item}`).join('\n'));
+  process.exit(2);
+}
+NODE
+
+node - "$package_json" "$mobile_root/package-lock.json" <<'NODE'
+const fs = require('node:fs');
+const [packagePath, lockPath] = process.argv.slice(2);
+const manifest = JSON.parse(fs.readFileSync(packagePath, 'utf8'));
+const lock = JSON.parse(fs.readFileSync(lockPath, 'utf8'));
+const declared = manifest.dependencies?.['expo-clipboard'];
+const lockedDeclaration = lock.packages?.['']?.dependencies?.['expo-clipboard'];
+const lockedVersion = lock.packages?.['node_modules/expo-clipboard']?.version;
+if (!declared || declared !== lockedDeclaration || declared !== lockedVersion) {
+  console.error('expo-clipboard must be a direct dependency whose declared and locked versions match.');
+  console.error('Run `npx expo install expo-clipboard` explicitly to select the Expo SDK-compatible version, commit both manifests, then rerun this build.');
   process.exit(2);
 }
 NODE
@@ -94,14 +109,6 @@ if [[ ! -x node_modules/.bin/expo ]]; then
   echo "Installing locked mobile dependencies with npm ci."
   npm ci
 fi
-if ! node -e 'const p=require(process.argv[1]); process.exit(p.dependencies?.["expo-clipboard"] ? 0 : 1)' "$package_json"; then
-  echo "Repairing the missing Expo clipboard native dependency with the SDK-compatible version."
-  npx expo install expo-clipboard
-fi
-if ! node -e 'const p=require(process.argv[1]); process.exit(p.dependencies?.["expo-clipboard"] ? 0 : 1)' "$package_json"; then
-  echo "expo-clipboard is still missing after the automatic dependency repair." >&2
-  exit 2
-fi
 npx expo prebuild --no-install --platform android
 (cd android && ./gradlew --no-daemon clean assembleRelease)
 
@@ -111,7 +118,7 @@ if [[ ! -s "$candidate" ]]; then
   exit 1
 fi
 unzip -t "$candidate" >/dev/null
-if ! unzip -Z1 "$candidate" | grep -Fxq 'assets/index.android.bundle'; then
+if ! unzip -Z1 "$candidate" | awk '$0 == "assets/index.android.bundle" { found = 1 } END { exit !found }'; then
   echo "APK does not contain the embedded Android JS bundle; refusing a non-standalone artifact." >&2
   exit 1
 fi

@@ -12,7 +12,7 @@ import { ActionLauncherScreen } from '../screens/ActionLauncherScreen';
 import { theme, useTheme } from '../theme/theme';
 import { t } from '../i18n';
 import { useLocale } from '../i18n/LocaleContext';
-import { getTabBarLayout } from './tabBarLayout';
+import { getCenterActionFrame, getTabBarLayout } from './tabBarLayout';
 
 export type AppTabParamList = {
   Home: undefined;
@@ -37,6 +37,7 @@ export function AppNavigator() {
   useLocale();
   const insets = useSafeAreaInsets();
   const tabBarLayout = getTabBarLayout(insets.bottom);
+  const centerActionFrame = getCenterActionFrame(tabBarLayout.height);
   return (
     <Tab.Navigator
       backBehavior="history"
@@ -75,7 +76,7 @@ export function AppNavigator() {
               accessibilityRole="button"
               accessibilityLabel={t('actions.title')}
               accessibilityState={accessibilityState}
-              style={({ pressed }) => ({ alignItems: 'center', justifyContent: 'center', width: 52, height: 52, marginTop: -6, borderRadius: 26, backgroundColor: pressed ? theme.colors.accentPressed : theme.colors.primary })}
+              style={({ pressed }) => ({ alignItems: 'center', justifyContent: 'center', width: centerActionFrame.minHeight, height: centerActionFrame.minHeight, maxHeight: centerActionFrame.maxHeight, marginTop: -6, borderRadius: 26, backgroundColor: pressed ? theme.colors.accentPressed : theme.colors.primary })}
             >
               <Ionicons name="add" size={28} color={theme.colors.onAccent} />
             </Pressable>

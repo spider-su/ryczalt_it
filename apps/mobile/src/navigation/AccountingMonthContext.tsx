@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, type Dispatch, type PropsWithChildren, type SetStateAction } from 'react';
 import { getInitialAccountingMonth } from '../api/config';
-import { clampAccountingMonth, currentLocalAccountingMonth, MIN_ACCOUNTING_MONTH } from '../utils/calendar';
+import { clampAccountingMonth, currentLocalAccountingMonth } from '../utils/calendar';
 
 type AccountingMonthContextValue = {
   month: string;

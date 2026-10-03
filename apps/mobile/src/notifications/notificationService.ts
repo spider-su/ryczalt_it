@@ -2,7 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Notifications from 'expo-notifications';
 import type { Obligation } from '../model/accounting';
 import type { UiLocale } from '../i18n';
-import { isPaymentReminderEligible, reminderCopy, reminderDate, reminderKey, type ReminderLeadDays } from './paymentReminders';
+import { reminderCopy, reminderDate, reminderKey, type ReminderLeadDays } from './paymentReminders';
 
 const preferenceKey = (profileId: number) => `investory.notifications.preferences.${profileId}`;
 const scheduleKey = (profileId: number) => `investory.notifications.schedules.${profileId}`;

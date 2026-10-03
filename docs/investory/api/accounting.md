@@ -1,7 +1,7 @@
 # Accounting user API
 
 > **Historical Investory reference.** This is migration context, not the current
-> Ryczałt runtime/API contract. See the current backend docs and [POC scope](../product/poc-scope.md).
+> Ryczałt runtime/API contract. See the current backend docs and [POC scope](../../product/poc-scope.md).
 
 The user-facing accounting boundary is profile-scoped under `/api/profiles/{profileId}/accounting`.
 `GET /months/{month}/overview` is the aggregate read for the

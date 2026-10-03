@@ -68,9 +68,7 @@ export function AddCostScreen({
   const { refreshAccounting } = useAccountingMonth();
   const [file, setFile] = useState<FileValue | null>(null);
   const [review, setReview] = useState<CostReview | null>(null);
-  const [vatTreatment, setVatTreatment] = useState<string | null>(null);
-  const [vatRate, setVatRate] = useState("");
-  const [country, setCountry] = useState("");
+  const [inputValues, setInputValues] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<
     CostErrorState | "no_document" | "unsupported" | null
@@ -150,9 +148,15 @@ export function AddCostScreen({
         : await api!.recognizeInvoice(requireAccountingProfileId(), file);
       const next = mapRecognizedCost(candidate);
       setReview(next);
-      setVatTreatment(null);
-      setVatRate("");
-      setCountry("");
+      setInputValues({
+        CLASSIFICATION: candidate.classification ?? "",
+        VAT_TREATMENT: candidate.vatTreatment ?? "",
+        RYCZALT_RATE: candidate.ryczaltRate ?? "",
+        COUNTERPARTY:
+          candidate.counterpartyId == null
+            ? ""
+            : String(candidate.counterpartyId),
+      });
       setError(next.state === "unsupported" ? "unsupported" : null);
     } catch (reason) {
       setError(mapCostError(reason));
@@ -169,10 +173,12 @@ export function AddCostScreen({
       (!api && !isDemoMode())
     )
       return setError("validation_required");
-    const values = {
-      classification: vatTreatment,
-      paymentVerificationPolicy: null,
-    };
+    const values = Object.fromEntries(
+      Object.entries(inputValues).map(([key, value]) => [
+        key,
+        value.trim() || null,
+      ]),
+    );
     if (missingRequiredInput(review.requiredInputs, values))
       return setError("validation_required");
     const candidate: InvoiceCandidateDto = review.candidate;
@@ -180,7 +186,11 @@ export function AddCostScreen({
     setError(null);
     setDuplicate(false);
     try {
-      if (isDemoMode()) addDemoCost(candidate, values.classification);
+      if (isDemoMode())
+        addDemoCost(
+          candidate,
+          values.CLASSIFICATION ?? candidate.classification ?? null,
+        );
       else {
         const result = await api!.createInvoice(
           requireAccountingProfileId(),
@@ -340,12 +350,10 @@ export function AddCostScreen({
             <Review
               review={review}
               duplicate={duplicate}
-              vatTreatment={vatTreatment}
-              vatRate={vatRate}
-              country={country}
-              onTreatment={setVatTreatment}
-              onVatRate={setVatRate}
-              onCountry={setCountry}
+              inputValues={inputValues}
+              onInputChange={(field, value) =>
+                setInputValues((current) => ({ ...current, [field]: value }))
+              }
               onSave={save}
               busy={busy}
             />
@@ -355,7 +363,9 @@ export function AddCostScreen({
               {errorText(error)}
             </Text>
           )}
-          {manualMockEnabled ? <Button label={t("cost.enterManually")} onPress={showManual} /> : null}
+          {manualMockEnabled ? (
+            <Button label={t("cost.enterManually")} onPress={showManual} />
+          ) : null}
         </>
       )}
     </Shell>
@@ -365,39 +375,18 @@ export function AddCostScreen({
 function Review({
   review,
   duplicate,
-  vatTreatment,
-  vatRate,
-  country,
-  onTreatment,
-  onVatRate,
-  onCountry,
+  inputValues,
+  onInputChange,
   onSave,
   busy,
 }: {
   review: CostReview;
   duplicate: boolean;
-  vatTreatment: string | null;
-  vatRate: string;
-  country: string;
-  onTreatment: (value: string) => void;
-  onVatRate: (value: string) => void;
-  onCountry: (value: string) => void;
+  inputValues: Record<string, string>;
+  onInputChange: (field: string, value: string) => void;
   onSave: () => void;
   busy: boolean;
 }) {
-  const inputValues: Record<string, string | null> = {
-    classification: vatTreatment,
-    vatTreatment,
-    vatRate: vatRate.trim() || null,
-    paymentVerificationPolicy: country.trim() || null,
-    RYCZALT_RATE: vatRate.trim() || null,
-  };
-  const classificationInput = review.requiredInputs.find(
-    (input) => input.field.toUpperCase() === "CLASSIFICATION",
-  );
-  const genericInputs = review.requiredInputs.filter(
-    (input) => input !== classificationInput,
-  );
   return (
     <View style={styles.extracted}>
       <Text style={styles.step}>{t("cost.recognized")}</Text>
@@ -431,59 +420,54 @@ function Review({
         <Text style={styles.notice}>{t("cost.duplicate")}</Text>
       ) : (
         <>
-          {classificationInput && (
-            <>
-              <Text style={styles.label}>
-                {costInputLabel(
-                  classificationInput.field,
-                  classificationInput.field,
-                )}
-              </Text>
-              <View style={styles.options}>
-                {classificationInput.options.map((option) => (
-                  <Pressable
-                    key={option.value}
-                    onPress={() => onTreatment(option.value)}
-                    style={[
-                      styles.option,
-                      vatTreatment === option.value && styles.optionSelected,
-                    ]}
-                    accessibilityRole="radio"
-                    accessibilityState={{
-                      selected: vatTreatment === option.value,
-                    }}
-                  >
-                    <Text
-                      style={[
-                        styles.optionText,
-                        vatTreatment === option.value &&
-                          styles.optionSelectedText,
-                      ]}
-                    >
-                      {costOptionLabel(option.value, option.labelKey)}
-                    </Text>
-                  </Pressable>
-                ))}
-              </View>
-            </>
-          )}
-          {genericInputs.map((input) =>
+          {review.requiredInputs.map((input) =>
             isRequiredInputActive(input, inputValues) ? (
-              <Field
-                key={input.field}
-                label={costInputLabel(input.field, input.field)}
-                value={inputValues[input.field] ?? ""}
-                onChangeText={
-                  input.field.toUpperCase() === "RYCZALT_RATE"
-                    ? onVatRate
-                    : onCountry
-                }
-                keyboardType={
-                  input.inputType.toUpperCase() === "DECIMAL"
-                    ? "decimal-pad"
-                    : "default"
-                }
-              />
+              input.options.length > 0 ? (
+                <View key={input.field}>
+                  <Text style={styles.label}>
+                    {costInputLabel(input.field, input.field)}
+                  </Text>
+                  <View style={styles.options}>
+                    {input.options.map((option) => (
+                      <Pressable
+                        key={option.value}
+                        onPress={() => onInputChange(input.field, option.value)}
+                        style={[
+                          styles.option,
+                          inputValues[input.field] === option.value &&
+                            styles.optionSelected,
+                        ]}
+                        accessibilityRole="radio"
+                        accessibilityState={{
+                          selected: inputValues[input.field] === option.value,
+                        }}
+                      >
+                        <Text
+                          style={[
+                            styles.optionText,
+                            inputValues[input.field] === option.value &&
+                              styles.optionSelectedText,
+                          ]}
+                        >
+                          {costOptionLabel(option.value, option.labelKey)}
+                        </Text>
+                      </Pressable>
+                    ))}
+                  </View>
+                </View>
+              ) : (
+                <Field
+                  key={input.field}
+                  label={costInputLabel(input.field, input.field)}
+                  value={inputValues[input.field] ?? ""}
+                  onChangeText={(value) => onInputChange(input.field, value)}
+                  keyboardType={
+                    input.inputType.toUpperCase() === "DECIMAL"
+                      ? "decimal-pad"
+                      : "default"
+                  }
+                />
+              )
             ) : null,
           )}
           {review.requiredInputs.length === 0 ? (

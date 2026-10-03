@@ -1,4 +1,4 @@
-import { StyleSheet, Text, View } from 'react-native';
+import { Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { AccountingPeriod } from '../model/accounting';
 import { formatMoneyWithoutCurrency } from '../utils/money';
