@@ -7,6 +7,7 @@ export type AccountingMonthParts = {
   obligations: Obligation[] | null;
   issues: AccountingIssue[] | null;
   failures: Partial<Record<'period' | 'invoices' | 'transactions' | 'obligations' | 'issues', unknown>>;
+  missingPeriod?: boolean;
 };
 
 export function mergeAccountingMonthParts(
@@ -23,6 +24,7 @@ export function mergeAccountingMonthParts(
     obligations: incoming.failures.obligations ? previous.obligations : incoming.obligations,
     issues: incoming.failures.issues ? previous.issues : incoming.issues,
     failures: incoming.failures,
+    missingPeriod: incoming.failures.period ? previous.missingPeriod : incoming.missingPeriod,
   };
 }
 
