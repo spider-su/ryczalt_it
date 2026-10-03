@@ -3,13 +3,16 @@
   <parent>
     <groupId>org.springframework.boot</groupId>
     <artifactId>spring-boot-starter-parent</artifactId>
-    <version>4.1.0</version>
+    <version>4.1.1</version>
     <relativePath/>
   </parent>
   <groupId>pl.ryczalt</groupId>
   <artifactId>ryczalt-customer-web</artifactId>
   <version>0.1.0-SNAPSHOT</version>
-  <properties><java.version>25</java.version></properties>
+  <properties>
+    <java.version>25</java.version>
+    <tomcat.version>11.0.25</tomcat.version>
+  </properties>
   <dependencies>
     <dependency><groupId>org.springframework.boot</groupId><artifactId>spring-boot-starter-web</artifactId></dependency>
     <dependency><groupId>org.springframework.boot</groupId><artifactId>spring-boot-starter-jackson</artifactId></dependency>
