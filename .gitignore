@@ -22,3 +22,4 @@
 # Generated evidence from Android emulator audits; keep the readable reports.
 /artifacts/android-audit/logs/
 /artifacts/android-audit/screenshots/
+/ryczalt-it.apk

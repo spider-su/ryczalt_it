@@ -661,6 +661,7 @@ const translations = {
         unpaid: "Nieopłacone",
         notDue: "Jeszcze niewymagalne",
         unknown: "Brak danych",
+        balanceReview: "Do weryfikacji",
       },
     },
     status: {
@@ -1156,6 +1157,7 @@ const translations = {
         unpaid: "Unpaid",
         notDue: "Not due yet",
         unknown: "No data",
+        balanceReview: "Needs review",
       },
     },
     status: {
@@ -1333,13 +1335,14 @@ export function paymentLabel(type: string): string {
   return t(`payments.types.${paymentLabelKey(type)}`);
 }
 export type PaymentStatusKey =
-  "paid" | "overdue" | "partial" | "unpaid" | "notDue" | "unknown";
+  "paid" | "overdue" | "partial" | "unpaid" | "notDue" | "unknown" | "balanceReview";
 export function paymentStatusKey(status: string): PaymentStatusKey {
   const normalized = status.toUpperCase();
   if (["PAID", "OVERPAID"].includes(normalized)) return "paid";
   if (normalized === "OVERDUE") return "overdue";
   if (["PARTIALLY_PAID", "PARTIAL"].includes(normalized)) return "partial";
   if (["OPEN", "DUE"].includes(normalized)) return "unpaid";
+  if (normalized === "BALANCE_REVIEW") return "balanceReview";
   if (normalized === "NOT_DUE") return "notDue";
   return "unknown";
 }
