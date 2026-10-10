@@ -13,7 +13,9 @@ Profile
 
 Historical/supporting data:
   ├── ryczalt_fx_rate
-  └── ryczalt_source_reference
+  ├── ryczalt_source_reference
+  ├── integration_instances / integration_secrets
+  └── integration_jobs
 ```
 
 ## Tables and ownership
@@ -37,9 +39,9 @@ provider-specific fields to canonical domain objects.
 profile/entity foreign keys prevent an obligation from one profile being matched to a transaction
 from another. A unique obligation/transaction pair makes automatic settlement idempotent.
 
-REST/application code must use the Ryczalt application port rather than repositories. Compatibility
-mapping of native read models to old `AccountingUserApi` records belongs in `app`; it must not expose
-legacy snapshots to the new domain.
+Accounting REST controllers use the Ryczalt application boundary rather than
+repositories. Native read models are mapped to canonical response contracts;
+legacy snapshots do not enter the domain.
 
 ## Precision
 

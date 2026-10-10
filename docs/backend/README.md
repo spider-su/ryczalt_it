@@ -71,6 +71,8 @@ opening facts and refuses calculations when they are incomplete.
 
 The detailed calculation rules, opening-state contract, carry-forward behavior, persisted version
 identifiers, and regression-test map are documented in [`docs/calculation-rules.md`](docs/calculation-rules.md).
+The persisted KSeF schedule and its operating checks are documented in
+[`docs/ksef-sync-job.md`](docs/ksef-sync-job.md).
 The old `_POC_V1` rule-version names are persisted identifiers; keep them stable unless an explicit
 migration/recalculation plan is approved.
 

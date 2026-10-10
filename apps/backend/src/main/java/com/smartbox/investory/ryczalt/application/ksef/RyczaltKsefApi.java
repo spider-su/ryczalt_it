@@ -4,7 +4,7 @@ import com.smartbox.investory.ryczalt.integration.ksef.KsefSyncMode;
 import java.time.YearMonth;
 import java.util.Set;
 
-/** Native Ryczalt KSeF acquisition boundary used by native REST and compatibility adapters. */
+/** Native Ryczalt KSeF acquisition boundary. */
 public interface RyczaltKsefApi {
   RyczaltKsefSyncResult sync(long profileId, YearMonth month, Set<KsefSyncMode> modes);
 

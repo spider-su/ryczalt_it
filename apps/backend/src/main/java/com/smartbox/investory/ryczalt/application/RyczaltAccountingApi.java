@@ -12,7 +12,7 @@ import com.smartbox.investory.ryczalt.calculation.application.NativeMonthCalcula
 import java.time.YearMonth;
 import java.util.List;
 
-/** Native Ryczalt application boundary used by native REST and compatibility adapters. */
+/** Native Ryczalt accounting application boundary. */
 public interface RyczaltAccountingApi {
   boolean hasPeriod(long profileId, YearMonth month);
 
@@ -21,8 +21,6 @@ public interface RyczaltAccountingApi {
   RyczaltPeriodReadModel period(long profileId, YearMonth month);
 
   List<RyczaltInvoiceReadModel> invoices(long profileId, YearMonth month);
-
-  List<RyczaltInvoiceReadModel> invoices(long profileId, YearMonth month, long counterpartyId);
 
   List<RyczaltInvoiceReadModel> invoices(long profileId, YearMonth month, Long counterpartyId);
 

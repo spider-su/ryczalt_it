@@ -70,7 +70,10 @@ Stage 4 limitations and explicit non-goals:
 
 Stage 5 added settlement only over canonical persisted obligations and transactions. Native NBP
 historical FX acquisition is now available through `FxRateSourcePort` and `RyczaltFxRateService`.
-Bank, eZUS, KSeF, filing, and external verification integrations remain incomplete.
+Native bank CSV import and KSeF invoice acquisition are available. KSeF invoice
+sync has a persisted schedule; its configuration and operating checks are in
+[`ksef-sync-job.md`](ksef-sync-job.md). eZUS verification, filing/submission,
+and other external verification remain outside the active native flow.
 
 The NBP path is deliberately source-first and idempotent: the service looks up a persisted rate on
 or before the policy-selected prior business day, calls NBP only when no fact exists, persists the

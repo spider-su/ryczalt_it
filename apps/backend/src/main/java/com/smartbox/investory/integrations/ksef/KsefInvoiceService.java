@@ -45,6 +45,10 @@ public class KsefInvoiceService {
       List<String> pageNumbers = KsefInvoiceMetadata.extractKsefNumbers(metadata);
       numbers.addAll(pageNumbers);
       if (pageNumbers.size() < PAGE_SIZE) break;
+      if (page == MAX_PAGES - 1) {
+        throw new IllegalStateException(
+            "KSeF invoice query exceeded page limit for " + month + " / " + subject);
+      }
     }
     return numbers;
   }
