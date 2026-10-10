@@ -31,7 +31,7 @@ public class RyczaltKsefIntegrationJobPort implements KsefSyncJobPort {
       try {
         var result = ksef.sync(profileId, month, MODES);
         log.info(
-            "KSeF sync completed: profileId={}, month={}, received={}, imported={}, duplicates={}, updated={}, failed={}",
+            "KSeF sync processed: profileId={}, month={}, received={}, imported={}, duplicates={}, updated={}, failed={}",
             profileId,
             month,
             result.received(),
@@ -39,6 +39,14 @@ public class RyczaltKsefIntegrationJobPort implements KsefSyncJobPort {
             result.duplicates(),
             result.updated(),
             result.failed());
+        if (result.failed() > 0) {
+          failures.add(profileId);
+          log.warn(
+              "KSeF sync rejected invoices: profileId={}, month={}, failed={}",
+              profileId,
+              month,
+              result.failed());
+        }
       } catch (RuntimeException exception) {
         failures.add(profileId);
         log.error("KSeF sync failed: profileId={}, month={}", profileId, month, exception);

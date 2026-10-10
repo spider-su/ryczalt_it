@@ -1,5 +1,7 @@
 package com.smartbox.investory.config;
 
+import com.smartbox.investory.integrations.ksef.KsefIntegrationPlugin;
+import com.smartbox.investory.integrations.management.api.model.IntegrationType;
 import com.smartbox.investory.integrations.management.persistence.IntegrationInstanceRepository;
 import com.smartbox.investory.integrations.management.persistence.IntegrationJobEntity;
 import com.smartbox.investory.integrations.management.persistence.IntegrationJobRepository;
@@ -46,6 +48,7 @@ public class RyczaltKsefJobScheduler {
                 try {
                   jobs.findById(candidate.getId())
                       .filter(IntegrationJobEntity::isEnabled)
+                      .filter(job -> JOB_TYPE.equals(job.getJobType()))
                       .filter(this::due)
                       .ifPresent(this::run);
                 } finally {
@@ -57,13 +60,20 @@ public class RyczaltKsefJobScheduler {
   }
 
   private boolean due(IntegrationJobEntity job) {
-    if (instances.findById(job.getIntegrationInstanceId()).filter(instance -> instance.isEnabled()).isEmpty())
+    if (instances
+        .findById(job.getIntegrationInstanceId())
+        .filter(instance -> instance.isEnabled())
+        .filter(instance -> instance.getOwnerId() == null)
+        .filter(instance -> KsefIntegrationPlugin.ID.equals(instance.getPluginId()))
+        .filter(instance -> instance.getPluginType() == IntegrationType.E_INVOICING)
+        .isEmpty())
       return false;
-    ZonedDateTime completed = job.getLastCompletedAt();
-    if (completed == null) return true;
     try {
       ZoneId zone = ZoneId.of(job.getTimezone());
-      ZonedDateTime next = CronExpression.parse(job.getCron()).next(completed.withZoneSameInstant(zone));
+      CronExpression cron = CronExpression.parse(job.getCron());
+      ZonedDateTime completed = job.getLastCompletedAt();
+      if (completed == null) return true;
+      ZonedDateTime next = cron.next(completed.withZoneSameInstant(zone));
       return next != null && !next.isAfter(time.now(zone));
     } catch (RuntimeException exception) {
       log.warn("Skipping invalid KSeF job {}: {}", job.getId(), exception.getMessage());
