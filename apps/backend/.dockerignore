@@ -1,0 +1,7 @@
+target/
+src/main/resources/application-local.yml
+.env
+.env.*
+*.pem
+*.p12
+*.key
