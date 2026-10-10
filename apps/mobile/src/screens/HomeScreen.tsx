@@ -29,6 +29,7 @@ import { MonthSelector } from "../components/MonthSelector";
 import { useLocale } from "../i18n/LocaleContext";
 import {
   ErrorState,
+  EmptyState,
   ListGroup,
   LoadingState,
   Section,
@@ -288,7 +289,13 @@ export function HomeScreen({ navigation }: Props) {
           showsVerticalScrollIndicator={false}
         >
           <MonthSelector loading={refreshing} />
-          {parts.failures.period ? (
+          {parts.missingPeriod && !parts.failures.period ? (
+            <EmptyState
+              icon="calendar-outline"
+              title={t("home.monthNoDataTitle")}
+              body={t("home.monthNoDataBody")}
+            />
+          ) : parts.failures.period ? (
             <ErrorState title={t("home.sectionUnavailable")} onRetry={reload} />
           ) : null}
           {readinessError ? (
@@ -308,42 +315,46 @@ export function HomeScreen({ navigation }: Props) {
               onRetry={() => setReadinessRetry((value) => value + 1)}
             />
           ) : null}
-          <Section title={t("home.payments")}>
-            {parts.failures.obligations ? (
-              <ErrorState
-                title={t("home.sectionUnavailable")}
-                onRetry={reload}
-              />
-            ) : null}
-            {parts.obligations ? (
-              <ListGroup>
-                {parts.obligations.length ? (
-                  parts.obligations.map((payment, index) => (
-                    <PaymentRow
-                      key={`${payment.id}-${index}`}
-                      payment={payment}
-                      last={index === parts.obligations!.length - 1}
-                      onPress={() => setSelectedObligation(payment)}
-                    />
-                  ))
-                ) : (
-                  <Text style={styles.unavailable}>{t("home.noPayments")}</Text>
-                )}
-              </ListGroup>
-            ) : !parts.failures.obligations ? (
-              <ErrorState
-                title={t("home.sectionUnavailable")}
-                onRetry={reload}
-              />
-            ) : null}
-          </Section>
-          {parts.invoices ? (
+          {!parts.missingPeriod ? (
+            <Section title={t("home.payments")}>
+              {parts.failures.obligations ? (
+                <ErrorState
+                  title={t("home.sectionUnavailable")}
+                  onRetry={reload}
+                />
+              ) : null}
+              {parts.obligations ? (
+                <ListGroup>
+                  {parts.obligations.length ? (
+                    parts.obligations.map((payment, index) => (
+                      <PaymentRow
+                        key={`${payment.id}-${index}`}
+                        payment={payment}
+                        last={index === parts.obligations!.length - 1}
+                        onPress={() => setSelectedObligation(payment)}
+                      />
+                    ))
+                  ) : (
+                    <Text style={styles.unavailable}>
+                      {t("home.noPayments")}
+                    </Text>
+                  )}
+                </ListGroup>
+              ) : !parts.failures.obligations ? (
+                <ErrorState
+                  title={t("home.sectionUnavailable")}
+                  onRetry={reload}
+                />
+              ) : null}
+            </Section>
+          ) : null}
+          {!parts.missingPeriod && parts.invoices ? (
             <PartialInvoices
               invoices={parts.invoices}
               navigation={navigation}
               onSelect={setSelectedDocument}
             />
-          ) : !parts.failures.invoices ? (
+          ) : !parts.missingPeriod && !parts.failures.invoices ? (
             <Section title={t("home.invoices")}>
               <ErrorState
                 title={t("home.sectionUnavailable")}

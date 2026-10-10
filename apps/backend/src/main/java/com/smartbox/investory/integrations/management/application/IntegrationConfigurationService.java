@@ -5,6 +5,8 @@ import com.smartbox.investory.integrations.management.model.PluginConfig;
 import com.smartbox.investory.integrations.management.model.ValidationResult;
 import com.smartbox.investory.integrations.management.persistence.IntegrationInstanceEntity;
 import com.smartbox.investory.integrations.management.persistence.IntegrationInstanceRepository;
+import com.smartbox.investory.integrations.management.persistence.IntegrationJobEntity;
+import com.smartbox.investory.integrations.management.persistence.IntegrationJobRepository;
 import com.smartbox.investory.integrations.management.persistence.IntegrationSecretEntity;
 import com.smartbox.investory.integrations.management.persistence.IntegrationSecretRepository;
 import com.smartbox.investory.integrations.management.spi.IntegrationPlugin;
@@ -23,6 +25,7 @@ import tools.jackson.databind.ObjectMapper;
 public class IntegrationConfigurationService {
   private final IntegrationInstanceRepository instanceRepository;
   private final IntegrationSecretRepository secretRepository;
+  private final IntegrationJobRepository jobRepository;
   private final PluginRegistry pluginRegistry;
   private final IntegrationSecretCipher secretCipher;
   private final ObjectMapper objectMapper;
@@ -31,12 +34,14 @@ public class IntegrationConfigurationService {
   public IntegrationConfigurationService(
       IntegrationInstanceRepository instanceRepository,
       IntegrationSecretRepository secretRepository,
+      IntegrationJobRepository jobRepository,
       PluginRegistry pluginRegistry,
       IntegrationSecretCipher secretCipher,
       ObjectMapper objectMapper,
       ApplicationTime applicationTime) {
     this.instanceRepository = instanceRepository;
     this.secretRepository = secretRepository;
+    this.jobRepository = jobRepository;
     this.pluginRegistry = pluginRegistry;
     this.secretCipher = secretCipher;
     this.objectMapper = objectMapper;
@@ -128,6 +133,22 @@ public class IntegrationConfigurationService {
     instance.setLastTestMessage(null);
     instance.setUpdatedAt(applicationTime.now(applicationTime.businessZone()));
     IntegrationInstanceEntity saved = instanceRepository.save(instance);
+    plugin
+        .descriptor()
+        .jobDescriptors()
+        .forEach(
+            descriptor -> {
+              if (jobRepository
+                  .findByIntegrationInstanceIdAndJobType(saved.getId(), descriptor.jobType())
+                  .isPresent()) return;
+              IntegrationJobEntity job = new IntegrationJobEntity();
+              job.setIntegrationInstanceId(saved.getId());
+              job.setJobType(descriptor.jobType());
+              job.setEnabled(true);
+              job.setCron(descriptor.defaultCron());
+              job.setTimezone(descriptor.defaultTimezone());
+              jobRepository.save(job);
+            });
     if (secrets != null) {
       for (Map.Entry<String, String> entry : secrets.entrySet()) {
         IntegrationSecretEntity secret =

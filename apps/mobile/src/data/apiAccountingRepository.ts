@@ -1,4 +1,5 @@
 import { AccountingApi } from "../api/accountingApi";
+import { ApiError } from "../api/client";
 import {
   mapCounterparty,
   mapCounterpartyRule,
@@ -80,6 +81,21 @@ export class ApiAccountingRepository implements AccountingRepository {
       this.api.getObligations(this.profileId, month),
       this.api.getIssues(this.profileId, month),
     ]);
+    const periodResult = results[0];
+    if (
+      periodResult.status === "rejected" &&
+      isMissingAccountingPeriod(periodResult.reason, this.profileId, month)
+    ) {
+      return {
+        period: null,
+        invoices: [],
+        transactions: [],
+        obligations: [],
+        issues: [],
+        failures: {},
+        missingPeriod: true,
+      };
+    }
     const names = [
       "period",
       "invoices",
@@ -212,6 +228,20 @@ export class ApiAccountingRepository implements AccountingRepository {
     return this.getMonth(currentLocalAccountingMonth());
   }
 }
+
+function isMissingAccountingPeriod(
+  error: unknown,
+  profileId: number,
+  month: string,
+): boolean {
+  return (
+    error instanceof ApiError &&
+    error.status === 404 &&
+    error.message ===
+      `Ryczalt period does not exist for profile ${profileId}: ${month}`
+  );
+}
+
 export class PartialAccountingError extends Error {
   readonly kind = "partial-accounting";
   constructor(

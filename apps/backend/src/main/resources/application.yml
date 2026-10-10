@@ -25,6 +25,8 @@ management:
         include: health,info
 
 app:
+  scheduling:
+    enabled: ${APP_SCHEDULING_ENABLED:false}
   security:
     profile-ownership-required: true
     token-secret: ${RYCZALT_TOKEN_SECRET}
@@ -32,3 +34,4 @@ app:
     mobile-api-allowed-origins: ${RYCZALT_ALLOWED_ORIGINS:http://localhost:8081}
   integrations:
     master-key: ${RYCZALT_INTEGRATION_MASTER_KEY:}
+    scheduler-poll-ms: 60000
