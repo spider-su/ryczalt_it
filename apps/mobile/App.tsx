@@ -1,6 +1,6 @@
 import { NavigationContainer } from '@react-navigation/native';
 import { StatusBar, setStatusBarStyle } from 'expo-status-bar';
-import { ActivityIndicator, Platform, Text, View } from 'react-native';
+import { ActivityIndicator, Platform, Pressable, Text, View } from 'react-native';
 import { NavigationBar } from 'expo-navigation-bar';
 import { AppNavigator } from './src/navigation/AppNavigator';
 import { AccountingMonthProvider } from './src/navigation/AccountingMonthContext';
@@ -44,6 +44,7 @@ class AppErrorBoundary extends Component<PropsWithChildren, { failed: boolean }>
   static getDerivedStateFromError(): { failed: boolean } {
     return { failed: true };
   }
+  private retry = () => this.setState({ failed: false });
   componentDidCatch(error: Error, info: ErrorInfo) {
     captureAppException(error, { componentStack: info.componentStack });
     if (__DEV__) console.error('Ryczałt IT UI error', error.message, info.componentStack);
@@ -55,15 +56,17 @@ class AppErrorBoundary extends Component<PropsWithChildren, { failed: boolean }>
           <SafeAreaView edges={fallbackSafeAreaEdges} style={{ flex: 1, justifyContent: 'center', backgroundColor: theme.colors.background }}>
           <StatusBar style={theme.mode === 'dark' ? 'light' : 'dark'} />
           {Platform.OS === 'android' ? <NavigationBar style={theme.mode === 'dark' ? 'dark' : 'light'} /> : null}
-          <Text
-            style={{
-              textAlign: 'center',
-              textAlignVertical: 'center',
-              padding: 24
-            }}
-          >
-            Ryczałt IT could not display this screen. Please restart the app.
-          </Text>
+          <View accessibilityRole="alert" style={{ padding: 24, alignItems: 'center' }}>
+            <Text style={{ textAlign: 'center', color: theme.colors.textPrimary, fontSize: 18, fontWeight: '700' }}>
+              Nie udało się wyświetlić ekranu.
+            </Text>
+            <Text style={{ textAlign: 'center', color: theme.colors.textSecondary, marginTop: 12 }}>
+              Spróbuj ponownie. Jeśli problem się powtarza, uruchom aplikację ponownie.
+            </Text>
+            <Pressable accessibilityRole="button" onPress={this.retry} style={{ minHeight: 44, justifyContent: 'center', paddingHorizontal: 24, marginTop: 16 }}>
+              <Text style={{ color: theme.colors.primary, fontWeight: '700' }}>Spróbuj ponownie</Text>
+            </Pressable>
+          </View>
           </SafeAreaView>
         </SafeAreaProvider>
       );
