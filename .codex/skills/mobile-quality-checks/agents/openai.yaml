@@ -1,0 +1,4 @@
+interface:
+  display_name: "Ryczałt IT Mobile Checks"
+  short_description: "Validate mobile CI and Expo Doctor"
+  default_prompt: "Run Ryczałt IT mobile quality checks from apps/mobile and report results and gaps."
