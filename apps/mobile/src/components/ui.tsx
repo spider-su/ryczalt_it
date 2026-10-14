@@ -79,14 +79,15 @@ export function ErrorState({ title = t('common.unavailable'), onRetry }: { title
 
 export function LoadingState() { return <View style={styles.loading}><ActivityIndicator size="large" color={theme.colors.accent} /><Text style={styles.loadingText}>{t('common.loading')}</Text></View>; }
 
-export function PrimaryButton({ label, onPress, disabled = false }: { label: string; onPress: () => void; disabled?: boolean }) {
-  return <Pressable onPress={onPress} disabled={disabled} accessibilityRole="button" style={({ pressed }) => [styles.primaryButton, disabled && styles.disabled, pressed && !disabled && styles.primaryPressed]}><Text style={styles.primaryLabel}>{label}</Text></Pressable>;
+export function PrimaryButton({ label, onPress, disabled = false, busy = false }: { label: string; onPress: () => void; disabled?: boolean; busy?: boolean }) {
+  const unavailable = disabled || busy;
+  return <Pressable onPress={onPress} disabled={unavailable} accessibilityRole="button" accessibilityLabel={label} accessibilityState={{ disabled: unavailable, busy }} style={({ pressed }) => [styles.primaryButton, unavailable && styles.disabled, pressed && !unavailable && styles.primaryPressed]}>{busy ? <ActivityIndicator color={theme.colors.onAccent} /> : <Text style={styles.primaryLabel}>{label}</Text>}</Pressable>;
 }
 
 export function SupportingText({ children }: { children: ReactNode }) { return <Text style={styles.supportingText}>{children}</Text>; }
 
 export function FormField({ label, hint, error, children }: { label: string; hint?: string; error?: string; children: ReactNode }) {
-  return <View style={styles.formField}><Text style={styles.formLabel}>{label}</Text>{children}{hint ? <SupportingText>{hint}</SupportingText> : null}{error ? <Text style={styles.formError}>{error}</Text> : null}</View>;
+  return <View style={styles.formField}><Text style={styles.formLabel}>{label}</Text>{children}{hint ? <SupportingText>{hint}</SupportingText> : null}{error ? <Text accessibilityRole="alert" style={styles.formError}>{error}</Text> : null}</View>;
 }
 
 export function SettingsRow({ title, description, children, last = false }: { title: string; description?: string; children: ReactNode; last?: boolean }) {
