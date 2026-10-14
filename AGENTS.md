@@ -2,6 +2,10 @@
 
 This repository contains the Ryczałt IT accounting backend and mobile app. It is not the generic mobile template.
 
+## Project scope and reuse
+
+Treat this as a small-business application, not an enterprise platform. Read [engineering level](docs/engineering-level.md) and [mobile agent reuse map](docs/mobile-agent-reuse.md) before adding abstractions or dependencies. Financial correctness, API authorization, KSeF integration and privacy remain non-negotiable.
+
 ## Product and security invariants
 - Preserve invoice, VAT, ZUS, PIT-28, payment, approval, KSeF, FX and accounting behavior unless explicitly tasked with changing it.
 - Keep backend authorization, profile isolation, API contracts and integration credentials intact.
