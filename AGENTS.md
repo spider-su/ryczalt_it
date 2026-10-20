@@ -26,3 +26,7 @@ Treat this as a small-business application, not an enterprise platform. Read [en
 
 ## Codex workflows
 See `.codex/SKILLS.md`. Existing project-specific APK build and emulator audit skills must remain authoritative.
+
+## Reusable mobile POC guardrails
+
+Before refactoring navigation, local state, notifications, or release flow, read [mobile POC hardening](docs/mobile-poc-hardening.md). Retain visible-tab inset ownership unless intentionally hiding tabs; never consume the bottom inset twice. Keep confirmed records and backend/native authority intact, verify scroll and Back behavior, and test updates without clearing local data. APK/CI success is not physical-device or Play AAB evidence.

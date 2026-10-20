@@ -17,3 +17,7 @@ Read AGENTS.md, docs/product/poc-scope.md and relevant domain/API contracts befo
 Workflow: inspect existing implementation, reuse components, implement focused change, run cd apps/mobile && npm ci && npm run ci && npx expo-doctor, inspect CI, then perform relevant native smoke checks. Preserve backend and mobile separation. Record any skipped checks. Never merge automatically.
 
 Template adoption: use coding guidance, accessibility patterns, local debug APK workflow and optional device-test skills. Do not wholesale copy template navigation, UI primitives, storage, notification adapters or generic validation into accounting logic.
+
+## POC hardening adopted from the mobile template
+
+See [mobile POC hardening](mobile-poc-hardening.md) for visible/hidden tab safe-area ownership, Settings scroll/reset, consistency and idempotent updates, native device regression, and Play AAB upgrade checks. Adopt the patterns in existing components, not by importing another app's navigation or storage layer.

@@ -27,3 +27,7 @@ Do not stop at the first build error when its technical cause is clear and low-r
 Keep the fix and audit evidence separate: preserve pre-existing work, record changed source files, and add/update a focused regression test when the repair changes application source behavior. Never silence an error, replace live API data with mocks, or alter accounting values/statuses to make the audit pass.
 
 Stop and report the blocker when diagnosis needs a product/accounting decision, financial calculation or status change, authorization/API contract choice, backend URL or credentials, app/EAS identity, signing/versioning decision, external service change, or a repair whose effects are not obvious. Do not run an authenticated review against an unknown backend.
+
+## Additional UI regression checks
+
+On the disposable AVD, test Android gesture and three-button system navigation, open the deepest nested accounting Settings view, scroll to bottom, press Back, and verify the selected accounting month persists. Check small-screen insets and that no action is hidden under navigation. Keep the existing no-write audit and backend-verification boundaries. Record these cases as pass/fail/skipped alongside the accounting audit.
