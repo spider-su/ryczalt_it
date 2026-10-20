@@ -1,5 +1,11 @@
 /** The app shell consumes the status bar and display cutout inset. */
 export const appSafeAreaEdges = ['top'] as const;
+/** Use when bottom tabs are hidden and the app frame must own the bottom inset. */
+export const appSafeAreaEdgesWithoutTabs = ['top', 'bottom'] as const;
+export type BottomNavigationMode = 'visible-tabs' | 'hidden-tabs';
+export function appEdgesForNavigation(mode: BottomNavigationMode = 'visible-tabs') {
+  return mode === 'hidden-tabs' ? appSafeAreaEdgesWithoutTabs : appSafeAreaEdges;
+}
 /** Standalone screens have no app shell or tab bar to consume either inset. */
 export const fallbackSafeAreaEdges = ['top', 'bottom'] as const;
 /** Native modals are separate windows and must account for both system edges. */
