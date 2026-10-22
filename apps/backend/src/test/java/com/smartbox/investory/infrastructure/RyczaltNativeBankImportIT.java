@@ -128,8 +128,8 @@ class RyczaltNativeBankImportIT {
     Long obligationId = jdbc.queryForObject("SELECT id FROM ryczalt.ryczalt_obligation WHERE profile_id=1", Long.class);
     // An imported frozen obligation flag must not override an unfrozen period.
     jdbc.update("UPDATE ryczalt.ryczalt_obligation SET status='FROZEN' WHERE id=?", obligationId);
-    settlement.markObligationPaid(1, obligationId, java.time.LocalDate.of(2026, 2, 20), "Confirmed remainder");
-    settlement.markObligationPaid(1, obligationId, java.time.LocalDate.of(2026, 2, 20), "Confirmed remainder");
+    settlement.markObligationPaid(1, java.time.YearMonth.of(2026, 2), obligationId, java.time.LocalDate.of(2026, 2, 20), "Confirmed remainder");
+    settlement.markObligationPaid(1, java.time.YearMonth.of(2026, 2), obligationId, java.time.LocalDate.of(2026, 2, 20), "Confirmed remainder");
     var query = new com.smartbox.investory.ryczalt.application.query.RyczaltPaymentQueryService(
         periods, obligationRows, paymentMatches, java.math.BigDecimal.ZERO);
     var paid = query.getObligations(1, java.time.YearMonth.of(2026, 2)).getFirst();
@@ -139,12 +139,12 @@ class RyczaltNativeBankImportIT {
     assertThat(jdbc.queryForObject("SELECT status FROM ryczalt.ryczalt_obligation WHERE id=?", String.class, obligationId)).isEqualTo("PAID");
     assertThat(paymentMatches.allocatedForObligation(1, obligationId)).isEqualByComparingTo("40");
     assertThat(paymentMatches.count()).isEqualTo(1);
-    settlement.markObligationUnpaid(1, obligationId);
+    settlement.markObligationUnpaid(1, java.time.YearMonth.of(2026, 2), obligationId);
     var partial = query.getObligations(1, java.time.YearMonth.of(2026, 2)).getFirst();
     assertThat(partial.paidAmount()).isEqualByComparingTo("40");
     assertThat(partial.status()).isEqualTo(com.smartbox.investory.ryczalt.domain.ObligationStatus.PARTIALLY_PAID);
     jdbc.update("UPDATE ryczalt.ryczalt_period SET status='FROZEN' WHERE id=?", periodId);
-    assertThatThrownBy(() -> settlement.markObligationPaid(1, obligationId,
+    assertThatThrownBy(() -> settlement.markObligationPaid(1, java.time.YearMonth.of(2026, 2), obligationId,
         java.time.LocalDate.of(2026, 2, 20), "Blocked"))
         .isInstanceOf(IllegalStateException.class);
     assertThat(obligationRows.findById(obligationId).orElseThrow().isManuallyPaid()).isFalse();

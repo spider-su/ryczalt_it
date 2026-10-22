@@ -74,6 +74,7 @@ public class RyczaltFxRateService {
     Instant now = Instant.now(clock);
     int insertedRates = 0;
     int insertedResolutions = 0;
+    int observationsConsidered = 0;
     for (CurrencyType currency : List.of(CurrencyType.EUR, CurrencyType.USD)) {
       List<FxRate> observations = byCurrency.getOrDefault(currency, List.of()).stream()
           .sorted(java.util.Comparator.comparing(FxRate::effectiveDate))
@@ -81,6 +82,7 @@ public class RyczaltFxRateService {
       if (observations.isEmpty()) {
         throw new IllegalStateException("NBP returned no " + currency + " monthly rates");
       }
+      observationsConsidered += observations.size();
       for (FxRate observation : observations) {
         insertedRates +=
             rates.insertIfAbsent(
@@ -114,7 +116,8 @@ public class RyczaltFxRateService {
                 now);
       }
     }
-    return new FxRateRefreshResult(month, history.size(), insertedRates, insertedResolutions);
+    return new FxRateRefreshResult(month, history.size(), insertedRates, insertedResolutions,
+        observationsConsidered - insertedRates, month.lengthOfMonth() * 2 - insertedResolutions);
   }
 
   private FxRate persist(FxRate acquired, LocalDate requestedDate) {
@@ -140,11 +143,6 @@ public class RyczaltFxRateService {
         stored.getProvider(),
         stored.getProviderReference(),
         now);
-    stored =
-        rates
-            .findByProviderAndCurrencyAndEffectiveDate(
-                acquired.provider(), currency, acquired.effectiveDate())
-            .orElseThrow();
     var resolved =
         resolutions
             .findByProviderAndCurrencyAndRequestedDate(acquired.provider(), currency, requestedDate)
@@ -159,5 +157,10 @@ public class RyczaltFxRateService {
   }
 
   public record FxRateRefreshResult(
-      YearMonth month, int observationsReceived, int ratesInserted, int resolutionsInserted) {}
+      YearMonth month, int observationsReceived, int ratesInserted, int resolutionsInserted,
+      int ratesUnchanged, int resolutionsUnchanged) {
+    public String outcome() {
+      return ratesInserted == 0 && resolutionsInserted == 0 ? "NO_NEW_DATA" : "UPDATED";
+    }
+  }
 }

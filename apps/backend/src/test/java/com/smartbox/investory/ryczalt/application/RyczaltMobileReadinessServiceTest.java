@@ -37,7 +37,8 @@ class RyczaltMobileReadinessServiceTest {
 
   @Test
   void readinessReportsMissingOpeningStateInsteadOfConfiguredOrZero() {
-    when(jdbc.queryForList(any(String.class), any(Object[].class))).thenReturn(List.of());
+    when(jdbc.queryForList(any(String.class), any(Object[].class)))
+        .thenReturn(List.of(Map.of("profile_name", "Test profile")));
     when(monthInputs.findFirstByProfileIdAndAccountingStartDateIsNotNullOrderByYearAscMonthAsc(7L))
         .thenReturn(Optional.empty());
     when(monthInputs.findByProfileIdAndYearAndMonth(7L, 2026, 9)).thenReturn(Optional.empty());
@@ -51,6 +52,13 @@ class RyczaltMobileReadinessServiceTest {
     assertEquals("HISTORICAL_DATA_MISSING", result.period().state());
     assertEquals("ACTION_REQUIRED", result.items().get(1).status());
     assertEquals("ACTION_REQUIRED", result.items().get(2).status());
+  }
+
+  @Test
+  void readinessRejectsAMissingProfile() {
+    when(jdbc.queryForList(any(String.class), any(Object[].class))).thenReturn(List.of());
+    assertThrows(RyczaltProfileNotFoundException.class,
+        () -> service().readiness(7L, YearMonth.of(2026, 9)));
   }
 
   @Test

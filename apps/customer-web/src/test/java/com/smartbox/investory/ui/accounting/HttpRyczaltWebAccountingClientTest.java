@@ -37,6 +37,20 @@ class HttpRyczaltWebAccountingClientTest {
   }
 
   @Test
+  void preservesPaymentConflictReasonForTheAccountingPage() {
+    RestClient.Builder builder = RestClient.builder().baseUrl("http://backend.test");
+    MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
+    var client = client(builder);
+    server.expect(requestTo("http://backend.test/api/profiles/42/accounting/periods/2026-08/obligations/21/manual-paid"))
+        .andRespond(withStatus(HttpStatus.CONFLICT).contentType(MediaType.APPLICATION_JSON)
+            .body("{\"message\":\"Frozen period cannot be changed\"}"));
+    assertThatThrownBy(() -> client.manualObligationPaid(PROFILE,YearMonth.of(2026,8),21L,LocalDate.of(2026,8,25),null))
+        .isInstanceOf(org.springframework.web.server.ResponseStatusException.class)
+        .hasMessageContaining("Frozen period cannot be changed");
+    server.verify();
+  }
+
+  @Test
   void mapsPeriodInvoicesAndObligationsAndForwardsUserBearer() {
     RestClient.Builder builder = RestClient.builder().baseUrl("http://backend.test");
     MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
@@ -182,16 +196,17 @@ class HttpRyczaltWebAccountingClientTest {
   }
 
   @Test
-  void preservesPaymentConflictReasonForTheAccountingPage() {
+  void preservesActionableInputValidationInsteadOfReplacingItWithBackendResponseError() {
     RestClient.Builder builder = RestClient.builder().baseUrl("http://backend.test");
     MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
     var client = client(builder);
-    server.expect(requestTo("http://backend.test/api/profiles/42/accounting/periods/2026-08/obligations/21/manual-paid"))
-        .andRespond(withStatus(HttpStatus.CONFLICT).contentType(MediaType.APPLICATION_JSON)
-            .body("{\"message\":\"Frozen period cannot be changed\"}"));
-    assertThatThrownBy(() -> client.manualObligationPaid(PROFILE,YearMonth.of(2026,8),21L,LocalDate.of(2026,8,25),null))
+    server.expect(requestTo("http://backend.test/api/profiles/42/accounting/periods/2026-01/input-settings"))
+        .andExpect(method(HttpMethod.PUT))
+        .andRespond(withStatus(HttpStatus.BAD_REQUEST).contentType(MediaType.APPLICATION_JSON)
+            .body("{\"message\":\"healthContributionPaidOverride is required\"}"));
+    assertThatThrownBy(() -> client.saveInputSettings(PROFILE, YearMonth.of(2026, 1), java.util.Map.of()))
         .isInstanceOf(org.springframework.web.server.ResponseStatusException.class)
-        .hasMessageContaining("Frozen period cannot be changed");
+        .hasMessageContaining("healthContributionPaidOverride is required");
     server.verify();
   }
 

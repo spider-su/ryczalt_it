@@ -8,6 +8,12 @@ import java.util.UUID;
 
 /** Factual Web seam for the native Ryczalt accounting boundary. */
 public interface RyczaltWebAccountingClient {
+  InputSettings inputSettings(long profileId, YearMonth month);
+
+  void saveInputSettings(long profileId, YearMonth month, java.util.Map<String, Object> settings);
+
+  record InputSettings(java.util.Map<String, Object> settings, LocalDate configuredStartDate, List<String> missingFields) {}
+
   List<Month> periods(long profileId);
 
   Period period(long profileId, YearMonth month);

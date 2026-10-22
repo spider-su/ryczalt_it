@@ -31,6 +31,36 @@ class NativeMonthInputAggregatorTest {
       new NativeMonthInputAggregator(invoices, monthInputs);
 
   @Test
+  void priorYearAccountingStartDoesNotIncludePreviousYearInCurrentYtdFacts() {
+    var openingCommand = new RyczaltNativeMonthInputService.Command(true, false, "JDG", false,
+        null, null, null, null, null, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO,
+        LocalDate.of(2025, 1, 1), BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO,
+        BigDecimal.ZERO, BigDecimal.ZERO);
+    var opening = new RyczaltNativeMonthInputEntity(7L, YearMonth.of(2025, 1), openingCommand);
+    var monthly = new RyczaltNativeMonthInputEntity(7L, YearMonth.of(2026, 1),
+        new RyczaltNativeMonthInputService.Command(true, false, "JDG", false,
+            null, null, BigDecimal.ZERO, null, BigDecimal.ZERO,
+            BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO));
+    when(monthInputs.findFirstByProfileIdAndAccountingStartDateIsNotNullOrderByYearAscMonthAsc(7L))
+        .thenReturn(Optional.of(opening));
+    when(monthInputs.findByProfileIdAndYearAndMonth(7L, 2026, 1)).thenReturn(Optional.of(monthly));
+    var historical = mock(RyczaltInvoiceEntity.class);
+    when(historical.getDirection()).thenReturn(InvoiceDirection.INCOME);
+    when(historical.getAccountingDate()).thenReturn(LocalDate.of(2025, 12, 31));
+    var current = mock(RyczaltInvoiceEntity.class);
+    when(current.getDirection()).thenReturn(InvoiceDirection.INCOME);
+    when(current.getAccountingDate()).thenReturn(LocalDate.of(2026, 1, 20));
+    when(current.getApprovalStatus()).thenReturn(ApprovalStatus.APPROVED);
+    when(current.getBookedNetPln()).thenReturn(new BigDecimal("500"));
+    when(invoices.findByProfileIdOrderByAccountingDateAscIdAsc(7L)).thenReturn(List.of(historical, current));
+    var input = aggregator.aggregate(7L, 70L, YearMonth.of(2026, 1));
+    assertEquals(new BigDecimal("500"), input.zus().ytdRyczaltRevenue());
+    org.mockito.Mockito.verify(monthInputs, org.mockito.Mockito.never())
+        .findByProfileIdAndYearAndMonth(org.mockito.ArgumentMatchers.eq(7L),
+            org.mockito.ArgumentMatchers.eq(2025), org.mockito.ArgumentMatchers.anyInt());
+  }
+
+  @Test
   void includesMidYearOpeningRevenueAndContributionAndVatBalances() {
     YearMonth start = YearMonth.of(2026, 7);
     var command = new RyczaltNativeMonthInputService.Command(true, false, "JDG", false,

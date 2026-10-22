@@ -94,13 +94,17 @@ public class RyczaltAccountingFacade implements RyczaltAccountingApi {
 
   @Override
   public void markObligationPaid(
-      long profileId, long obligationId, java.time.LocalDate paidDate, String note) {
-    settlement.markObligationPaid(profileId, obligationId, paidDate, note);
+      long profileId,
+      YearMonth month,
+      long obligationId,
+      java.time.LocalDate paidDate,
+      String note) {
+    settlement.markObligationPaid(profileId, month, obligationId, paidDate, note);
   }
 
   @Override
-  public void markObligationUnpaid(long profileId, long obligationId) {
-    settlement.markObligationUnpaid(profileId, obligationId);
+  public void markObligationUnpaid(long profileId, YearMonth month, long obligationId) {
+    settlement.markObligationUnpaid(profileId, month, obligationId);
   }
 
   @Override

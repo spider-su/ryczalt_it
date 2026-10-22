@@ -101,17 +101,10 @@ public final class SharedPostgres {
 
   static void dropDatabase(String databaseName) {
     validateIdentifier(databaseName);
-    PostgreSQLContainer<?> postgres = container();
     try (Connection connection = adminConnection();
         Statement statement = connection.createStatement()) {
-      try (var prepared =
-          connection.prepareStatement(
-              "SELECT pg_terminate_backend(pid) FROM pg_stat_activity "
-                  + "WHERE datname = ? AND pid <> pg_backend_pid()")) {
-        prepared.setString(1, databaseName);
-        prepared.execute();
-      }
-      statement.execute("DROP DATABASE IF EXISTS " + quoteIdentifier(databaseName));
+      // Terminate sessions as part of the drop so a live pool cannot reconnect in between.
+      statement.execute("DROP DATABASE IF EXISTS " + quoteIdentifier(databaseName) + " WITH (FORCE)");
     } catch (SQLException exception) {
       throw new IllegalStateException(
           "Failed to drop PostgreSQL test database " + databaseName, exception);

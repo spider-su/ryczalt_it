@@ -8,6 +8,7 @@ import java.time.Instant;
 import java.util.HexFormat;
 import java.util.Locale;
 import lombok.RequiredArgsConstructor;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -65,15 +66,21 @@ public class UserInvitationService {
     Integer existing = jdbc.queryForObject(
         "SELECT count(*) FROM ryczalt.app_users WHERE lower(username) = lower(?)", Integer.class, username);
     if (existing != null && existing > 0) throw new IllegalArgumentException("User already exists");
-    jdbc.update(
-        "INSERT INTO ryczalt.app_users (username, email, display_name, active, password_hash, role) "
-            + "VALUES (?, ?, ?, true, ?, 'USER')",
-        username, invitation.email(), invitation.displayName(), passwordEncoder.encode(password));
-    Long userId = jdbc.queryForObject(
-        "SELECT id FROM ryczalt.app_users WHERE username = ?", Long.class, username);
-    jdbc.update(
-        "INSERT INTO ryczalt.profile_memberships (user_id, profile_id, role) VALUES (?, ?, ?)",
-        userId, invitation.profileId(), invitation.profileRole());
+    Long userId;
+    try {
+      jdbc.update(
+          "INSERT INTO ryczalt.app_users (username, email, display_name, active, password_hash, role) "
+              + "VALUES (?, ?, ?, true, ?, 'USER')",
+          username, invitation.email(), invitation.displayName(), passwordEncoder.encode(password));
+      userId = jdbc.queryForObject(
+          "SELECT id FROM ryczalt.app_users WHERE username = ?", Long.class, username);
+      jdbc.update(
+          "INSERT INTO ryczalt.profile_memberships (user_id, profile_id, role) VALUES (?, ?, ?)",
+          userId, invitation.profileId(), invitation.profileRole());
+    } catch (DataIntegrityViolationException exception) {
+      throw new UserInvitationConflictException(
+          "Invitation acceptance conflicted with an existing account or membership", exception);
+    }
     jdbc.update("UPDATE ryczalt.app_user_invitations SET consumed_at = now() WHERE id = ?", invitation.id());
   }
 

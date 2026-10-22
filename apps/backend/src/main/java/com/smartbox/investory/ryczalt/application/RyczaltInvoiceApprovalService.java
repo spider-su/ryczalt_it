@@ -64,15 +64,15 @@ public class RyczaltInvoiceApprovalService {
             .orElseThrow(() -> new RyczaltCounterpartyNotFoundException(profileId, cpId));
     String classification =
         explicit(command.classification())
-            ? command.classification()
+            ? RuleCriteria.token(command.classification(), "classification")
             : counterpartyChanged ? null : candidate.getClassification();
     String vatTreatment =
         explicit(command.vatTreatment())
-            ? command.vatTreatment()
+            ? RuleCriteria.token(command.vatTreatment(), "vatTreatment")
             : counterpartyChanged ? null : candidate.getVatTreatment();
     BigDecimal ratio =
         command.vatDeductionRatio() != null
-            ? command.vatDeductionRatio()
+            ? validateVatDeductionRatio(command.vatDeductionRatio())
             : counterpartyChanged ? null : candidate.getVatDeductionRatio();
     boolean incomeRyczaltProfile =
         candidate.getDirection() == InvoiceDirection.INCOME
@@ -81,7 +81,7 @@ public class RyczaltInvoiceApprovalService {
         !incomeRyczaltProfile
             ? null
             : command.ryczaltRate() != null
-                ? command.ryczaltRate()
+                ? validateRyczaltRate(command.ryczaltRate())
                 : counterpartyChanged ? null : candidate.getRyczaltRate();
     PaymentVerificationPolicy policy =
         command.paymentVerificationPolicy() != null
@@ -224,6 +224,20 @@ public class RyczaltInvoiceApprovalService {
 
   private static boolean explicit(String value) {
     return value != null && !value.isBlank();
+  }
+
+  private static BigDecimal validateVatDeductionRatio(BigDecimal value) {
+    if (value.compareTo(BigDecimal.ZERO) < 0 || value.compareTo(BigDecimal.ONE) > 0) {
+      throw new IllegalArgumentException("vatDeductionRatio must be between 0 and 1");
+    }
+    return value;
+  }
+
+  private static BigDecimal validateRyczaltRate(BigDecimal value) {
+    if (value.compareTo(BigDecimal.ZERO) <= 0 || value.compareTo(BigDecimal.ONE) > 0) {
+      throw new IllegalArgumentException("ryczaltRate must be greater than 0 and at most 1");
+    }
+    return value;
   }
 
   private static long requireCounterparty(Long value) {

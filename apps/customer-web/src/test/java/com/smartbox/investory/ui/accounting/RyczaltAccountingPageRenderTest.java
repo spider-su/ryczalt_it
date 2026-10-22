@@ -43,6 +43,57 @@ class RyczaltAccountingPageRenderTest {
   }
 
   @Test
+  void missingInputFormRendersEmptyValuesAndRequiresExplicitTaxpayerFacts() throws Exception {
+    var session = loginSession();
+    when(accounting.inputSettings(7L, YearMonth.of(2026, 1)))
+        .thenReturn(new RyczaltWebAccountingClient.InputSettings(null, null,
+            List.of("accountingStartDate", "healthContributionPaidOverride")));
+    var html = mvc.perform(get("/profiles/7/accounting/periods/2026-01/input-settings").session(session))
+        .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+    org.assertj.core.api.Assertions.assertThat(html)
+        .contains("Required facts are missing", "Opening state", "Social contributions actually paid",
+            "Health contributions actually paid", "name=\"_csrf\"")
+        .doesNotContain("value=\"0\"");
+  }
+
+  @Test
+  void inputFormDoesNotSaveMissingAmountsOrInventZero() throws Exception {
+    var session = loginSession();
+    when(accounting.inputSettings(7L, YearMonth.of(2026, 1)))
+        .thenReturn(new RyczaltWebAccountingClient.InputSettings(null, null, List.of("accountingStartDate")));
+    mvc.perform(post("/profiles/7/accounting/periods/2026-01/input-settings")
+        .session(session).with(csrf()).param("jdgActive", "true")
+        .param("qualifyingUop", "false").param("voluntarySickness", "false"))
+        .andExpect(status().isOk())
+        .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.model()
+            .attribute("accountingError", org.hamcrest.Matchers.containsString("Social contributions actually paid")));
+    org.mockito.Mockito.verify(accounting, org.mockito.Mockito.never())
+        .saveInputSettings(org.mockito.ArgumentMatchers.anyLong(), org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any());
+  }
+
+  @Test
+  void inputFormSavesExplicitZeroAndOpeningValues() throws Exception {
+    var session = loginSession();
+    when(accounting.inputSettings(7L, YearMonth.of(2026, 1)))
+        .thenReturn(new RyczaltWebAccountingClient.InputSettings(null, null, List.of("accountingStartDate")));
+    var request = post("/profiles/7/accounting/periods/2026-01/input-settings")
+        .session(session).with(csrf()).param("jdgActive", "true")
+        .param("qualifyingUop", "false").param("voluntarySickness", "false")
+        .param("accountingStartDate", "2026-01-01");
+    for (var field : RyczaltAccountingInputController.MONTHLY) {
+      if (field.required()) request.param(field.name(), "0");
+    }
+    for (var field : RyczaltAccountingInputController.OPENING) request.param(field.name(), "0");
+    mvc.perform(request).andExpect(status().is3xxRedirection());
+    org.mockito.Mockito.verify(accounting).saveInputSettings(
+        org.mockito.ArgumentMatchers.eq(7L), org.mockito.ArgumentMatchers.eq(YearMonth.of(2026, 1)),
+        org.mockito.ArgumentMatchers.argThat(values ->
+            BigDecimal.ZERO.equals(values.get("healthContributionPaidOverride"))
+                && BigDecimal.ZERO.equals(values.get("openingVatCarryForward"))
+                && "2026-01-01".equals(values.get("accountingStartDate"))));
+  }
+
+  @Test
   void rendersMappedBalancesCurrencyRevenueWarningAndOnlyValidPaymentAction() throws Exception {
     var session = loginSession();
 

@@ -48,10 +48,13 @@ class RyczaltAccountingQueryServiceTest {
       mock(RyczaltCalculationJpaRepository.class);
   private final RyczaltSourceReferenceJpaRepository sourceReferences =
       mock(RyczaltSourceReferenceJpaRepository.class);
+  private final com.smartbox.investory.ryczalt.application.RyczaltNativeMonthInputService inputSettings = mock();
   private RyczaltAccountingQueryService service;
 
   @BeforeEach
   void setUp() {
+    when(inputSettings.settings(org.mockito.ArgumentMatchers.anyLong(), org.mockito.ArgumentMatchers.any()))
+        .thenReturn(new com.smartbox.investory.ryczalt.application.RyczaltNativeMonthInputService.InputSettings(null, null, List.of()));
     service =
         new RyczaltAccountingQueryService(
             periods,
@@ -62,7 +65,7 @@ class RyczaltAccountingQueryServiceTest {
             calculations,
             new com.fasterxml.jackson.databind.ObjectMapper(),
             new RyczaltInvoiceQueryService(periods, invoices, sourceReferences),
-            new RyczaltPaymentQueryService(periods, obligations, matches, BigDecimal.ZERO));
+            new RyczaltPaymentQueryService(periods, obligations, matches, BigDecimal.ZERO), inputSettings);
   }
 
   @Test
@@ -103,6 +106,50 @@ class RyczaltAccountingQueryServiceTest {
             new RyczaltPeriodListItem(YearMonth.of(2026, 1), PeriodStatus.FROZEN)),
         service.listPeriods(7L));
     verify(periods).findByProfileIdOrderByYearDescMonthDesc(7L);
+  }
+
+  @Test
+  void existingCalculationsDoNotHideMissingRequiredTaxpayerFacts() {
+    var period = mock(RyczaltPeriodEntity.class);
+    when(period.id()).thenReturn(10L);
+    when(period.getProfileId()).thenReturn(7L);
+    when(period.getYear()).thenReturn(2026);
+    when(period.getMonth()).thenReturn(9);
+    var storedCalculations = List.of(calculation(CalculationType.RYCZALT, "{}"),
+        calculation(CalculationType.VAT, "{}"), calculation(CalculationType.ZUS, "{}"));
+    when(calculations.findByProfileIdAndPeriodId(7L, 10L)).thenReturn(storedCalculations);
+    when(periods.findByProfileIdAndYearAndMonth(7L, 2026, 9)).thenReturn(Optional.of(period));
+    when(inputSettings.settings(7L, YearMonth.of(2026, 9)))
+        .thenReturn(new com.smartbox.investory.ryczalt.application.RyczaltNativeMonthInputService.InputSettings(
+            null, null, List.of("accountingStartDate", "healthContributionPaidOverride")));
+    var issues = service.getIssues(7L, YearMonth.of(2026, 9));
+    org.assertj.core.api.Assertions.assertThat(issues)
+        .anySatisfy(issue -> {
+          assertEquals("MISSING_ACCOUNTING_INPUTS", issue.code());
+          assertEquals(IssueKind.BLOCKED, issue.kind());
+          org.assertj.core.api.Assertions.assertThat(issue.message())
+              .contains("opening accounting state", "paid social/health contributions");
+        });
+  }
+
+  @Test
+  void missingForeignInvoiceFxIsVisibleForReviewWithoutRewritingBookedAmounts() {
+    var period = mock(RyczaltPeriodEntity.class);
+    when(period.id()).thenReturn(10L);
+    when(period.getProfileId()).thenReturn(7L);
+    when(period.getYear()).thenReturn(2026);
+    when(period.getMonth()).thenReturn(9);
+    when(periods.findByProfileIdAndYearAndMonth(7L, 2026, 9)).thenReturn(Optional.of(period));
+    var invoice = invoice(21L);
+    when(invoice.getCurrency()).thenReturn(CurrencyType.EUR);
+    when(invoices.findByProfileIdAndPeriodIdOrderByAccountingDateAscIdAsc(7L, 10L)).thenReturn(List.of(invoice));
+    org.assertj.core.api.Assertions.assertThat(service.getIssues(7L, YearMonth.of(2026, 9)))
+        .anySatisfy(issue -> {
+          assertEquals("UNVERIFIED_INVOICE_FX", issue.code());
+          assertEquals(IssueKind.NEEDS_ANSWER, issue.kind());
+          org.assertj.core.api.Assertions.assertThat(issue.message()).contains("DOCUMENT-21", "NBP");
+        });
+    org.mockito.Mockito.verify(invoices, org.mockito.Mockito.never()).save(org.mockito.ArgumentMatchers.any());
   }
 
   @Test
@@ -250,7 +297,7 @@ class RyczaltAccountingQueryServiceTest {
         calculations,
         new com.fasterxml.jackson.databind.ObjectMapper(),
         new RyczaltInvoiceQueryService(periods, invoices, sourceReferences),
-        new RyczaltPaymentQueryService(periods, obligations, matches, BigDecimal.ZERO));
+        new RyczaltPaymentQueryService(periods, obligations, matches, BigDecimal.ZERO), inputSettings);
   }
 
   private static RyczaltInvoiceEntity invoice(long id) {

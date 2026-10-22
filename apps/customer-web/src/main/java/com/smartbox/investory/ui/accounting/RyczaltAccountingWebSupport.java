@@ -48,7 +48,9 @@ final class RyczaltAccountingWebSupport {
     int code = status.getStatusCode().value();
     if (code == 403) return "You are not allowed to perform this action.";
     if (code == 404) return "The requested accounting record was not found.";
-    if (code == 409 && status.getReason() != null && !status.getReason().isBlank()) return status.getReason();
+    if (code == 409 && status.getReason() != null && !status.getReason().isBlank())
+      return status.getReason();
+    if (code == 409) return "The accounting period changed. Reload the page and try again.";
     if (code == 400 && status.getReason() != null && !status.getReason().isBlank())
       return status.getReason();
     return fallback;

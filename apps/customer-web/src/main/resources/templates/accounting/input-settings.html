@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Accounting inputs</title>
+  <link href="/css/tabler.min.css" rel="stylesheet"><link href="/css/accounting.css" rel="stylesheet">
+  <th:block th:replace="~{fragments/theme-head :: theme}"></th:block>
+</head>
+<body><main class="container py-4">
+  <a th:href="@{/profiles/{id}/accounting(id=${profileId},month=${month})}">Back to accounting</a>
+  <h1 th:text="${'Accounting inputs · ' + month}">Accounting inputs</h1>
+  <p>Use actual accounting records. A blank amount means unknown; enter zero only when confirmed. Paid contributions are separate from calculated liabilities.</p>
+  <p th:if="${configuredStartDate != null}" th:text="${'Accounting start: ' + configuredStartDate}"></p>
+  <div class="alert alert-warning" th:unless="${missingFields.isEmpty()}">Required facts are missing. Complete paid contribution amounts and configure opening balances in the month when accounting starts.</div>
+  <div class="alert alert-danger" role="alert" th:if="${accountingError}" th:text="${accountingError}"></div>
+  <p th:if="${month.year != 2026}">Historical inputs are read only. Accounting input changes currently support 2026.</p>
+  <form method="post" th:action="@{/profiles/{id}/accounting/periods/{month}/input-settings(id=${profileId},month=${month})}">
+    <fieldset th:disabled="${!canWrite}">
+      <legend>Monthly facts</legend>
+      <div class="mb-3" th:each="name : ${ {'jdgActive', 'qualifyingUop', 'voluntarySickness'} }">
+        <label class="form-label" th:for="${name}" th:text="${name == 'jdgActive' ? 'JDG active' : (name == 'qualifyingUop' ? 'Qualifying employment (UoP)' : 'Voluntary sickness insurance')}"></label>
+        <select class="form-select" th:id="${name}" th:name="${name}" required>
+          <option value="">Select</option>
+          <option value="true" th:selected="${settings[name] != null and settings[name].toString() == 'true'}">Yes</option>
+          <option value="false" th:selected="${settings[name] != null and settings[name].toString() == 'false'}">No</option>
+        </select>
+      </div>
+      <div class="mb-3" th:each="field : ${monthlyFields}">
+        <label class="form-label" th:for="${field.name}" th:text="${field.label}"></label>
+        <input class="form-control" type="number" step="0.0001" th:id="${field.name}" th:name="${field.name}" th:value="${settings[field.name]}" th:required="${field.required}">
+      </div>
+      <fieldset th:if="${showOpening}">
+        <legend>Opening state</legend>
+        <p>Balances immediately before the start date. Choose a date within this month.</p>
+        <label class="form-label" for="accountingStartDate">Accounting start date</label>
+        <input class="form-control mb-3" id="accountingStartDate" name="accountingStartDate" type="date" required th:value="${settings['accountingStartDate']}" th:min="${month.atDay(1)}" th:max="${month.atEndOfMonth()}" th:readonly="${configuredStartDate != null}">
+        <div class="mb-3" th:each="field : ${openingFields}">
+          <label class="form-label" th:for="${field.name}" th:text="${field.label}"></label>
+          <input class="form-control" type="number" min="0" step="0.0001" required th:id="${field.name}" th:name="${field.name}" th:value="${settings[field.name]}">
+        </div>
+      </fieldset>
+      <button class="btn btn-primary mt-3" type="submit">Save accounting inputs</button>
+    </fieldset>
+  </form>
+</main></body>
+</html>

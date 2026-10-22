@@ -8,6 +8,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -35,6 +36,14 @@ public class RyczaltNativeMonthInputRestController {
           org.springframework.http.HttpStatus.FORBIDDEN);
     inputs.save(profileId, month, request.command());
     return ResponseEntity.noContent().build();
+  }
+
+  @GetMapping
+  public RyczaltNativeMonthInputService.InputSettings settings(
+      @PathVariable long profileId, @PathVariable YearMonth month, Authentication authentication) {
+    if (!authorization.canRead(profileId, authentication))
+      throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.FORBIDDEN);
+    return inputs.settings(profileId, month);
   }
 
   public record InputRequest(
