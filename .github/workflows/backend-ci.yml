@@ -71,6 +71,8 @@ jobs:
             test: RyczaltApplicationSmokeIT
           - name: standalone-migrations
             test: StandaloneMigrationIT
+          - name: profile-cleanup-migration
+            test: RyczaltProfileCleanupMigrationIT
           - name: accounting-contract
             test: CanonicalAccountingOpenApiIT
           - name: bank-import

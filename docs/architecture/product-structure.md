@@ -42,6 +42,16 @@ Authoritative owner of (within implemented and validated contracts):
 
 No frontend directly owns or recalculates these rules.
 
+Current hard runtime limits for this controlled POC remain explicit:
+
+- supported accounting year: `2026`
+- supported ryczałt rate: `12%`
+- supported taxpayer profile: JDG with active monthly VAT and monthly PIT
+- unsupported configurations are rejected by backend validation
+
+Treat broader product wording in this document as architecture intent, not a
+claim that unsupported years/rates/regimes are already accepted in runtime.
+
 ### Mobile
 
 Expo / React Native.
@@ -141,7 +151,7 @@ CI workflows on `main` and publish `aserobaba/ryczalt_it` and
 This proves image-pipeline behavior only; it does not prove Cloud Run deployment
 or a POC release. See [release baseline](../operations/release-baseline.md).
 
-Target environment path (deployment evidence is still required):
+Target release promotion model (deployment evidence is still required):
 
 ```text
 PR -> validate
@@ -168,14 +178,15 @@ Ryczałt backend exclusively owns Ryczałt persistence.
   owner details, tax office, payment accounts, ZUS/accounting preferences, and
   `auto_approve_known_counterparties`.
 
-`app_users.birth_date` and the `portfolios.owner`, `taxpayer_*`,
-`tax_micro_account`, and `zus_payment_account` columns are retained as
-transitional legacy/import compatibility fields. They are not read or written
-by current product logic and must not be used by new functionality or future
-NIP onboarding. New and migrated taxpayer/accounting facts belong in
-`ryczalt_profile`. These compatibility columns can be removed only in a
-separately planned migration after imported data and downstream consumers are
-verified.
+Migration `01.027` consolidates `app_users.birth_date` and the
+`portfolios.taxpayer_*`, `tax_micro_account`, and `zus_payment_account` values
+into `ryczalt_profile`, then removes those duplicate columns after checking
+for conflicting or unmapped data. `portfolios.owner` remains because its
+populated values do not have a consistent canonical mapping. The sanitized
+code/data findings and separate live migration gate are recorded in
+[`../backend/docs/schema-cleanup-audit.md`](../backend/docs/schema-cleanup-audit.md).
+Historical `accounting_*` tables were not present in the inspected deployed
+database; this migration does not remove accounting records or those tables.
 
 There should be:
 

@@ -39,7 +39,13 @@ public class AuthRestController {
 
   @GetMapping("/me")
   public CurrentProfileService.CurrentProfileResponse me(Authentication authentication) {
-    return profiles.find(authentication.getName());
+    try {
+      return profiles.find(authentication.getName());
+    } catch (IllegalStateException exception) {
+      throw new ResponseStatusException(
+          HttpStatus.FORBIDDEN,
+          "AUTH_PROFILE_ACCESS_REQUIRED: No accessible profile is assigned to this user. Contact administrator.");
+    }
   }
 
   public record LoginRequest(String username, String email, @NotBlank String password) {

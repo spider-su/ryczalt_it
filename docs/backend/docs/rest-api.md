@@ -12,6 +12,18 @@ read models and profile-scoped repository queries. The common resources below ar
 The mobile client is in `apps/mobile`. Its accounting API paths and calls are defined under
 `apps/mobile/src/api`, with presentation mapping in `apps/mobile/src/api/mappers`.
 
+## Authentication profile context contract
+
+`GET /api/v1/auth/me` returns the authenticated user context and accessible
+profiles used by mobile and customer web.
+
+- Success: `200` with `currentProfile` and `accessibleProfiles`.
+- Authenticated but no accessible profile assignment: `403` with `ApiError`
+  message `AUTH_PROFILE_ACCESS_REQUIRED: No accessible profile is assigned to this user. Contact administrator.`
+
+Clients must treat this `403` as a support/admin-routing state, not as bad
+credentials.
+
 | Current endpoint | Web | Mobile | Current owner | Target |
 | --- | --- | --- | --- | --- |
 | native period, invoice, transaction, obligation, issue, and payment routes | web/mobile target | native Ryczalt | `RyczaltAccountingRestController` | stable native contract |

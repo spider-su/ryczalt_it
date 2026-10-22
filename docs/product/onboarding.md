@@ -23,6 +23,13 @@ When a user has no accessible configured profile, show a clear access/setup
 state and route them to the administrator/support process. Do not start an
 accounting wizard that duplicates backend-provided configuration.
 
+Current backend contract for this case:
+
+- `GET /api/v1/auth/me` returns `403` with `ApiError.message`
+  `AUTH_PROFILE_ACCESS_REQUIRED: No accessible profile is assigned to this user. Contact administrator.`
+- Treat this as an authenticated-but-unassigned user state (not as invalid
+  credentials and not as a transient server outage).
+
 ## POC account acceptance
 
 Before inviting a controlled POC user, verify that the backend profile is
@@ -33,8 +40,10 @@ unsupported configurations are rejected. See [controlled POC scope](poc-scope.md
 For mid-year use, verify an explicit accounting start date and the opening
 facts required for calculations. Missing prior VAT carry-forward, year-to-date
 revenue, consumed deductions, or contribution facts cannot be represented as
-zero. The backend requires a complete opening-state record and fails closed when
-required monthly contribution or historical calculation facts are absent. Do
+zero. The native monthly calculation path requires opening-state facts and fails closed
+on missing or stale prior VAT calculations and missing required contribution facts.
+This source-level implementation is not a substitute for deployed mid-year
+acceptance, persistence tests, or verification of every supported entry path. Do
 not use a profile until its opening state and first supported month have been
 validated against regression tests and deployed acceptance evidence.
 

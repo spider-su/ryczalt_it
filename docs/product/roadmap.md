@@ -3,13 +3,14 @@
 This roadmap distinguishes repository foundations, current partial capabilities,
 and controlled-POC blockers. “Present in source” is not the same as accepted in a
 deployed end-to-end flow. POC entry gates are authoritative in
-[`poc-scope.md`](poc-scope.md).
+[`poc-scope.md`](poc-scope.md). The [implementation baseline](implementation-baseline.md)
+records source-supported features and explicit product boundaries.
 
 | Stage | Status | Scope / exit evidence |
 |---|---|---|
 | 0. Standalone product foundation | **Complete in repository** | Separate Ryczałt repository, application boundaries, backend-owned accounting and persistence; source extraction/cutover evidence remains in migration docs. |
-| 1. Build and image pipeline | **Implemented; deployment evidence required per environment** | App-specific CI, backend and customer-web Docker publishing, immutable SHA tags, Trivy and SBOM steps. CI/image publication does not prove Cloud Run deployment, rollback, or real-user readiness. |
-| 2. Supported monthly calculations | **Implemented with known correctness gap** | Native PIT/VAT/ZUS path and unit coverage exist. Missing prior VAT period/current result still falls back to zero; no validated general opening-state contract. Must close before mid-year POC use. |
+| 1. Build and image pipeline | **Implemented; deployment evidence required per environment** | App-specific CI, backend and customer-web Docker publishing, immutable SHA tags, Trivy and SBOM steps. CI/image publication does not prove runtime deployment, rollback, or real-user readiness. |
+| 2. Supported monthly calculations | **Implemented in source; deployed acceptance pending** | Native PIT/VAT/ZUS path and unit coverage exist. Native calculation now requires explicit opening-state facts and rejects missing/stale prior VAT results; unit-level source behavior confirmed. Database-backed and deployed mid-year acceptance remain required. |
 | 3. Account access and current client surfaces | **Partial** | Backend invitations and acceptance, mobile login/invitation acceptance, and profile-bound customer web exist. No public self-registration or NIP-based setup wizard. Validate complete invite-to-accounting journey in deployed environments. |
 | 4. POC accounting completeness and acceptance | **Required before POC** | Explicit start date/opening balances, fail-closed missing inputs, correct due/paid semantics, supported-config rejection, realistic cross-client E2E, deployment/operations evidence. See POC scope. |
 | 5. POC deployment and controlled-user operation | **Required before POC** | Deploy verified Docker digests for backend/web; explicit mobile API URL; health/readiness, backups, rollback, support, and a recorded acceptance run with a controlled cohort. |

@@ -26,6 +26,11 @@ final class MigrationTestDatabase {
     flyway(database).migrate();
   }
 
+  static void upgrade(WorkerDatabase database) {
+    assertDisposable(database);
+    flyway(database).migrate();
+  }
+
   static void migrateTo(WorkerDatabase database, String target) {
     assertDisposable(database);
     flyway(database, target).migrate();
