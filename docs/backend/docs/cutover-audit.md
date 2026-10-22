@@ -1,6 +1,9 @@
 # Ryczalt cutover audit — historical
 
-This document is retained only as historical migration evidence.
+This document is retained only as historical migration evidence. It is **not**
+a current product capability or database-retention specification. See
+[persistence](persistence.md), [implementation baseline](../../product/implementation-baseline.md)
+and [POC scope](../../product/poc-scope.md) for current guidance.
 
 The Accounting-to-Ryczalt cutover is complete in the active runtime:
 
