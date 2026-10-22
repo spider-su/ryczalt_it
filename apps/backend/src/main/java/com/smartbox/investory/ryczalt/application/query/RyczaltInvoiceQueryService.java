@@ -75,18 +75,16 @@ public class RyczaltInvoiceQueryService {
       long profileId, List<RyczaltInvoiceEntity> rows) {
     if (rows.isEmpty()) return List.of();
     Map<Long, RyczaltSourceReferenceEntity> sourceByInvoiceId = new HashMap<>();
-    if (sourceReferences != null) {
-      sourceReferences
-          .findByProfileIdAndEntityTypeAndEntityIdIn(
-              profileId, "INVOICE", rows.stream().map(RyczaltInvoiceEntity::getId).toList())
-          .forEach(
-              source ->
-                  sourceByInvoiceId.merge(
-                      source.getEntityId(),
-                      source,
-                      (existing, candidate) ->
-                          "KSEF".equals(candidate.getSource()) ? candidate : existing));
-    }
+    sourceReferences
+        .findByProfileIdAndEntityTypeAndEntityIdIn(
+            profileId, "INVOICE", rows.stream().map(RyczaltInvoiceEntity::getId).toList())
+        .forEach(
+            source ->
+                sourceByInvoiceId.merge(
+                    source.getEntityId(),
+                    source,
+                    (existing, candidate) ->
+                        "KSEF".equals(candidate.getSource()) ? candidate : existing));
     return rows.stream().map(row -> invoice(row, sourceByInvoiceId.get(row.getId()))).toList();
   }
 

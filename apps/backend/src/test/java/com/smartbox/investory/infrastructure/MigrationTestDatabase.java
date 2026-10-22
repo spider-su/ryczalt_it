@@ -2,15 +2,14 @@ package com.smartbox.investory.infrastructure;
 
 import com.smartbox.investory.testsupport.SharedPostgres;
 import com.smartbox.investory.testsupport.WorkerDatabase;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
-import java.util.stream.Stream;
 import org.flywaydb.core.Flyway;
+import org.springframework.core.io.ClassPathResource;
+import org.springframework.jdbc.datasource.init.ScriptUtils;
 
 final class MigrationTestDatabase {
 
@@ -39,6 +38,10 @@ final class MigrationTestDatabase {
   static Connection connection(WorkerDatabase database) throws SQLException {
     return DriverManager.getConnection(
         database.jdbcUrl(), database.username(), database.password());
+  }
+
+  static void executeMaintenanceScript(Connection connection, String resource) {
+    ScriptUtils.executeSqlScript(connection, new ClassPathResource(resource));
   }
 
   static Flyway flyway(WorkerDatabase database) {
@@ -82,16 +85,4 @@ final class MigrationTestDatabase {
     }
   }
 
-  static int migrationScriptCount() throws SQLException {
-    try (Stream<Path> files = Files.list(Path.of("src", "main", "resources", "sql", "migration"))) {
-      return (int)
-          files
-              .map(Path::getFileName)
-              .map(Path::toString)
-              .filter(name -> name.matches("^V\\d+\\.\\d+__.*\\.sql$"))
-              .count();
-    } catch (java.io.IOException exception) {
-      throw new SQLException("Cannot list Flyway migrations", exception);
-    }
-  }
 }

@@ -14,8 +14,15 @@ CREATE TABLE ryczalt.ryczalt_period (
     frozen_at TIMESTAMPTZ,
     reopened_at TIMESTAMPTZ,
     reopen_reason VARCHAR(1000),
+    activity_confirmation_type VARCHAR(32),
+    activity_confirmed_at TIMESTAMPTZ,
+    activity_confirmed_by VARCHAR(255),
     CONSTRAINT uq_ryczalt_period_profile_month UNIQUE (profile_id, period_year, period_month),
-    CONSTRAINT chk_ryczalt_period_reopen_reason CHECK (reopened_at IS NULL OR length(btrim(reopen_reason)) > 0)
+    CONSTRAINT chk_ryczalt_period_reopen_reason CHECK (reopened_at IS NULL OR length(btrim(reopen_reason)) > 0),
+    CONSTRAINT chk_ryczalt_period_activity_confirmation CHECK (
+        (activity_confirmation_type IS NULL AND activity_confirmed_at IS NULL AND activity_confirmed_by IS NULL)
+        OR (activity_confirmation_type = 'NO_REVENUE' AND activity_confirmed_at IS NOT NULL AND activity_confirmed_by IS NOT NULL)
+    )
 );
 CREATE INDEX ix_ryczalt_period_profile_status ON ryczalt.ryczalt_period(profile_id, status, period_year, period_month);
 
@@ -47,6 +54,8 @@ CREATE TABLE ryczalt.ryczalt_invoice (
     classification VARCHAR(128), vat_treatment VARCHAR(128), vat_deduction_ratio NUMERIC(7,6),
     payment_status VARCHAR(20) NOT NULL DEFAULT 'UNMATCHED' CHECK (payment_status IN ('MATCHED','PARTIALLY_MATCHED','UNMATCHED','MANUALLY_CONFIRMED','NOT_REQUIRED')),
     manual_paid_date DATE, manual_paid_note VARCHAR(1000),
+    booked_vat_pln NUMERIC(19,4), fx_rate NUMERIC(19,8), fx_effective_date DATE,
+    fx_provider VARCHAR(64), fx_provider_reference VARCHAR(256),
     CONSTRAINT chk_ryczalt_invoice_manual_paid_data CHECK ((payment_status = 'MANUALLY_CONFIRMED' AND manual_paid_date IS NOT NULL) OR payment_status <> 'MANUALLY_CONFIRMED'),
     CONSTRAINT fk_ryczalt_invoice_profile_counterparty FOREIGN KEY (profile_id, counterparty_id) REFERENCES ryczalt.ryczalt_counterparty(profile_id, id)
 );
@@ -90,7 +99,6 @@ CREATE TABLE ryczalt.ryczalt_obligation (
     CONSTRAINT uq_ryczalt_obligation_period_type UNIQUE (profile_id, period_id, obligation_type),
     CONSTRAINT uq_ryczalt_obligation_profile_id UNIQUE (profile_id, id)
 );
-CREATE INDEX ix_ryczalt_obligation_period ON ryczalt.ryczalt_obligation(profile_id, period_id, obligation_type);
 
 CREATE TABLE ryczalt.ryczalt_fx_rate (
     id BIGSERIAL PRIMARY KEY, currency VARCHAR(3) NOT NULL, effective_date DATE NOT NULL, rate NUMERIC(19,8) NOT NULL CHECK (rate > 0),
@@ -140,19 +148,46 @@ CREATE TABLE ryczalt.ryczalt_payment_account_rule (
     CONSTRAINT uq_ryczalt_payment_account_rule UNIQUE (profile_id, obligation_type, account_number),
     CONSTRAINT chk_ryczalt_payment_account_rule_account CHECK (length(btrim(account_number)) > 0)
 );
-CREATE INDEX ix_ryczalt_payment_account_rule_profile ON ryczalt.ryczalt_payment_account_rule(profile_id, obligation_type);
 
 CREATE TABLE ryczalt.ryczalt_native_month_input (
     id BIGSERIAL PRIMARY KEY, created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP, updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     profile_id BIGINT NOT NULL REFERENCES ryczalt.portfolios(id) ON DELETE CASCADE, tax_year INTEGER NOT NULL, tax_month INTEGER NOT NULL CHECK (tax_month BETWEEN 1 AND 12),
     jdg_active BOOLEAN NOT NULL, qualifying_uop BOOLEAN NOT NULL, zus_regime VARCHAR(32), voluntary_sickness BOOLEAN NOT NULL,
-    ytd_ryczalt_revenue NUMERIC(19,4) NOT NULL DEFAULT 0, full_jdg_social NUMERIC(19,4), social_contribution_deduction NUMERIC(19,4),
+    ytd_ryczalt_revenue NUMERIC(19,4) DEFAULT 0, full_jdg_social NUMERIC(19,4), social_contribution_deduction NUMERIC(19,4),
     health_contribution_override NUMERIC(19,4), health_contribution_paid_override NUMERIC(19,4), deductions_already_consumed NUMERIC(19,4) NOT NULL DEFAULT 0,
     sales_corrections NUMERIC(19,4) NOT NULL DEFAULT 0, explicit_vat_adjustments NUMERIC(19,4) NOT NULL DEFAULT 0,
+    accounting_start_date DATE, opening_ytd_revenue NUMERIC(19,4),
+    opening_social_contributions_paid NUMERIC(19,4), opening_health_contributions_paid NUMERIC(19,4),
+    opening_deductions_consumed NUMERIC(19,4), opening_vat_carry_forward NUMERIC(19,4),
     CONSTRAINT uq_ryczalt_native_month_input_period UNIQUE (profile_id, tax_year, tax_month),
-    CONSTRAINT chk_ryczalt_native_month_input_nonnegative CHECK (ytd_ryczalt_revenue >= 0 AND COALESCE(full_jdg_social,0) >= 0 AND COALESCE(social_contribution_deduction,0) >= 0 AND COALESCE(health_contribution_override,0) >= 0 AND COALESCE(health_contribution_paid_override,0) >= 0 AND deductions_already_consumed >= 0)
+    CONSTRAINT chk_ryczalt_native_month_input_nonnegative CHECK (ytd_ryczalt_revenue >= 0 AND COALESCE(full_jdg_social,0) >= 0 AND COALESCE(social_contribution_deduction,0) >= 0 AND COALESCE(health_contribution_override,0) >= 0 AND COALESCE(health_contribution_paid_override,0) >= 0 AND deductions_already_consumed >= 0),
+    CONSTRAINT chk_ryczalt_native_month_opening_nonnegative CHECK (
+        COALESCE(opening_ytd_revenue, 0) >= 0
+        AND COALESCE(opening_social_contributions_paid, 0) >= 0
+        AND COALESCE(opening_health_contributions_paid, 0) >= 0
+        AND COALESCE(opening_deductions_consumed, 0) >= 0
+        AND COALESCE(opening_vat_carry_forward, 0) >= 0
+    ),
+    CONSTRAINT chk_ryczalt_native_month_opening_state_complete CHECK (
+        (accounting_start_date IS NULL AND opening_ytd_revenue IS NULL
+            AND opening_social_contributions_paid IS NULL AND opening_health_contributions_paid IS NULL
+            AND opening_deductions_consumed IS NULL AND opening_vat_carry_forward IS NULL)
+        OR (accounting_start_date IS NOT NULL AND opening_ytd_revenue IS NOT NULL
+            AND opening_social_contributions_paid IS NOT NULL AND opening_health_contributions_paid IS NOT NULL
+            AND opening_deductions_consumed IS NOT NULL AND opening_vat_carry_forward IS NOT NULL)
+    ),
+    CONSTRAINT chk_ryczalt_native_month_opening_date_matches_period CHECK (
+        accounting_start_date IS NULL OR
+        (EXTRACT(YEAR FROM accounting_start_date) = tax_year AND EXTRACT(MONTH FROM accounting_start_date) = tax_month)
+    )
 );
 CREATE INDEX ix_ryczalt_native_month_input_profile_period ON ryczalt.ryczalt_native_month_input(profile_id, tax_year, tax_month);
+CREATE INDEX ix_ryczalt_native_month_opening_start
+    ON ryczalt.ryczalt_native_month_input(profile_id, accounting_start_date)
+    WHERE accounting_start_date IS NOT NULL;
+CREATE UNIQUE INDEX uq_ryczalt_native_month_accounting_start
+    ON ryczalt.ryczalt_native_month_input(profile_id)
+    WHERE accounting_start_date IS NOT NULL;
 
 CREATE TABLE ryczalt.ryczalt_counterparty_rule (
     id BIGSERIAL PRIMARY KEY, profile_id BIGINT NOT NULL REFERENCES ryczalt.portfolios(id) ON DELETE CASCADE, counterparty_id BIGINT NOT NULL,
@@ -183,3 +218,55 @@ COMMENT ON TABLE ryczalt.ryczalt_obligation_reference IS 'Persisted reference ob
 
 CREATE OR REPLACE FUNCTION ryczalt.touch_ryczalt_invoice_candidate_updated_at() RETURNS TRIGGER LANGUAGE plpgsql AS $$ BEGIN NEW.updated_at = now(); RETURN NEW; END; $$;
 CREATE TRIGGER trg_ryczalt_invoice_candidate_touch_updated_at BEFORE UPDATE ON ryczalt.ryczalt_invoice_candidate FOR EACH ROW EXECUTE FUNCTION ryczalt.touch_ryczalt_invoice_candidate_updated_at();
+
+
+CREATE TABLE ryczalt.ryczalt_profile (
+    id BIGSERIAL PRIMARY KEY,
+    profile_id BIGINT NOT NULL UNIQUE REFERENCES ryczalt.portfolios(id) ON DELETE CASCADE,
+    has_uop BOOLEAN NOT NULL DEFAULT TRUE,
+    nip VARCHAR(10),
+    full_name VARCHAR(240),
+    tax_office_code VARCHAR(4),
+    email VARCHAR(255),
+    vat_payment_account VARCHAR(34),
+    ryczalt_payment_account VARCHAR(34),
+    zus_payment_account VARCHAR(34),
+    first_name VARCHAR(120),
+    surname VARCHAR(120),
+    date_of_birth DATE,
+    auto_approve_known_counterparties BOOLEAN NOT NULL DEFAULT FALSE,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE ryczalt.ryczalt_fx_resolution (
+    id BIGSERIAL PRIMARY KEY,
+    currency VARCHAR(3) NOT NULL,
+    requested_date DATE NOT NULL,
+    effective_date DATE NOT NULL,
+    rate NUMERIC(19,8) NOT NULL CHECK (rate > 0),
+    provider VARCHAR(64) NOT NULL,
+    provider_reference VARCHAR(256),
+    resolved_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT uq_ryczalt_fx_resolution UNIQUE (provider, currency, requested_date)
+);
+CREATE INDEX ix_ryczalt_fx_resolution_lookup
+    ON ryczalt.ryczalt_fx_resolution(currency, requested_date);
+
+CREATE TABLE ryczalt.integration_jobs (
+    id BIGSERIAL PRIMARY KEY,
+    integration_instance_id BIGINT NOT NULL REFERENCES ryczalt.integration_instances(id) ON DELETE CASCADE,
+    job_type VARCHAR(128) NOT NULL,
+    enabled BOOLEAN NOT NULL DEFAULT FALSE,
+    cron VARCHAR(128) NOT NULL,
+    timezone VARCHAR(64) NOT NULL DEFAULT 'Europe/Warsaw',
+    parameters_json JSONB NOT NULL DEFAULT '{}'::jsonb,
+    last_started_at TIMESTAMPTZ,
+    last_completed_at TIMESTAMPTZ,
+    last_status VARCHAR(32),
+    last_error VARCHAR(500),
+    CONSTRAINT ux_integration_jobs_instance_type UNIQUE (integration_instance_id, job_type),
+    CONSTRAINT chk_integration_jobs_status
+        CHECK (last_status IS NULL OR last_status IN ('STARTED', 'SUCCESS', 'FAILED', 'SKIPPED'))
+);
+CREATE INDEX ix_integration_jobs_enabled ON ryczalt.integration_jobs(enabled);

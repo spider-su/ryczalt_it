@@ -123,7 +123,9 @@ public class RyczaltKsefImportService implements RyczaltKsefApi {
       }
       if (existing.isPresent()) {
         RyczaltInvoiceEntity invoice =
-            invoices.findById(existing.get().getEntityId()).orElseThrow();
+            invoices
+                .findByIdAndProfileId(existing.get().getEntityId(), profileId)
+                .orElseThrow();
         YearMonth current =
             YearMonth.of(invoice.getPeriod().getYear(), invoice.getPeriod().getMonth());
         requireMutable(profileId, current);

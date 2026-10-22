@@ -7,6 +7,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Primary;
 import org.springframework.http.client.JdkClientHttpRequestFactory;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.web.SecurityFilterChain;
@@ -30,10 +31,21 @@ public class CustomerWebSecurityConfiguration implements WebMvcConfigurer {
   }
 
   @Bean
+  @Primary
   RestClient customerWebBackendRestClient(BackendProperties properties) {
+    return customerWebBackendRestClient(properties, Duration.ofMinutes(3));
+  }
+
+  @Bean
+  RestClient customerWebKsefBackendRestClient(BackendProperties properties) {
+    return customerWebBackendRestClient(properties, Duration.ofMinutes(3));
+  }
+
+  private RestClient customerWebBackendRestClient(
+      BackendProperties properties, Duration readTimeout) {
     HttpClient httpClient = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(3)).build();
     var requestFactory = new JdkClientHttpRequestFactory(httpClient);
-    requestFactory.setReadTimeout(Duration.ofSeconds(8));
+    requestFactory.setReadTimeout(readTimeout);
     RestClient client =
         RestClient.builder().baseUrl(properties.baseUrl()).requestFactory(requestFactory).build();
     return client;

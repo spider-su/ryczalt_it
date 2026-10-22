@@ -232,16 +232,8 @@ public class SettlementService {
     if (obligation.getStatus() == ObligationStatus.FROZEN) return;
     BigDecimal paid = matches.allocatedForObligation(profileId, obligation.id());
     if (obligation.isManuallyPaid()) paid = paid.add(obligation.getAmount());
-    BigDecimal difference = paid.subtract(obligation.getAmount());
-    ObligationStatus status =
-        paid.signum() == 0
-            ? ObligationStatus.OPEN
-            : difference.abs().compareTo(paymentTolerance) <= 0
-                ? ObligationStatus.PAID
-                : difference.signum() > 0
-                    ? ObligationStatus.OVERPAID
-                    : ObligationStatus.PARTIALLY_PAID;
-    obligation.setStatus(status);
+    obligation.setStatus(
+        ObligationStatus.fromPayments(obligation.getAmount(), paid, paymentTolerance));
     obligations.save(obligation);
   }
 
