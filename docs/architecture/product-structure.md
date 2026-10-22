@@ -173,9 +173,13 @@ Ryczałt backend exclusively owns Ryczałt persistence.
 transitional legacy/import compatibility fields. They are not read or written
 by current product logic and must not be used by new functionality or future
 NIP onboarding. New and migrated taxpayer/accounting facts belong in
-`ryczalt_profile`. These compatibility columns can be removed only in a
-separately planned migration after imported data and downstream consumers are
-verified.
+`ryczalt_profile`. These compatibility columns are **cleanup candidates, not approved deletions**.
+Before any removal, inventory code and SQL readers/writers, foreign keys,
+constraints, migration/import paths, downstream consumers and actual persisted
+values. Preserve any required history, verify backups and restoration, then
+use a separately reviewed, reversible migration. Do not change the canonical
+accounting entities or remove historical `accounting_*` tables during the
+POC documentation-alignment stage.
 
 There should be:
 

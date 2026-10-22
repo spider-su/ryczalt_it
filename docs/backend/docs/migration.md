@@ -1,4 +1,11 @@
-# Migration notes
+# Migration notes — historical reference
+
+> **Archived migration evidence, not a current product specification.** For the current
+> logical model see [persistence](persistence.md); for current supported features and
+> acceptance see [implementation baseline](../../product/implementation-baseline.md)
+> and [POC scope](../../product/poc-scope.md). Do not treat old stage limitations,
+> parity fixtures or deployment observations as current behavior.
+
 
 This document is historical migration evidence. The native Ryczalt runtime is active; the former
 Accounting implementation is not a Maven reactor dependency or a runtime source of truth.
@@ -38,7 +45,7 @@ This integration test requires a Docker daemon available to Testcontainers.
 
 ## Standalone release state
 
-As of the 2026-09-27 pre-deployment review, the standalone schema migrations
+Historical snapshot (2026-09-27; **not** a current deployment-status claim): the standalone schema migrations
 remain a pre-production baseline in the repository-managed release lifecycle:
 PR #11 is unmerged, the repository has no GitHub release or deployment records,
 and no production deployment workflow is configured. Accordingly V01.021 and
