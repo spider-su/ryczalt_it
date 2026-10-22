@@ -18,12 +18,20 @@ facts only; no taxpayer, account, invoice, or credential values are included.
   profiles. The existing canonical profile agreed with its legacy values. One portfolio did not yet
   have a canonical `ryczalt_profile` row; migration `01.027` fills it from that portfolio's legacy
   fields.
+- The two birth-date values and 18 populated taxpayer/payment values fit the canonical column
+  limits; no truncation is required.
 - `portfolios.owner` is populated, but does not consistently match either `taxpayer_full_name` or
   the linked user display name. It is retained pending a defined canonical meaning.
 - Two indexes duplicate existing unique indexes: `ix_ryczalt_obligation_period` and
   `ix_ryczalt_payment_account_rule_profile`. Their corresponding unique indexes remain.
 
 ## Cleanup decision
+
+Before the migration, the logical ownership is `app_users` for login identity, `portfolios` for
+profile access, and `ryczalt_profile` for taxpayer and payment configuration. After `01.027`, that
+ownership remains the same, with duplicate taxpayer/payment fields removed from `portfolios` and
+the duplicate birth date removed from `app_users`. Accounting facts continue to reference the
+portfolio/profile ID as before.
 
 Migration `01.027` performs only these schema/data changes:
 
