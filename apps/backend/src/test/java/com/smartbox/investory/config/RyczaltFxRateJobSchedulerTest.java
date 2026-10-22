@@ -43,7 +43,7 @@ class RyczaltFxRateJobSchedulerTest {
     lock(true);
     when(jobs.save(any(IntegrationJobEntity.class))).thenAnswer(invocation -> invocation.getArgument(0));
     when(fxRates.refreshMonth(YearMonth.of(2026, 10)))
-        .thenReturn(new RyczaltFxRateService.FxRateRefreshResult(YearMonth.of(2026, 10), 4, 4, 62));
+        .thenReturn(new RyczaltFxRateService.FxRateRefreshResult(YearMonth.of(2026, 10), 4, 4, 62, 0, 0));
 
     scheduler().poll();
 
@@ -77,7 +77,7 @@ class RyczaltFxRateJobSchedulerTest {
     job.setIntegrationInstanceId(8L);
     job.setJobType("refresh-rates");
     job.setEnabled(true);
-    job.setCron("0 15 6 * * *");
+    job.setCron("0 0 3 * * 1-5");
     job.setTimezone("Europe/Warsaw");
     job.setLastCompletedAt(ZonedDateTime.parse("2026-09-30T23:00:00+02:00[Europe/Warsaw]"));
     return job;

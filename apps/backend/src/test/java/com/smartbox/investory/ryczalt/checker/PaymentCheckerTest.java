@@ -16,6 +16,15 @@ class PaymentCheckerTest {
   private static final Currency PLN = Currency.getInstance("PLN");
   private final PaymentChecker checker = new PaymentChecker();
 
+  @org.junit.jupiter.params.ParameterizedTest
+  @org.junit.jupiter.params.provider.CsvSource({"99.01,PAID", "100.99,PAID", "99.00,PARTIALLY_PAID", "101.00,OVERPAID"})
+  void zusRoundingToleranceStopsAtOnePlnAndKeepsActualAllocation(String amount, PaymentCheckStatus expected) {
+    var obligation = new Obligation(ObligationType.ZUS,new BigDecimal("100.00"),PLN,null,null);
+    var result = checker.check(obligation,List.of(tx("rounded",amount,"2026-02-10","ZUS")));
+    assertEquals(expected,result.status());
+    assertEquals(new BigDecimal(amount),result.matchedAmount());
+  }
+
   @Test
   void recognizesExactPaymentAndLatePayment() {
     Obligation obligation =
@@ -154,7 +163,7 @@ class PaymentCheckerTest {
                     "payment")),
             rules);
 
-    assertEquals(PaymentCheckStatus.PARTIALLY_PAID, result.status());
+    assertEquals(PaymentCheckStatus.PAID, result.status());
     assertEquals(new BigDecimal("1495.00"), result.matchedAmount());
   }
 

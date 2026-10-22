@@ -3,7 +3,9 @@ package com.smartbox.investory.ryczalt.application.query;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.smartbox.investory.ryczalt.checker.CheckSeverity;
+import com.smartbox.investory.ryczalt.application.RyczaltNativeMonthInputService;
 import com.smartbox.investory.ryczalt.domain.ObligationType;
+import com.smartbox.investory.shared.currency.CurrencyType;
 import com.smartbox.investory.ryczalt.persistence.CalculationStatus;
 import com.smartbox.investory.ryczalt.persistence.CalculationType;
 import com.smartbox.investory.ryczalt.persistence.FreezeEligibility;
@@ -42,6 +44,7 @@ public class RyczaltAccountingQueryService {
   private final ObjectMapper json;
   private final RyczaltInvoiceQueryService invoiceQueries;
   private final RyczaltPaymentQueryService paymentQueries;
+  private final RyczaltNativeMonthInputService inputSettings;
 
   @Autowired
   public RyczaltAccountingQueryService(
@@ -53,7 +56,8 @@ public class RyczaltAccountingQueryService {
       RyczaltCalculationJpaRepository calculations,
       ObjectProvider<ObjectMapper> jsonProvider,
       RyczaltInvoiceQueryService invoiceQueries,
-      RyczaltPaymentQueryService paymentQueries) {
+      RyczaltPaymentQueryService paymentQueries,
+      RyczaltNativeMonthInputService inputSettings) {
     this(
         periods,
         invoices,
@@ -63,7 +67,8 @@ public class RyczaltAccountingQueryService {
         calculations,
         jsonProvider.getIfAvailable(ObjectMapper::new),
         invoiceQueries,
-        paymentQueries);
+        paymentQueries,
+        inputSettings);
   }
 
   public RyczaltAccountingQueryService(
@@ -75,7 +80,8 @@ public class RyczaltAccountingQueryService {
       RyczaltCalculationJpaRepository calculations,
       ObjectMapper json,
       RyczaltInvoiceQueryService invoiceQueries,
-      RyczaltPaymentQueryService paymentQueries) {
+      RyczaltPaymentQueryService paymentQueries,
+      RyczaltNativeMonthInputService inputSettings) {
     this.periods = periods;
     this.invoices = invoices;
     this.transactions = transactions;
@@ -85,6 +91,7 @@ public class RyczaltAccountingQueryService {
     this.json = json;
     this.invoiceQueries = invoiceQueries;
     this.paymentQueries = paymentQueries;
+    this.inputSettings = inputSettings;
   }
 
   @Transactional(readOnly = true)
@@ -107,7 +114,7 @@ public class RyczaltAccountingQueryService {
     List<RyczaltObligationEntity> obligationRows = obligations(loaded.period);
     List<RyczaltObligationReadModel> obligationModels =
         paymentQueries.obligationModels(profileId, obligationRows);
-    List<RyczaltIssueReadModel> issues = issues(loaded, obligationModels);
+    List<RyczaltIssueReadModel> issues = issues(loaded, obligationModels, invoiceRows);
     BigDecimal totalObligations =
         obligationRows.stream()
             .map(RyczaltObligationEntity::getAmount)
@@ -258,7 +265,7 @@ public class RyczaltAccountingQueryService {
   @Transactional(readOnly = true)
   public List<RyczaltIssueReadModel> getIssues(long profileId, YearMonth month) {
     Loaded loaded = load(profileId, month);
-    return issues(loaded, paymentQueries.obligationModels(profileId, obligations(loaded.period)));
+    return issues(loaded, paymentQueries.obligationModels(profileId, obligations(loaded.period)), invoices(loaded.period));
   }
 
   @Transactional(readOnly = true)
@@ -268,8 +275,28 @@ public class RyczaltAccountingQueryService {
   }
 
   private List<RyczaltIssueReadModel> issues(
-      Loaded loaded, List<RyczaltObligationReadModel> obligationRows) {
+      Loaded loaded, List<RyczaltObligationReadModel> obligationRows, List<RyczaltInvoiceEntity> invoiceRows) {
     List<RyczaltIssueReadModel> result = new ArrayList<>();
+    for (var invoice : invoiceRows) {
+      if (invoice.getCurrency() != CurrencyType.PLN
+          && (invoice.getFxRate() == null || invoice.getFxEffectiveDate() == null
+              || invoice.getFxProvider() == null || invoice.getFxProviderReference() == null)) {
+        result.add(new RyczaltIssueReadModel("invoice-fx:" + invoice.id(),
+            "UNVERIFIED_INVOICE_FX", CheckSeverity.WARNING, IssueKind.NEEDS_ANSWER,
+            "Invoice FX needs review", "Invoice " + invoice.getReference()
+                + ": historical FX details are missing. Review the source document and NBP rate against the booked PLN amount.",
+            invoice.getReference()));
+      }
+    }
+    if (loaded.period.getYear() == 2026) {
+      var settings = inputSettings.settings(loaded.period.getProfileId(), month(loaded.period));
+      if (!settings.missingFields().isEmpty()) {
+        result.add(new RyczaltIssueReadModel("input-settings", "MISSING_ACCOUNTING_INPUTS",
+            CheckSeverity.ERROR, IssueKind.BLOCKED, "Accounting inputs required",
+            "Complete the opening accounting state and actual paid social/health contributions in Accounting inputs. "
+                + "Use actual paid amounts; enter zero only when confirmed.", "input-settings"));
+      }
+    }
     for (CalculationType type : CalculationType.values()) {
       RyczaltCalculationEntity calculation =
           loaded.calculations.stream()

@@ -234,11 +234,12 @@ function isMissingAccountingPeriod(
   profileId: number,
   month: string,
 ): boolean {
+  void profileId;
+  void month;
   return (
     error instanceof ApiError &&
     error.status === 404 &&
-    error.message ===
-      `Ryczalt period does not exist for profile ${profileId}: ${month}`
+    error.kind === "not-found"
   );
 }
 

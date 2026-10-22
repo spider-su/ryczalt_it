@@ -43,8 +43,15 @@ public class NativeMonthInputAggregator {
       throw needsReview(month, "actual paid social and health contribution amounts are required; enter zero when none were paid");
     }
     RyczaltNativeMonthInputEntity.ZusSettings zus = settings.zusSettings();
-    BigDecimal ytdRevenue = opening.openingYtdRevenue().add(cumulativeManagedIncome(profileId, opening.accountingStartDate(), month));
-    BigDecimal paidSocialYtd = opening.openingSocialContributionsPaid().add(cumulativePaidSocial(profileId, start, month));
+    // An accounting start persists across years; YTD revenue and paid-social totals do not.
+    boolean openingInTaxYear = start.getYear() == month.getYear();
+    LocalDate yearStart = LocalDate.of(month.getYear(), 1, 1);
+    LocalDate revenueStart = openingInTaxYear ? opening.accountingStartDate() : yearStart;
+    YearMonth paidStart = openingInTaxYear ? start : YearMonth.from(yearStart);
+    BigDecimal ytdRevenue = (openingInTaxYear ? opening.openingYtdRevenue() : BigDecimal.ZERO)
+        .add(cumulativeManagedIncome(profileId, revenueStart, month));
+    BigDecimal paidSocialYtd = (openingInTaxYear ? opening.openingSocialContributionsPaid() : BigDecimal.ZERO)
+        .add(cumulativePaidSocial(profileId, paidStart, month));
     return aggregate(
         profileId,
         periodId,

@@ -51,7 +51,8 @@ public class RyczaltMobileReadinessService {
         "SELECT p.name AS profile_name, rp.nip, rp.full_name "
             + "FROM ryczalt.portfolios p LEFT JOIN ryczalt.ryczalt_profile rp "
             + "ON rp.profile_id = p.id WHERE p.id = ?", profileId);
-    Map<String, Object> profile = identity.isEmpty() ? Map.of() : identity.getFirst();
+    if (identity.isEmpty()) throw new RyczaltProfileNotFoundException(profileId);
+    Map<String, Object> profile = identity.getFirst();
     boolean companyConfigured = present(profile.get("profile_name"))
         && present(profile.get("nip")) && present(profile.get("full_name"));
     var opening = monthInputs

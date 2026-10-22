@@ -75,6 +75,8 @@ jobs:
             test: CanonicalSchemaMigrationIT
           - name: overpaid-obligation-status-maintenance
             test: OverpaidObligationStatusMaintenanceIT
+          - name: verified-invoice-fx-maintenance
+            test: VerifiedInvoiceFxMaintenanceIT
           - name: accounting-contract
             test: CanonicalAccountingOpenApiIT
           - name: bank-import

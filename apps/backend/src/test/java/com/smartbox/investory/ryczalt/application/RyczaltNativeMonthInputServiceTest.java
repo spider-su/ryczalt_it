@@ -20,6 +20,55 @@ class RyczaltNativeMonthInputServiceTest {
   private final RyczaltNativeMonthInputService service =
       new RyczaltNativeMonthInputService(inputs, lifecycle);
 
+  @org.junit.jupiter.api.BeforeEach
+  void configuredOpening() {
+    when(inputs.findFirstByProfileIdAndAccountingStartDateIsNotNullOrderByYearAscMonthAsc(7L))
+        .thenReturn(Optional.of(new RyczaltNativeMonthInputEntity(7L, YearMonth.of(2026, 1),
+            new RyczaltNativeMonthInputService.Command(true, false, "JDG", false,
+                null, BigDecimal.ZERO, BigDecimal.ZERO, null, BigDecimal.ZERO,
+                BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO,
+                java.time.LocalDate.of(2026, 1, 1), BigDecimal.ZERO, BigDecimal.ZERO,
+                BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO))));
+  }
+
+  @Test
+  void rejectsMissingPaidFactsBeforeWriting() {
+    var incomplete = new RyczaltNativeMonthInputService.Command(true, false, "JDG", false,
+        null, null, null, null, null, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO);
+    var error = org.junit.jupiter.api.Assertions.assertThrows(IllegalArgumentException.class,
+        () -> service.save(7L, YearMonth.of(2026, 9), incomplete));
+    org.junit.jupiter.api.Assertions.assertTrue(error.getMessage().contains("socialContributionDeduction"));
+    org.junit.jupiter.api.Assertions.assertTrue(error.getMessage().contains("healthContributionPaidOverride"));
+    verifyNoInteractions(lifecycle);
+    org.mockito.Mockito.verify(inputs, org.mockito.Mockito.never()).save(org.mockito.ArgumentMatchers.any());
+  }
+
+  @Test
+  void refusesMonthlySaveUntilOpeningIsConfigured() {
+    when(inputs.findFirstByProfileIdAndAccountingStartDateIsNotNullOrderByYearAscMonthAsc(7L))
+        .thenReturn(Optional.empty());
+    org.junit.jupiter.api.Assertions.assertThrows(IllegalArgumentException.class,
+        () -> service.save(7L, YearMonth.of(2026, 9), command(BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO)));
+    verifyNoInteractions(lifecycle);
+  }
+
+  @Test
+  void reportsMissingFieldsWithoutInventingValuesAndScopesToProfile() {
+    var view = service.settings(8L, YearMonth.of(2026, 9));
+    org.junit.jupiter.api.Assertions.assertNull(view.settings());
+    org.junit.jupiter.api.Assertions.assertEquals(8, view.missingFields().size());
+    verify(inputs).findByProfileIdAndYearAndMonth(8L, 2026, 9);
+    verify(inputs).findFirstByProfileIdAndAccountingStartDateIsNotNullOrderByYearAscMonthAsc(8L);
+  }
+
+  @Test
+  void newMonthlyFactsInvalidateExistingCalculationChain() {
+    service.save(7L, YearMonth.of(2026, 9), command(BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO));
+    verify(lifecycle).invalidateFrom(7L, YearMonth.of(2026, 9), InputChange.ZUS_INPUT_CHANGED, "native-month-input");
+    verify(lifecycle).invalidateFrom(7L, YearMonth.of(2026, 9), InputChange.RYCZALT_DEDUCTIONS_CHANGED, "native-month-input");
+    verify(lifecycle).invalidateFrom(7L, YearMonth.of(2026, 9), InputChange.VAT_ADJUSTMENT_CHANGED, "native-month-input");
+  }
+
   @Test
   void openingStateRequiresEveryExplicitValueAndAllowsKnownZero() {
     var zero = new RyczaltNativeMonthInputService.Command(true, false, "JDG", false,
@@ -28,7 +77,7 @@ class RyczaltNativeMonthInputServiceTest {
         java.time.LocalDate.of(2026, 1, 1), BigDecimal.ZERO, BigDecimal.ZERO,
         BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO);
     org.junit.jupiter.api.Assertions.assertEquals(BigDecimal.ZERO, zero.openingVatCarryForward());
-    org.junit.jupiter.api.Assertions.assertThrows(NullPointerException.class,
+    org.junit.jupiter.api.Assertions.assertThrows(IllegalArgumentException.class,
         () -> new RyczaltNativeMonthInputService.Command(true, false, "JDG", false,
             null, null, BigDecimal.ZERO, null, BigDecimal.ZERO, BigDecimal.ZERO,
             BigDecimal.ZERO, BigDecimal.ZERO, java.time.LocalDate.of(2026, 7, 1),
@@ -118,8 +167,9 @@ class RyczaltNativeMonthInputServiceTest {
         false,
         ytdRevenue,
         BigDecimal.ZERO,
+        BigDecimal.ZERO,
         null,
-        null,
+        BigDecimal.ZERO,
         deductions,
         BigDecimal.ZERO,
         vatAdjustments);

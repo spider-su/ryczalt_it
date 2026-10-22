@@ -9,6 +9,7 @@ import com.smartbox.investory.ryczalt.checker.PaymentMatchType;
 import com.smartbox.investory.ryczalt.checker.TaxPaymentPeriodReference;
 import com.smartbox.investory.ryczalt.domain.ObligationStatus;
 import com.smartbox.investory.ryczalt.domain.Transaction;
+import com.smartbox.investory.ryczalt.application.RyczaltObligationNotFoundException;
 import com.smartbox.investory.ryczalt.persistence.RyczaltObligationEntity;
 import com.smartbox.investory.ryczalt.persistence.RyczaltObligationJpaRepository;
 import com.smartbox.investory.ryczalt.persistence.RyczaltPaymentMatchEntity;
@@ -131,23 +132,32 @@ public class SettlementService {
 
   @Transactional
   public void markObligationPaid(
-      long profileId, long obligationId, java.time.LocalDate paidDate, String note) {
-    RyczaltObligationEntity obligation = obligations.findLockedById(obligationId).orElseThrow();
+      long profileId,
+      YearMonth month,
+      long obligationId,
+      java.time.LocalDate paidDate,
+      String note) {
+    RyczaltObligationEntity obligation =
+        obligations
+            .findLockedById(obligationId)
+            .orElseThrow(() -> new RyczaltObligationNotFoundException(profileId, obligationId));
     if (obligation.getProfileId() != profileId)
       throw new IllegalArgumentException("Profile mismatch");
+    requireSameMonth(month, obligation);
     requireMutable(obligation.getPeriod());
-    if (matches.allocatedForObligation(profileId, obligationId).signum() > 0) {
-      throw new IllegalStateException("Bank payment is already matched to this obligation");
-    }
     obligation.markManuallyPaid(paidDate, note);
     refreshStatus(profileId, obligation);
   }
 
   @Transactional
-  public void markObligationUnpaid(long profileId, long obligationId) {
-    RyczaltObligationEntity obligation = obligations.findLockedById(obligationId).orElseThrow();
+  public void markObligationUnpaid(long profileId, YearMonth month, long obligationId) {
+    RyczaltObligationEntity obligation =
+        obligations
+            .findLockedById(obligationId)
+            .orElseThrow(() -> new RyczaltObligationNotFoundException(profileId, obligationId));
     if (obligation.getProfileId() != profileId)
       throw new IllegalArgumentException("Profile mismatch");
+    requireSameMonth(month, obligation);
     requireMutable(obligation.getPeriod());
     obligation.markManuallyUnpaid();
     refreshStatus(profileId, obligation);
@@ -229,11 +239,11 @@ public class SettlementService {
   }
 
   private void refreshStatus(long profileId, RyczaltObligationEntity obligation) {
-    if (obligation.getStatus() == ObligationStatus.FROZEN) return;
+    if (obligation.getPeriod().getStatus().isFrozen()) return;
     BigDecimal paid = matches.allocatedForObligation(profileId, obligation.id());
-    if (obligation.isManuallyPaid()) paid = paid.add(obligation.getAmount());
+    if (obligation.isManuallyPaid()) paid = paid.max(obligation.getAmount());
     obligation.setStatus(
-        ObligationStatus.fromPayments(obligation.getAmount(), paid, paymentTolerance));
+        ObligationStatus.fromPayments(obligation.getType(), obligation.getAmount(), paid, paymentTolerance));
     obligations.save(obligation);
   }
 
@@ -263,5 +273,14 @@ public class SettlementService {
   private void requireSameProfile(long requested, long obligation, long transaction) {
     if (requested != obligation || requested != transaction)
       throw new IllegalArgumentException("Profile mismatch");
+  }
+
+  private static void requireSameMonth(YearMonth requestedMonth, RyczaltObligationEntity obligation) {
+    YearMonth obligationMonth =
+        YearMonth.of(obligation.getPeriod().getYear(), obligation.getPeriod().getMonth());
+    if (!obligationMonth.equals(requestedMonth)) {
+      throw new IllegalArgumentException(
+          "Obligation " + obligation.id() + " does not belong to period " + requestedMonth);
+    }
   }
 }

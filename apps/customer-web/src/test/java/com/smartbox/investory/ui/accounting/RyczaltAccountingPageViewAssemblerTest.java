@@ -9,6 +9,32 @@ import java.util.List;
 import org.junit.jupiter.api.Test;
 
 class RyczaltAccountingPageViewAssemblerTest {
+  @org.junit.jupiter.params.ParameterizedTest
+  @org.junit.jupiter.params.provider.CsvSource({"100.00,false", "99.05,false", "101.03,false", "99.04,true", "101.04,true"})
+  void zusCardsSuppressOnlyDifferencesBelowOnePln(String comparison, boolean showDifference) {
+    YearMonth month = YearMonth.of(2026,8);
+    var empty = period(month);
+    var period = new RyczaltWebAccountingClient.Period(month,"OPEN",List.of(),
+        new RyczaltWebAccountingClient.Summary(BigDecimal.ZERO,new BigDecimal("100.04"),new BigDecimal("100.04"),new BigDecimal("100.04")),
+        empty.audit(),empty.documents(),empty.settlement(),empty.reconciliation(),empty.completeness(),List.of());
+    var reference = List.of(
+        new RyczaltWebAccountingClient.ReferenceObligation("ZUS",new BigDecimal(comparison)),
+        new RyczaltWebAccountingClient.ReferenceObligation("VAT",new BigDecimal(comparison)));
+    boolean underpaid = showDifference && new BigDecimal(comparison).compareTo(new BigDecimal("100.04")) < 0;
+    String zusStatus = underpaid ? "PARTIALLY_PAID" : (showDifference ? "OVERPAID" : "PAID");
+    var obligations = List.of(
+        obligation("ZUS","100.04",comparison,underpaid ? "1" : "0",zusStatus,false),
+        obligation("VAT","100.04",comparison,"0.04","PARTIALLY_PAID",false));
+    var page = new RyczaltAccountingPageViewAssembler().assemble(month,
+        List.of(new RyczaltWebAccountingClient.Month(month,"OPEN")),period,List.of(),List.of(),List.of(),
+        obligations,reference,List.of(),List.of(),false,LocalDate.of(2026,8,25));
+    var zus = taxCard(page,"ZUS");
+    assertEquals(showDifference,zus.bankDiff()!=null);
+    assertEquals(showDifference,zus.referenceDiff()!=null);
+    assertEquals(underpaid ? "○ Unpaid" : "✓ Paid",zus.status());
+    org.junit.jupiter.api.Assertions.assertNotNull(taxCard(page,"VAT").bankDiff());
+  }
+
   @Test
   void bankRowsUseCounterpartyAliasAndShowWholeAmountAndAllocationStatus() {
     var counterparties =

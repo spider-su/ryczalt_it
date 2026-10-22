@@ -55,6 +55,9 @@ class RyczaltNativeBankImportIT {
   @Autowired private RyczaltSourceReferenceJpaRepository sourceReferences;
   @Autowired private JdbcTemplate jdbc;
   @Autowired private DataSource dataSource;
+  @Autowired private SettlementService settlement;
+  @Autowired private RyczaltObligationJpaRepository obligationRows;
+  @Autowired private com.smartbox.investory.ryczalt.persistence.RyczaltPaymentMatchJpaRepository paymentMatches;
 
   @BeforeAll
   static void migrateSchema() {
@@ -102,6 +105,49 @@ class RyczaltNativeBankImportIT {
 
   private RyczaltBankImportResult importCsv(long profileId, String... rows) {
     return bankImport.importBank(profileId, csv(rows), "bank.csv", "text/csv");
+  }
+
+  @org.junit.jupiter.params.ParameterizedTest
+  @org.junit.jupiter.params.provider.CsvSource({"99.01,PAID", "99.00,PARTIALLY_PAID", "100.99,PAID"})
+  void bankImportPersistsStrictZusRoundingToleranceWithoutChangingAmounts(String payment, String expectedStatus) {
+    jdbc.update("INSERT INTO ryczalt.ryczalt_period(profile_id,period_year,period_month,status) VALUES (1,2026,2,'CALCULATED')");
+    Long periodId = jdbc.queryForObject("SELECT id FROM ryczalt.ryczalt_period WHERE profile_id=1",Long.class);
+    jdbc.update("INSERT INTO ryczalt.ryczalt_obligation(period_id,profile_id,obligation_type,amount,currency,status) VALUES (?,1,'ZUS',100,'PLN','OPEN')",periodId);
+    importCsv(1,"2026-02-15,2026-02-01,ROUNDING,ZUS,PLN,-" + payment + ",ZUS payment");
+    assertThat(jdbc.queryForObject("SELECT status FROM ryczalt.ryczalt_obligation WHERE profile_id=1",String.class)).isEqualTo(expectedStatus);
+    assertThat(jdbc.queryForObject("SELECT amount FROM ryczalt.ryczalt_obligation WHERE profile_id=1",java.math.BigDecimal.class)).isEqualByComparingTo("100");
+    assertThat(jdbc.queryForObject("SELECT sum(matched_amount) FROM ryczalt.ryczalt_payment_match WHERE profile_id=1",java.math.BigDecimal.class)).isEqualByComparingTo(payment);
+  }
+
+  @Test
+  void confirmsRemainingBalanceWithoutDuplicatingBankPaymentAndCanUndo() {
+    jdbc.update("INSERT INTO ryczalt.ryczalt_period(profile_id,period_year,period_month,status) VALUES (1,2026,2,'CALCULATED')");
+    Long periodId = jdbc.queryForObject("SELECT id FROM ryczalt.ryczalt_period WHERE profile_id=1", Long.class);
+    jdbc.update("INSERT INTO ryczalt.ryczalt_obligation(period_id,profile_id,obligation_type,amount,currency,status) VALUES (?,1,'ZUS',100,'PLN','OPEN')", periodId);
+    importCsv(1, "2026-02-15,2026-02-01,PARTIAL,ZUS,PLN,-40,ZUS payment");
+    Long obligationId = jdbc.queryForObject("SELECT id FROM ryczalt.ryczalt_obligation WHERE profile_id=1", Long.class);
+    // An imported frozen obligation flag must not override an unfrozen period.
+    jdbc.update("UPDATE ryczalt.ryczalt_obligation SET status='FROZEN' WHERE id=?", obligationId);
+    settlement.markObligationPaid(1, java.time.YearMonth.of(2026, 2), obligationId, java.time.LocalDate.of(2026, 2, 20), "Confirmed remainder");
+    settlement.markObligationPaid(1, java.time.YearMonth.of(2026, 2), obligationId, java.time.LocalDate.of(2026, 2, 20), "Confirmed remainder");
+    var query = new com.smartbox.investory.ryczalt.application.query.RyczaltPaymentQueryService(
+        periods, obligationRows, paymentMatches, java.math.BigDecimal.ZERO);
+    var paid = query.getObligations(1, java.time.YearMonth.of(2026, 2)).getFirst();
+    assertThat(paid.paidAmount()).isEqualByComparingTo("100");
+    assertThat(paid.outstandingAmount()).isZero();
+    assertThat(paid.status()).isEqualTo(com.smartbox.investory.ryczalt.domain.ObligationStatus.PAID);
+    assertThat(jdbc.queryForObject("SELECT status FROM ryczalt.ryczalt_obligation WHERE id=?", String.class, obligationId)).isEqualTo("PAID");
+    assertThat(paymentMatches.allocatedForObligation(1, obligationId)).isEqualByComparingTo("40");
+    assertThat(paymentMatches.count()).isEqualTo(1);
+    settlement.markObligationUnpaid(1, java.time.YearMonth.of(2026, 2), obligationId);
+    var partial = query.getObligations(1, java.time.YearMonth.of(2026, 2)).getFirst();
+    assertThat(partial.paidAmount()).isEqualByComparingTo("40");
+    assertThat(partial.status()).isEqualTo(com.smartbox.investory.ryczalt.domain.ObligationStatus.PARTIALLY_PAID);
+    jdbc.update("UPDATE ryczalt.ryczalt_period SET status='FROZEN' WHERE id=?", periodId);
+    assertThatThrownBy(() -> settlement.markObligationPaid(1, java.time.YearMonth.of(2026, 2), obligationId,
+        java.time.LocalDate.of(2026, 2, 20), "Blocked"))
+        .isInstanceOf(IllegalStateException.class);
+    assertThat(obligationRows.findById(obligationId).orElseThrow().isManuallyPaid()).isFalse();
   }
 
   @Test

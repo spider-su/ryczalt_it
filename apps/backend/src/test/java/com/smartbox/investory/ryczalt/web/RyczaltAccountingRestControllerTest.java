@@ -109,6 +109,18 @@ class RyczaltAccountingRestControllerTest {
   }
 
   @Test
+  void missingTaxpayerFactsReturnReviewDetailsAsConflictInsteadOfInternalError() throws Exception {
+    when(accounting.calculateFromPersistedFacts(7L, YearMonth.of(2026, 9)))
+        .thenThrow(new com.smartbox.investory.ryczalt.application.NeedsReviewException(
+            YearMonth.of(2026, 9), "opening accounting state is not configured"));
+    mvc.perform(post("/api/profiles/7/accounting/periods/2026-09/calculate")
+        .principal(authentication).contentType("application/json"))
+        .andExpect(status().isConflict())
+        .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath("$.message")
+            .value(org.hamcrest.Matchers.containsString("opening accounting state is not configured")));
+  }
+
+  @Test
   void invoiceMoneyIsSerializedAsDecimalString() throws Exception {
     when(accounting.invoices(7L, YearMonth.of(2026, 8)))
         .thenReturn(
@@ -254,7 +266,8 @@ class RyczaltAccountingRestControllerTest {
         .andExpect(status().isNoContent());
 
     verify(accounting)
-        .markObligationPaid(7L, 21L, LocalDate.of(2026, 8, 25), "Paid without transfer");
+        .markObligationPaid(
+            7L, YearMonth.of(2026, 8), 21L, LocalDate.of(2026, 8, 25), "Paid without transfer");
   }
 
   @Test
@@ -264,7 +277,7 @@ class RyczaltAccountingRestControllerTest {
                 .principal(authentication))
         .andExpect(status().isNoContent());
 
-    verify(accounting).markObligationUnpaid(7L, 21L);
+    verify(accounting).markObligationUnpaid(7L, YearMonth.of(2026, 8), 21L);
   }
 
   @Test

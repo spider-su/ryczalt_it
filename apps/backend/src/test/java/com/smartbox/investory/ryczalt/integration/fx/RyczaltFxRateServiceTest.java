@@ -46,6 +46,9 @@ class RyczaltFxRateServiceTest {
     assertThat(result.observationsReceived()).isEqualTo(4);
     assertThat(result.ratesInserted()).isEqualTo(4);
     assertThat(result.resolutionsInserted()).isEqualTo(62);
+    assertThat(result.ratesUnchanged()).isZero();
+    assertThat(result.resolutionsUnchanged()).isZero();
+    assertThat(result.outcome()).isEqualTo("UPDATED");
     verify(resolutions)
         .insertIfAbsent(
             eq("EUR"),
@@ -55,6 +58,19 @@ class RyczaltFxRateServiceTest {
             eq("NBP"),
             eq("NBP-A-2026-10-30"),
             any(Instant.class));
+  }
+
+  @Test
+  void repeatedRefreshReportsNoNewDataInsteadOfImplyingRowsWereUpdated() {
+    when(source.fetchHistory(any(), any())).thenReturn(List.of(
+        rate("EUR", LocalDate.of(2026, 9, 30), "4.20"),
+        rate("USD", LocalDate.of(2026, 9, 30), "3.70")));
+    var result = service().refreshMonth(YearMonth.of(2026, 10));
+    assertThat(result.ratesInserted()).isZero();
+    assertThat(result.resolutionsInserted()).isZero();
+    assertThat(result.ratesUnchanged()).isEqualTo(2);
+    assertThat(result.resolutionsUnchanged()).isEqualTo(62);
+    assertThat(result.outcome()).isEqualTo("NO_NEW_DATA");
   }
 
   private RyczaltFxRateService service() {

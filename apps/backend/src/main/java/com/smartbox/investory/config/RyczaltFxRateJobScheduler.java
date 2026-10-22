@@ -15,6 +15,7 @@ import java.sql.SQLException;
 import java.time.YearMonth;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
+import java.util.Set;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -31,7 +32,8 @@ import org.springframework.stereotype.Component;
 @ConditionalOnProperty(name = "app.scheduling.enabled", havingValue = "true")
 public class RyczaltFxRateJobScheduler {
   private static final String JOB_TYPE = "refresh-rates";
-  private static final String PREVIOUS_DEFAULT_CRON = "0 15 6 * * *";
+  private static final Set<String> PREVIOUS_DEFAULT_CRONS =
+      Set.of("0 15 6 * * *", "0 0 3 * * 1-5");
   private static final long LOCK_KEY = 0x4658524154454a42L; // FXRATEJB
 
   private final IntegrationJobRepository jobs;
@@ -67,7 +69,7 @@ public class RyczaltFxRateJobScheduler {
   }
 
   private void normalizePreviousDefault(IntegrationJobEntity job) {
-    if (!PREVIOUS_DEFAULT_CRON.equals(job.getCron())) return;
+    if (!PREVIOUS_DEFAULT_CRONS.contains(job.getCron())) return;
     var descriptor = IntegrationJobDescriptor.forType(JOB_TYPE);
     job.setCron(descriptor.defaultCron());
     job.setTimezone(descriptor.defaultTimezone());
@@ -115,12 +117,15 @@ public class RyczaltFxRateJobScheduler {
       var result = fxRates.refreshMonth(YearMonth.from(startedAt));
       job.setLastStatus("SUCCESS");
       log.info(
-          "NBP FX refresh completed: jobId={}, month={}, observations={}, ratesInserted={}, resolutionsInserted={}",
+          "NBP FX refresh completed: jobId={}, month={}, observations={}, ratesInserted={}, resolutionsInserted={}, ratesUnchanged={}, resolutionsUnchanged={}, outcome={}",
           job.getId(),
           result.month(),
           result.observationsReceived(),
           result.ratesInserted(),
-          result.resolutionsInserted());
+          result.resolutionsInserted(),
+          result.ratesUnchanged(),
+          result.resolutionsUnchanged(),
+          result.outcome());
     } catch (RuntimeException exception) {
       job.setLastStatus("FAILED");
       String message = exception.getMessage();

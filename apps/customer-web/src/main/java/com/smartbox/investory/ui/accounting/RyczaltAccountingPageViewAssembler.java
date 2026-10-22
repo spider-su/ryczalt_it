@@ -136,9 +136,9 @@ final class RyczaltAccountingPageViewAssembler {
         type,
         money(calculated, "PLN"),
         money(reference, "PLN"),
-        difference(calculated, reference),
+        difference(type, calculated, reference),
         money(bank, "PLN"),
-        difference(calculated, bank),
+        difference(type, calculated, bank),
         paid ? "✓ Paid" : "○ Unpaid",
         paid ? "is-paid" : "is-unpaid");
   }
@@ -223,9 +223,11 @@ final class RyczaltAccountingPageViewAssembler {
     return currency == null || currency.isBlank() ? amount : amount + " " + currency;
   }
 
-  private static String difference(BigDecimal calculated, BigDecimal comparison) {
+  private static String difference(String type, BigDecimal calculated, BigDecimal comparison) {
     if (calculated == null || comparison == null) return null;
-    var difference = calculated.subtract(comparison).setScale(2, RoundingMode.HALF_UP);
+    var rawDifference = calculated.subtract(comparison);
+    if ("ZUS".equalsIgnoreCase(type) && rawDifference.abs().compareTo(BigDecimal.ONE) < 0) return null;
+    var difference = rawDifference.setScale(2, RoundingMode.HALF_UP);
     if (difference.signum() == 0) return null;
     var display = money(difference.abs(), "PLN");
     return (difference.signum() > 0 ? "+" : "−") + display;

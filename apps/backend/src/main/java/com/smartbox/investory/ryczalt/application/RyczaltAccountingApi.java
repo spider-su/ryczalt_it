@@ -38,9 +38,9 @@ public interface RyczaltAccountingApi {
   void reopen(long profileId, YearMonth month, String actor, String reason);
 
   void markObligationPaid(
-      long profileId, long obligationId, java.time.LocalDate paidDate, String note);
+      long profileId, YearMonth month, long obligationId, java.time.LocalDate paidDate, String note);
 
-  void markObligationUnpaid(long profileId, long obligationId);
+  void markObligationUnpaid(long profileId, YearMonth month, long obligationId);
 
   NativeMonthCalculationResult calculate(
       long profileId, YearMonth month, NativeMonthCalculationInput input);

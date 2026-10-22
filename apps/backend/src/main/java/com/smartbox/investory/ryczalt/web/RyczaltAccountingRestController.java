@@ -136,6 +136,7 @@ public class RyczaltAccountingRestController {
         () ->
             accounting.markObligationPaid(
                 profileId,
+                month,
                 obligationId,
                 request == null ? null : request.paidDate(),
                 request == null ? null : request.note()));
@@ -149,7 +150,7 @@ public class RyczaltAccountingRestController {
       @PathVariable long obligationId,
       Authentication authentication) {
     write(profileId, authentication);
-    command(() -> accounting.markObligationUnpaid(profileId, obligationId));
+    command(() -> accounting.markObligationUnpaid(profileId, month, obligationId));
     return ResponseEntity.noContent().build();
   }
 
@@ -225,9 +226,6 @@ public class RyczaltAccountingRestController {
     } catch (RyczaltPeriodNotFoundException exception) {
       throw new ResponseStatusException(HttpStatus.NOT_FOUND, exception.getMessage(), exception);
     } catch (IllegalArgumentException exception) {
-      if (exception.getMessage() != null && exception.getMessage().contains("does not exist")) {
-        throw new ResponseStatusException(HttpStatus.NOT_FOUND, exception.getMessage(), exception);
-      }
       throw new ResponseStatusException(HttpStatus.BAD_REQUEST, exception.getMessage(), exception);
     } catch (IllegalStateException exception) {
       throw new ResponseStatusException(HttpStatus.CONFLICT, exception.getMessage(), exception);
