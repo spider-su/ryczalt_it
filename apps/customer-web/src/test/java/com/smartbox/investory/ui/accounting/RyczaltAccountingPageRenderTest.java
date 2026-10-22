@@ -29,6 +29,20 @@ class RyczaltAccountingPageRenderTest {
   @MockitoBean RyczaltWebAccountingClient accounting;
 
   @Test
+  void paymentConflictReturnsToAccountingWithTheActualReason() throws Exception {
+    var session = loginSession();
+    org.mockito.Mockito.doThrow(new org.springframework.web.server.ResponseStatusException(
+        org.springframework.http.HttpStatus.CONFLICT, "Frozen period cannot be changed"))
+        .when(accounting).manualObligationPaid(7L,YearMonth.of(2026,8),21L,LocalDate.of(2026,8,25),null);
+    mvc.perform(post("/profiles/7/accounting/obligations/21/manual-paid").session(session).with(csrf())
+        .param("month","2026-08").param("paidDate","2026-08-25"))
+        .andExpect(status().is3xxRedirection())
+        .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrl("/profiles/7/accounting?month=2026-08"))
+        .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.flash()
+            .attribute("accountingError","Frozen period cannot be changed"));
+  }
+
+  @Test
   void rendersMappedBalancesCurrencyRevenueWarningAndOnlyValidPaymentAction() throws Exception {
     var session = loginSession();
 

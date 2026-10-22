@@ -406,6 +406,16 @@ final class HttpRyczaltWebAccountingClient implements RyczaltWebAccountingClient
     try {
       return call.get();
     } catch (RestClientResponseException ex) {
+      if (ex.getStatusCode().value() == 400 || ex.getStatusCode().value() == 409) {
+        String message = "Accounting request requires review.";
+        try {
+          String detail = json.readTree(ex.getResponseBodyAsString()).path("message").asText("");
+          if (!detail.isBlank() && detail.length() <= 1000) message = detail;
+        } catch (RuntimeException malformedResponse) {
+          // Only a structured backend error may supply a user-facing explanation.
+        }
+        throw new org.springframework.web.server.ResponseStatusException(ex.getStatusCode(), message);
+      }
       throw new BackendAuthException(errorKind(ex.getStatusCode().value()));
     } catch (ResourceAccessException ex) {
       throw new BackendAuthException(

@@ -21,6 +21,24 @@ class RyczaltPaymentQueryServiceTest {
   private final RyczaltObligationJpaRepository obligations = mock(RyczaltObligationJpaRepository.class);
   private final RyczaltPaymentMatchJpaRepository matches = mock(RyczaltPaymentMatchJpaRepository.class);
 
+  @org.junit.jupiter.params.ParameterizedTest
+  @org.junit.jupiter.params.provider.CsvSource({"40,100,PAID", "120,120,OVERPAID", "0,100,PAID"})
+  void manualConfirmationCoversOnlyTheRemainingAmountAndPreservesOverpayment(
+      String bankPaid, String expectedPaid, ObligationStatus expectedStatus) {
+    var obligation = mock(RyczaltObligationEntity.class);
+    when(obligation.id()).thenReturn(4L);
+    when(obligation.getType()).thenReturn(ObligationType.ZUS);
+    when(obligation.getAmount()).thenReturn(new BigDecimal("100"));
+    when(obligation.getCurrency()).thenReturn(CurrencyType.PLN);
+    when(obligation.isManuallyPaid()).thenReturn(true);
+    when(matches.allocatedForObligation(7L,4L)).thenReturn(new BigDecimal(bankPaid));
+    var result = new RyczaltPaymentQueryService(periods,obligations,matches,BigDecimal.ZERO)
+        .obligationModels(7L,List.of(obligation)).getFirst();
+    assertThat(result.paidAmount()).isEqualByComparingTo(expectedPaid);
+    assertThat(result.status()).isEqualTo(expectedStatus);
+    assertThat(result.outstandingAmount()).isZero();
+  }
+
   @Test
   void toleranceDoesNotClearAnUnpaidObligation() {
     RyczaltObligationEntity obligation = mock(RyczaltObligationEntity.class);

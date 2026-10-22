@@ -92,7 +92,7 @@ public class RyczaltPaymentQueryService {
 
   private RyczaltObligationReadModel obligation(long profileId, RyczaltObligationEntity row) {
     BigDecimal paid = matches.allocatedForObligation(profileId, row.id());
-    if (row.isManuallyPaid()) paid = paid.add(row.getAmount());
+    if (row.isManuallyPaid()) paid = paid.max(row.getAmount());
     BigDecimal rawOutstanding = row.getAmount().subtract(paid).max(BigDecimal.ZERO);
     // Tolerance can forgive a residual only after payment evidence exists. Applying it to an
     // unpaid obligation makes the API report OPEN with zero due, which the clients can read as
