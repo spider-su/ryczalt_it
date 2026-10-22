@@ -168,18 +168,15 @@ Ryczałt backend exclusively owns Ryczałt persistence.
   owner details, tax office, payment accounts, ZUS/accounting preferences, and
   `auto_approve_known_counterparties`.
 
-`app_users.birth_date` and the `portfolios.owner`, `taxpayer_*`,
-`tax_micro_account`, and `zus_payment_account` columns are retained as
-transitional legacy/import compatibility fields. They are not read or written
-by current product logic and must not be used by new functionality or future
-NIP onboarding. New and migrated taxpayer/accounting facts belong in
-`ryczalt_profile`. These compatibility columns are **cleanup candidates, not approved deletions**.
-Before any removal, inventory code and SQL readers/writers, foreign keys,
-constraints, migration/import paths, downstream consumers and actual persisted
-values. Preserve any required history, verify backups and restoration, then
-use a separately reviewed, reversible migration. Do not change the canonical
-accounting entities or remove historical `accounting_*` tables during the
-POC documentation-alignment stage.
+Migration `01.027` consolidates `app_users.birth_date` and the
+`portfolios.taxpayer_*`, `tax_micro_account`, and `zus_payment_account` values
+into `ryczalt_profile`, then removes those duplicate columns after checking
+for conflicting or unmapped data. `portfolios.owner` remains because its
+populated values do not have a consistent canonical mapping. The sanitized
+code/data findings and separate live migration gate are recorded in
+[`../backend/docs/schema-cleanup-audit.md`](../backend/docs/schema-cleanup-audit.md).
+Historical `accounting_*` tables were not present in the inspected deployed
+database; this migration does not remove accounting records or those tables.
 
 There should be:
 

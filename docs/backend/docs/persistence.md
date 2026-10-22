@@ -60,19 +60,23 @@ obligations through payment-match rows.
 
 ## Cleanup inventory (documentation only)
 
-| Candidate | Current interpretation | Decision before any database change |
+| Candidate | Current interpretation | Audit result |
 | --- | --- | --- |
-| `app_users.birth_date` | Transitional identity field; not canonical taxpayer data | Verify all readers, writers and populated values before dropping |
-| `portfolios.owner`, `taxpayer_*`, `tax_micro_account`, `zus_payment_account` | Legacy/import compatibility; canonical taxpayer and payment facts belong in `ryczalt_profile` | Check runtime consumers, imports, constraints, exports and actual data before migration |
+| `app_users.birth_date` | Transitional identity field; not canonical taxpayer data | Migration `01.027` validates it against profile date of birth, then removes the duplicate |
+| `portfolios.taxpayer_*`, `tax_micro_account`, `zus_payment_account` | Legacy/import compatibility; canonical taxpayer and payment facts belong in `ryczalt_profile` | Migration `01.027` checks conflicts, backfills missing canonical profile fields, then removes the duplicate columns |
+| `portfolios.owner` | Populated historical display field with no consistent canonical mapping | Keep pending a product meaning and lossless migration rule |
+| `ix_ryczalt_obligation_period`, `ix_ryczalt_payment_account_rule_profile` | Redundant with existing unique indexes | Migration `01.027` removes these two indexes only |
 | Historical `accounting_*` tables | Retained migration-era data, not active accounting storage | Confirm retention, backups, restore and downstream dependencies; separate cleanup decision |
 | `ryczalt_source_reference` and `ryczalt_invoice_candidate` | Active provenance and invoice recognition concepts | Keep |
 | `ryczalt_payment_match`, `ryczalt_calculation` revisions | Active settlement and audit history | Keep |
 | `ryczalt_native_month_input` | Active monthly and opening-state facts | Keep; do not split solely for normalization |
 
-**No column/table removal is authorized by this inventory.** It records candidates
-for a later code-and-data usage audit, not proof that every consumer is absent.
-Do not conflate cost-invoice manual payment confirmation with tax-obligation
-payment allocations. See [migration history](migration.md) for archival context.
+The read-only code and data audit supporting these decisions is recorded in
+[`schema-cleanup-audit.md`](schema-cleanup-audit.md). Migration `01.027` is an upgrade migration;
+it does not rewrite historical migrations or remove accounting facts. Applying it to the live
+database still requires a verified backup/restore, maintenance window, and separate operator
+approval. Do not conflate cost-invoice manual payment confirmation with tax-obligation payment
+allocations. See [migration history](migration.md) for archival context.
 
 ## Tables and ownership
 
