@@ -1,6 +1,6 @@
 # Ryczałt IT repository agent instructions
 
-This repository contains the Ryczałt IT accounting backend and mobile app. It is not the generic mobile template.
+This repository contains the Ryczałt IT accounting backend, mobile app, and customer web. Backoffice is a planned product surface, not an implemented application. It is not the generic mobile template.
 
 ## Project scope and reuse
 
@@ -16,7 +16,7 @@ Treat this as a small-business application, not an enterprise platform. Read [en
 - Do not clear real user data, reset profiles, or run destructive migrations during routine validation.
 
 ## Workflow
-1. Identify whether the change belongs in `apps/mobile`, `apps/backend`, or both.
+1. Identify whether the change belongs in `apps/mobile`, `apps/backend`, `apps/customer-web`, or a combination.
 2. Read existing contracts and focused regression tests before editing.
 3. Keep changes small; do not combine unrelated business logic with UI infrastructure.
 4. For mobile changes run `cd apps/mobile && npm ci && npm run ci && npx expo-doctor` where available.

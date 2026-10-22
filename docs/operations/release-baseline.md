@@ -87,8 +87,8 @@ independently pushes `aserobaba/ryczalt_it_ui:latest` and
 uploads a separate SBOM artifact. Prefer the immutable SHA tag for deployment.
 
 The publisher workflows scan the pushed image digest with Trivy (HIGH/CRITICAL)
-and upload SBOM artifacts. Docker Hub publication does not deploy to Cloud Run.
-Cloud Run revisions, runtime URL/secrets, health checks, migrations, backups,
+and upload SBOM artifacts. Docker Hub publication does not deploy to the runtime environment.
+Runtime revisions, URL/secrets, health checks, migrations, backups,
 and rollback must be verified independently for each environment. A CI Docker
 build record is not a published image; a published image is not a deployed
 service.

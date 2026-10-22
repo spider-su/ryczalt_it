@@ -141,7 +141,7 @@ CI workflows on `main` and publish `aserobaba/ryczalt_it` and
 This proves image-pipeline behavior only; it does not prove Cloud Run deployment
 or a POC release. See [release baseline](../operations/release-baseline.md).
 
-Target environment path (deployment evidence is still required):
+Target release promotion model (deployment evidence is still required):
 
 ```text
 PR -> validate

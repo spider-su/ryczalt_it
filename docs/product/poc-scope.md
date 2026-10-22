@@ -19,15 +19,15 @@ boundary is not a promise of current functionality.
 - Payments may be confirmed manually; integrations are optional and only those
   already implemented and enabled for the environment may be offered.
 - Deploy backend and customer web as Docker images; run the backend and web
-  service on the configured Cloud Run deployment path. Mobile must target an
-  explicitly configured API environment.
+  services on an explicitly configured and verified deployment target. Mobile
+  must target an explicitly configured API environment.
 
 Mid-year starts are in scope only when a validated opening accounting state is
 available. Missing opening values, prior VAT carry-forward, prior tax/deduction
 state, or year-to-date contribution inputs must never be presented as known
-zero. Until the backend contract and calculation path fail closed for required
-missing inputs, mid-year accounting is a release-blocking gap, not an accepted
-workaround.
+zero. The native calculation path now checks opening facts and previous VAT results,
+but mid-year use remains unaccepted until persistence, integration and deployed
+end-to-end evidence confirms the complete workflow.
 
 ## Required before POC use
 
