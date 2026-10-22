@@ -66,6 +66,23 @@ class RyczaltAccountingQueryServiceTest {
   }
 
   @Test
+  void zusGroszDifferenceDoesNotCreateAnUnsettledObligationIssue() {
+    var period = mock(RyczaltPeriodEntity.class);
+    when(period.id()).thenReturn(10L);
+    when(period.getProfileId()).thenReturn(7L);
+    when(periods.findByProfileIdAndYearAndMonth(7L,2026,7)).thenReturn(Optional.of(period));
+    var obligation = mock(RyczaltObligationEntity.class);
+    when(obligation.id()).thenReturn(25L);
+    when(obligation.getType()).thenReturn(ObligationType.ZUS);
+    when(obligation.getAmount()).thenReturn(new BigDecimal("100.04"));
+    when(obligation.getCurrency()).thenReturn(CurrencyType.PLN);
+    when(obligations.findByProfileIdAndPeriodIdOrderByTypeAsc(7L,10L)).thenReturn(List.of(obligation));
+    when(matches.allocatedForObligation(7L,25L)).thenReturn(new BigDecimal("100.00"));
+    org.assertj.core.api.Assertions.assertThat(service.getIssues(7L,YearMonth.of(2026,7)))
+        .noneMatch(issue -> issue.code().equals("UNSETTLED_OBLIGATION"));
+  }
+
+  @Test
   void missingPeriodIsExplicitAndProfileScoped() {
     when(periods.findByProfileIdAndYearAndMonth(7L, 2026, 1)).thenReturn(Optional.empty());
 

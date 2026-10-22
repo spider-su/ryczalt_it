@@ -230,7 +230,7 @@ public class SettlementService {
     BigDecimal paid = matches.allocatedForObligation(profileId, obligation.id());
     if (obligation.isManuallyPaid()) paid = paid.max(obligation.getAmount());
     obligation.setStatus(
-        ObligationStatus.fromPayments(obligation.getAmount(), paid, paymentTolerance));
+        ObligationStatus.fromPayments(obligation.getType(), obligation.getAmount(), paid, paymentTolerance));
     obligations.save(obligation);
   }
 

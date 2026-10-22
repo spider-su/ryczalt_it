@@ -1,6 +1,7 @@
 package com.smartbox.investory.ryczalt.checker;
 
 import com.smartbox.investory.ryczalt.domain.Obligation;
+import com.smartbox.investory.ryczalt.domain.ObligationStatus;
 import com.smartbox.investory.ryczalt.domain.Transaction;
 import java.math.BigDecimal;
 import java.util.ArrayList;
@@ -96,12 +97,12 @@ public final class PaymentChecker {
             .reduce(BigDecimal.ZERO, BigDecimal::add);
     if (matched.signum() == 0)
       return result(obligation, PaymentCheckStatus.NOT_FOUND, List.of(), List.of());
-    PaymentCheckStatus status =
-        matched.compareTo(obligation.amount()) > 0
-            ? PaymentCheckStatus.OVERPAID
-            : matched.compareTo(obligation.amount()) < 0
-                ? PaymentCheckStatus.PARTIALLY_PAID
-                : status(obligation, latestDate(candidates, allocations));
+    PaymentCheckStatus status = switch (ObligationStatus.fromPayments(
+        obligation.type(), obligation.amount(), matched, BigDecimal.ZERO)) {
+      case PAID -> status(obligation, latestDate(candidates, allocations));
+      case OVERPAID -> PaymentCheckStatus.OVERPAID;
+      default -> PaymentCheckStatus.PARTIALLY_PAID;
+    };
     return result(obligation, status, allocations, List.of());
   }
 

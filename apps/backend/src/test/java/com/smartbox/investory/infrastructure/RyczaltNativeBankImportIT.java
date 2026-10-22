@@ -107,6 +107,18 @@ class RyczaltNativeBankImportIT {
     return bankImport.importBank(profileId, csv(rows), "bank.csv", "text/csv");
   }
 
+  @org.junit.jupiter.params.ParameterizedTest
+  @org.junit.jupiter.params.provider.CsvSource({"99.01,PAID", "99.00,PARTIALLY_PAID", "100.99,PAID"})
+  void bankImportPersistsStrictZusRoundingToleranceWithoutChangingAmounts(String payment, String expectedStatus) {
+    jdbc.update("INSERT INTO ryczalt.ryczalt_period(profile_id,period_year,period_month,status) VALUES (1,2026,2,'CALCULATED')");
+    Long periodId = jdbc.queryForObject("SELECT id FROM ryczalt.ryczalt_period WHERE profile_id=1",Long.class);
+    jdbc.update("INSERT INTO ryczalt.ryczalt_obligation(period_id,profile_id,obligation_type,amount,currency,status) VALUES (?,1,'ZUS',100,'PLN','OPEN')",periodId);
+    importCsv(1,"2026-02-15,2026-02-01,ROUNDING,ZUS,PLN,-" + payment + ",ZUS payment");
+    assertThat(jdbc.queryForObject("SELECT status FROM ryczalt.ryczalt_obligation WHERE profile_id=1",String.class)).isEqualTo(expectedStatus);
+    assertThat(jdbc.queryForObject("SELECT amount FROM ryczalt.ryczalt_obligation WHERE profile_id=1",java.math.BigDecimal.class)).isEqualByComparingTo("100");
+    assertThat(jdbc.queryForObject("SELECT sum(matched_amount) FROM ryczalt.ryczalt_payment_match WHERE profile_id=1",java.math.BigDecimal.class)).isEqualByComparingTo(payment);
+  }
+
   @Test
   void confirmsRemainingBalanceWithoutDuplicatingBankPaymentAndCanUndo() {
     jdbc.update("INSERT INTO ryczalt.ryczalt_period(profile_id,period_year,period_month,status) VALUES (1,2026,2,'CALCULATED')");

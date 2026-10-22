@@ -13,7 +13,7 @@ import org.junit.jupiter.api.Test;
 
 class HappyInvestorSettlementTest {
   @Test
-  void recognizesTheSyntheticJuly2026ZusPaymentAsPartial() {
+  void acceptsTheSyntheticJuly2026ZusGroszDifference() {
     Obligation obligation =
         new Obligation(
             ObligationType.ZUS,
@@ -32,7 +32,7 @@ class HappyInvestorSettlementTest {
 
     PaymentCheckResult result = new PaymentChecker().check(obligation, List.of(payment));
 
-    assertEquals(PaymentCheckStatus.PARTIALLY_PAID, result.status());
+    assertEquals(PaymentCheckStatus.PAID, result.status());
     assertEquals(new BigDecimal("3283.29"), result.matchedAmount());
   }
 }
