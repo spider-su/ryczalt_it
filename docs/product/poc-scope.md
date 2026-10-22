@@ -19,8 +19,8 @@ boundary is not a promise of current functionality.
 - Payments may be confirmed manually; integrations are optional and only those
   already implemented and enabled for the environment may be offered.
 - Deploy backend and customer web as Docker images; run the backend and web
-  service on the configured Cloud Run deployment path. Mobile must target an
-  explicitly configured API environment.
+  services on an explicitly configured and verified deployment target. Mobile
+  must target an explicitly configured API environment.
 
 Mid-year starts are in scope only when a validated opening accounting state is
 available. Missing opening values, prior VAT carry-forward, prior tax/deduction
