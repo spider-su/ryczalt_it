@@ -109,6 +109,8 @@ ZUS external verify    NO   no reusable production eZUS verification client
 ```
 
 `docs/cutover-audit.md` is historical audit evidence, not a description of the active runtime.
+The read-only database cleanup findings and proposed migration boundary are recorded in
+[`docs/schema-cleanup-audit.md`](docs/schema-cleanup-audit.md).
 
 ## Counterparties and learned rules
 
