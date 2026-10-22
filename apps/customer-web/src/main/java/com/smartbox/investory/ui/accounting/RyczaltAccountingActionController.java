@@ -52,9 +52,8 @@ public class RyczaltAccountingActionController {
       @RequestParam LocalDate paidDate,
       @RequestParam(required = false) String note,
       RedirectAttributes redirect) {
-    client.manualObligationPaid(profileId, month, obligationId, paidDate, note);
-    redirect.addFlashAttribute("accountingMessage", "Obligation marked paid manually.");
-    return RyczaltAccountingWebSupport.accountingRedirect(profileId, month);
+    return command(profileId, month, redirect,
+        () -> client.manualObligationPaid(profileId, month, obligationId, paidDate, note), "confirm-payment");
   }
 
   @PostMapping("/obligations/{obligationId}/manual-unpaid")
@@ -63,9 +62,8 @@ public class RyczaltAccountingActionController {
       @PathVariable long obligationId,
       @RequestParam YearMonth month,
       RedirectAttributes redirect) {
-    client.manualObligationUnpaid(profileId, month, obligationId);
-    redirect.addFlashAttribute("accountingMessage", "Obligation marked unpaid.");
-    return RyczaltAccountingWebSupport.accountingRedirect(profileId, month);
+    return command(profileId, month, redirect,
+        () -> client.manualObligationUnpaid(profileId, month, obligationId), "undo-payment-confirmation");
   }
 
   @PostMapping("/bank/import")

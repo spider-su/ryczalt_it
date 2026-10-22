@@ -21,6 +21,41 @@ class RyczaltPaymentQueryServiceTest {
   private final RyczaltObligationJpaRepository obligations = mock(RyczaltObligationJpaRepository.class);
   private final RyczaltPaymentMatchJpaRepository matches = mock(RyczaltPaymentMatchJpaRepository.class);
 
+  @org.junit.jupiter.params.ParameterizedTest
+  @org.junit.jupiter.params.provider.CsvSource({"40,100,PAID", "120,120,OVERPAID", "0,100,PAID"})
+  void manualConfirmationCoversOnlyTheRemainingAmountAndPreservesOverpayment(
+      String bankPaid, String expectedPaid, ObligationStatus expectedStatus) {
+    var obligation = mock(RyczaltObligationEntity.class);
+    when(obligation.id()).thenReturn(4L);
+    when(obligation.getType()).thenReturn(ObligationType.ZUS);
+    when(obligation.getAmount()).thenReturn(new BigDecimal("100"));
+    when(obligation.getCurrency()).thenReturn(CurrencyType.PLN);
+    when(obligation.isManuallyPaid()).thenReturn(true);
+    when(matches.allocatedForObligation(7L,4L)).thenReturn(new BigDecimal(bankPaid));
+    var result = new RyczaltPaymentQueryService(periods,obligations,matches,BigDecimal.ZERO)
+        .obligationModels(7L,List.of(obligation)).getFirst();
+    assertThat(result.paidAmount()).isEqualByComparingTo(expectedPaid);
+    assertThat(result.status()).isEqualTo(expectedStatus);
+    assertThat(result.outstandingAmount()).isZero();
+  }
+
+  @org.junit.jupiter.params.ParameterizedTest
+  @org.junit.jupiter.params.provider.CsvSource({"100.00,PAID,0", "99.05,PAID,0", "101.03,PAID,0", "99.04,PARTIALLY_PAID,1.00", "101.04,OVERPAID,0"})
+  void zusPaidStatusAndOutstandingUseTheSameStrictRoundingBoundary(
+      String paid, ObligationStatus expectedStatus, String outstanding) {
+    var row = mock(RyczaltObligationEntity.class);
+    when(row.id()).thenReturn(4L);
+    when(row.getType()).thenReturn(ObligationType.ZUS);
+    when(row.getAmount()).thenReturn(new BigDecimal("100.04"));
+    when(row.getCurrency()).thenReturn(CurrencyType.PLN);
+    when(matches.allocatedForObligation(7L,4L)).thenReturn(new BigDecimal(paid));
+    var result = new RyczaltPaymentQueryService(periods,obligations,matches,BigDecimal.ZERO)
+        .obligationModels(7L,List.of(row)).getFirst();
+    assertThat(result.status()).isEqualTo(expectedStatus);
+    assertThat(result.outstandingAmount()).isEqualByComparingTo(outstanding);
+    assertThat(result.paidAmount()).isEqualByComparingTo(paid);
+  }
+
   @Test
   void toleranceDoesNotClearAnUnpaidObligation() {
     RyczaltObligationEntity obligation = mock(RyczaltObligationEntity.class);
@@ -66,7 +101,7 @@ class RyczaltPaymentQueryServiceTest {
   void overpaymentRemainsOverpaidWhenItIsInsideConfiguredTolerance() {
     RyczaltObligationEntity obligation = mock(RyczaltObligationEntity.class);
     when(obligation.id()).thenReturn(4L);
-    when(obligation.getType()).thenReturn(ObligationType.ZUS);
+    when(obligation.getType()).thenReturn(ObligationType.VAT);
     when(obligation.getAmount()).thenReturn(new BigDecimal("100.00"));
     when(obligation.getCurrency()).thenReturn(CurrencyType.PLN);
     when(obligation.getDueDate()).thenReturn(LocalDate.of(2026, 10, 20));

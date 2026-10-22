@@ -145,9 +145,6 @@ public class SettlementService {
       throw new IllegalArgumentException("Profile mismatch");
     requireSameMonth(month, obligation);
     requireMutable(obligation.getPeriod());
-    if (matches.allocatedForObligation(profileId, obligationId).signum() > 0) {
-      throw new IllegalStateException("Bank payment is already matched to this obligation");
-    }
     obligation.markManuallyPaid(paidDate, note);
     refreshStatus(profileId, obligation);
   }
@@ -242,11 +239,11 @@ public class SettlementService {
   }
 
   private void refreshStatus(long profileId, RyczaltObligationEntity obligation) {
-    if (obligation.getStatus() == ObligationStatus.FROZEN) return;
+    if (obligation.getPeriod().getStatus().isFrozen()) return;
     BigDecimal paid = matches.allocatedForObligation(profileId, obligation.id());
-    if (obligation.isManuallyPaid()) paid = paid.add(obligation.getAmount());
+    if (obligation.isManuallyPaid()) paid = paid.max(obligation.getAmount());
     obligation.setStatus(
-        ObligationStatus.fromPayments(obligation.getAmount(), paid, paymentTolerance));
+        ObligationStatus.fromPayments(obligation.getType(), obligation.getAmount(), paid, paymentTolerance));
     obligations.save(obligation);
   }
 
