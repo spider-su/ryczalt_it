@@ -3,7 +3,8 @@
 This roadmap distinguishes repository foundations, current partial capabilities,
 and controlled-POC blockers. “Present in source” is not the same as accepted in a
 deployed end-to-end flow. POC entry gates are authoritative in
-[`poc-scope.md`](poc-scope.md).
+[`poc-scope.md`](poc-scope.md). The [implementation baseline](implementation-baseline.md)
+records source-supported features and explicit product boundaries.
 
 | Stage | Status | Scope / exit evidence |
 |---|---|---|
