@@ -29,6 +29,8 @@ class RyczaltNativeMonthInputRestControllerTest {
     mvc =
         MockMvcBuilders.standaloneSetup(
                 new RyczaltNativeMonthInputRestController(inputs, authorization))
+            .setControllerAdvice(new com.smartbox.investory.config.RestApiExceptionHandler(
+                mock(com.smartbox.investory.shared.time.ApplicationTime.class)))
             .build();
   }
 
@@ -48,4 +50,27 @@ class RyczaltNativeMonthInputRestControllerTest {
 
     verify(inputs).save(eq(7L), eq(YearMonth.of(2026, 9)), any());
   }
+  @Test
+  void openingBalancesMissingFromRequestProduceActionableBadRequest() throws Exception {
+    mvc.perform(put("/api/profiles/7/accounting/periods/2026-09/input-settings")
+        .principal(authentication).contentType("application/json")
+        .content("""
+            {"jdgActive":true,"qualifyingUop":false,"voluntarySickness":false,
+             "zusRegime":"JDG","deductionsAlreadyConsumed":0,"salesCorrections":0,
+             "explicitVatAdjustments":0,"accountingStartDate":"2026-09-01"}
+            """))
+        .andExpect(status().isBadRequest())
+        .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath("$.message")
+            .value(org.hamcrest.Matchers.containsString("openingYtdRevenue")));
+    org.mockito.Mockito.verifyNoInteractions(inputs);
+  }
+
+  @Test
+  void settingsReadRequiresProfileAccess() throws Exception {
+    mvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get(
+        "/api/profiles/7/accounting/periods/2026-09/input-settings").principal(authentication))
+        .andExpect(status().isForbidden());
+    org.mockito.Mockito.verifyNoInteractions(inputs);
+  }
+
 }

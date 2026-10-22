@@ -44,6 +44,16 @@ final class HttpRyczaltWebAccountingClient implements RyczaltWebAccountingClient
   }
 
   @Override
+  public InputSettings inputSettings(long p, YearMonth m) {
+    return mapped(get(path(p, "/periods/{month}/input-settings", m)), InputSettings.class);
+  }
+
+  @Override
+  public void saveInputSettings(long p, YearMonth m, Map<String, Object> settings) {
+    put(path(p, "/periods/{month}/input-settings", m), settings);
+  }
+
+  @Override
   public List<Month> periods(long p) {
     return list(path(p, "/periods")).stream()
         .map(n -> new Month(YearMonth.parse(text(n, "month")), text(n, "status")))
@@ -133,9 +143,9 @@ final class HttpRyczaltWebAccountingClient implements RyczaltWebAccountingClient
                 new PaymentHistory(
                     text(n, "type"),
                     YearMonth.parse(text(n, "period")),
-                    decimal(n, "expected"),
-                    decimal(n, "paid"),
-                    decimal(n, "outstanding"),
+                    decimal(n, "expectedAmount"),
+                    decimal(n, "paidAmount"),
+                    decimal(n, "outstandingAmount"),
                     date(n, "dueDate"),
                     date(n, "paymentDate"),
                     text(n, "status")))
@@ -406,6 +416,16 @@ final class HttpRyczaltWebAccountingClient implements RyczaltWebAccountingClient
     try {
       return call.get();
     } catch (RestClientResponseException ex) {
+      if (ex.getStatusCode().value() == 400 || ex.getStatusCode().value() == 409) {
+        String message = "Accounting request requires review.";
+        try {
+          String detail = json.readTree(ex.getResponseBodyAsString()).path("message").asText("");
+          if (!detail.isBlank() && detail.length() <= 1000) message = detail;
+        } catch (RuntimeException malformedResponse) {
+          // Use the safe generic message when the backend did not return its error contract.
+        }
+        throw new org.springframework.web.server.ResponseStatusException(ex.getStatusCode(), message);
+      }
       throw new BackendAuthException(errorKind(ex.getStatusCode().value()));
     } catch (ResourceAccessException ex) {
       throw new BackendAuthException(

@@ -1,11 +1,16 @@
 package com.smartbox.investory.config;
 
 import com.smartbox.investory.ryczalt.application.RyczaltCounterpartyNotFoundException;
+import com.smartbox.investory.ryczalt.application.NeedsReviewException;
 import com.smartbox.investory.ryczalt.application.RyczaltCounterpartyRuleNotFoundException;
 import com.smartbox.investory.ryczalt.application.RyczaltInvoiceCandidateNotFoundException;
 import com.smartbox.investory.ryczalt.application.RyczaltInvoiceConflictException;
+import com.smartbox.investory.ryczalt.application.RyczaltInvoiceNotFoundException;
+import com.smartbox.investory.ryczalt.application.RyczaltObligationNotFoundException;
+import com.smartbox.investory.ryczalt.application.RyczaltProfileNotFoundException;
 import com.smartbox.investory.ryczalt.application.query.RyczaltPeriodNotFoundException;
 import com.smartbox.investory.shared.time.ApplicationTime;
+import com.smartbox.investory.user.application.UserInvitationConflictException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.ConstraintViolationException;
 import java.time.Instant;
@@ -56,11 +61,27 @@ public class RestApiExceptionHandler {
     return error(HttpStatus.CONFLICT, message(exception), request);
   }
 
+  @ExceptionHandler(NeedsReviewException.class)
+  public ResponseEntity<ApiError> needsReview(
+      NeedsReviewException exception,
+      HttpServletRequest request) {
+    return error(HttpStatus.CONFLICT, message(exception), request);
+  }
+
+  @ExceptionHandler(UserInvitationConflictException.class)
+  public ResponseEntity<ApiError> invitationConflict(
+      UserInvitationConflictException exception, HttpServletRequest request) {
+    return error(HttpStatus.CONFLICT, message(exception), request);
+  }
+
   @ExceptionHandler({
     RyczaltPeriodNotFoundException.class,
     RyczaltCounterpartyNotFoundException.class,
     RyczaltCounterpartyRuleNotFoundException.class,
-    RyczaltInvoiceCandidateNotFoundException.class
+    RyczaltInvoiceCandidateNotFoundException.class,
+    RyczaltInvoiceNotFoundException.class,
+    RyczaltObligationNotFoundException.class,
+    RyczaltProfileNotFoundException.class
   })
   public ResponseEntity<ApiError> notFound(RuntimeException exception, HttpServletRequest request) {
     return error(HttpStatus.NOT_FOUND, message(exception), request);

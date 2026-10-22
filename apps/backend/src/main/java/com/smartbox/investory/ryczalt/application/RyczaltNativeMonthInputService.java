@@ -4,8 +4,10 @@ import com.smartbox.investory.ryczalt.persistence.RyczaltNativeMonthInputEntity;
 import com.smartbox.investory.ryczalt.persistence.RyczaltNativeMonthInputJpaRepository;
 import com.smartbox.investory.ryczalt.persistence.RyczaltPeriodLifecycleService;
 import com.smartbox.investory.ryczalt.calculation.InputChange;
-import java.time.YearMonth;
 import java.time.LocalDate;
+import java.time.YearMonth;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Objects;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -26,12 +28,23 @@ public class RyczaltNativeMonthInputService {
     Objects.requireNonNull(month, "month");
     Objects.requireNonNull(command, "command");
     if (month.getYear() != 2026) throw new IllegalArgumentException("Only 2026 accounting inputs are supported");
+    List<String> missing = new ArrayList<>();
+    if (command.socialContributionDeduction() == null) missing.add("socialContributionDeduction");
+    if (command.healthContributionPaidOverride() == null) missing.add("healthContributionPaidOverride");
+    if (!missing.isEmpty()) throw new IllegalArgumentException(
+        "Missing required monthly facts: " + String.join(", ", missing)
+            + ". Enter actual paid amounts, including explicit zero when none were paid.");
+    var configuredStart = inputs
+        .findFirstByProfileIdAndAccountingStartDateIsNotNullOrderByYearAscMonthAsc(profileId)
+        .orElse(null);
+    if (command.accountingStartDate() == null && configuredStart == null)
+      throw new IllegalArgumentException(
+          "Configure accountingStartDate and all five opening balances on the start month before saving monthly inputs.");
+    if (configuredStart != null && month.isBefore(YearMonth.from(configuredStart.accountingStartDate())))
+      throw new IllegalArgumentException("Period is before the configured accounting start date");
     if (command.accountingStartDate() != null && !YearMonth.from(command.accountingStartDate()).equals(month))
       throw new IllegalArgumentException("Opening accounting state must be stored on its start month");
     if (command.accountingStartDate() != null) {
-      var configuredStart = inputs
-          .findFirstByProfileIdAndAccountingStartDateIsNotNullOrderByYearAscMonthAsc(profileId)
-          .orElse(null);
       if (configuredStart != null && !command.accountingStartDate().equals(configuredStart.accountingStartDate()))
         throw new IllegalArgumentException("Accounting start date is already configured and cannot be duplicated");
     }
@@ -41,6 +54,9 @@ public class RyczaltNativeMonthInputService {
             .orElse(null);
     if (input == null) {
       inputs.save(new RyczaltNativeMonthInputEntity(profileId, month, command));
+      lifecycle.invalidateFrom(profileId, month, InputChange.ZUS_INPUT_CHANGED, "native-month-input");
+      lifecycle.invalidateFrom(profileId, month, InputChange.RYCZALT_DEDUCTIONS_CHANGED, "native-month-input");
+      lifecycle.invalidateFrom(profileId, month, InputChange.VAT_ADJUSTMENT_CHANGED, "native-month-input");
       if (command.accountingStartDate() != null)
         lifecycle.invalidateFrom(profileId, month, InputChange.ACCOUNTING_OPENING_STATE_CHANGED, "native-month-input");
       return;
@@ -55,6 +71,36 @@ public class RyczaltNativeMonthInputService {
       lifecycle.invalidateFrom(profileId, month, change, "native-month-input");
     }
   }
+
+  @Transactional(readOnly = true)
+  public InputSettings settings(long profileId, YearMonth month) {
+    var opening = inputs.findFirstByProfileIdAndAccountingStartDateIsNotNullOrderByYearAscMonthAsc(profileId)
+        .orElse(null);
+    var input = inputs.findByProfileIdAndYearAndMonth(profileId, month.getYear(), month.getMonthValue())
+        .orElse(null);
+    List<String> missing = new ArrayList<>();
+    if (opening == null) {
+      missing.addAll(List.of("accountingStartDate", "openingYtdRevenue",
+          "openingSocialContributionsPaid", "openingHealthContributionsPaid",
+          "openingDeductionsConsumed", "openingVatCarryForward"));
+    }
+    if (input == null || input.socialContributionDeduction() == null) missing.add("socialContributionDeduction");
+    if (input == null || input.healthContributionPaidOverride() == null) missing.add("healthContributionPaidOverride");
+    Command command = null;
+    if (input != null) {
+      var zus = input.zusSettings();
+      command = new Command(zus.jdgActive(), zus.qualifyingUop(), zus.zusRegime(),
+          zus.voluntarySickness(), zus.ytdRyczaltRevenue(), zus.fullJdgSocial(),
+          zus.socialContributionDeduction(), zus.healthContributionOverride(),
+          zus.healthContributionPaidOverride(), input.deductionsAlreadyConsumed(),
+          input.salesCorrections(), input.explicitVatAdjustments(), input.accountingStartDate(),
+          input.openingYtdRevenue(), input.openingSocialContributionsPaid(),
+          input.openingHealthContributionsPaid(), input.openingDeductionsConsumed(), input.openingVatCarryForward());
+    }
+    return new InputSettings(command, opening == null ? null : opening.accountingStartDate(), List.copyOf(missing));
+  }
+
+  public record InputSettings(Command settings, LocalDate configuredStartDate, List<String> missingFields) {}
 
   public record Command(
       boolean jdgActive,
@@ -149,8 +195,8 @@ public class RyczaltNativeMonthInputService {
       if (ytdRyczaltRevenue != null) nonNegative(ytdRyczaltRevenue, "ytdRyczaltRevenue");
       deductionsAlreadyConsumed =
           nonNegative(deductionsAlreadyConsumed, "deductionsAlreadyConsumed");
-      Objects.requireNonNull(salesCorrections, "salesCorrections");
-      Objects.requireNonNull(explicitVatAdjustments, "explicitVatAdjustments");
+      if (salesCorrections == null) throw new IllegalArgumentException("salesCorrections is required");
+      if (explicitVatAdjustments == null) throw new IllegalArgumentException("explicitVatAdjustments is required");
       if (fullJdgSocial != null && fullJdgSocial.signum() < 0)
         throw new IllegalArgumentException("fullJdgSocial must not be negative");
       if (socialContributionDeduction != null && socialContributionDeduction.signum() < 0)
@@ -161,7 +207,8 @@ public class RyczaltNativeMonthInputService {
         throw new IllegalArgumentException("healthContributionPaidOverride must not be negative");
       boolean hasOpeningState = accountingStartDate != null;
       if (hasOpeningState) {
-        if (accountingStartDate.getYear() != 2026) throw new IllegalArgumentException("Only 2026 opening accounting state is supported");
+        if (accountingStartDate.getYear() != 2025 && accountingStartDate.getYear() != 2026)
+          throw new IllegalArgumentException("Only 2025 or 2026 opening accounting state is supported");
         openingYtdRevenue = nonNegative(openingYtdRevenue, "openingYtdRevenue");
         openingSocialContributionsPaid =
             nonNegative(openingSocialContributionsPaid, "openingSocialContributionsPaid");
@@ -191,7 +238,7 @@ public class RyczaltNativeMonthInputService {
     }
 
     private static java.math.BigDecimal nonNegative(java.math.BigDecimal value, String name) {
-      Objects.requireNonNull(value, name);
+      if (value == null) throw new IllegalArgumentException(name + " is required; enter an explicit zero when applicable");
       if (value.signum() < 0) throw new IllegalArgumentException(name + " must not be negative");
       return value;
     }

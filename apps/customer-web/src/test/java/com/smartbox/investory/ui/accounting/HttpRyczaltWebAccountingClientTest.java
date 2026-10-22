@@ -181,6 +181,21 @@ class HttpRyczaltWebAccountingClientTest {
     server.verify();
   }
 
+  @Test
+  void preservesActionableInputValidationInsteadOfReplacingItWithBackendResponseError() {
+    RestClient.Builder builder = RestClient.builder().baseUrl("http://backend.test");
+    MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
+    var client = client(builder);
+    server.expect(requestTo("http://backend.test/api/profiles/42/accounting/periods/2026-01/input-settings"))
+        .andExpect(method(HttpMethod.PUT))
+        .andRespond(withStatus(HttpStatus.BAD_REQUEST).contentType(MediaType.APPLICATION_JSON)
+            .body("{\"message\":\"healthContributionPaidOverride is required\"}"));
+    assertThatThrownBy(() -> client.saveInputSettings(PROFILE, YearMonth.of(2026, 1), java.util.Map.of()))
+        .isInstanceOf(org.springframework.web.server.ResponseStatusException.class)
+        .hasMessageContaining("healthContributionPaidOverride is required");
+    server.verify();
+  }
+
   private static HttpRyczaltWebAccountingClient client(RestClient.Builder builder) {
     var profile = new BackendAuthClient.Profile(PROFILE, "Test", "OWNER");
     var identity =

@@ -41,7 +41,7 @@ public class RyczaltInvoicePaymentService {
   private RyczaltInvoiceEntity invoice(long profileId, long invoiceId) {
     return invoices
         .findByIdAndProfileId(invoiceId, profileId)
-        .orElseThrow(() -> new IllegalArgumentException("Invoice does not exist"));
+        .orElseThrow(() -> new RyczaltInvoiceNotFoundException(profileId, invoiceId));
   }
 
   private static void requireCost(RyczaltInvoiceEntity invoice) {
