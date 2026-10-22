@@ -27,11 +27,18 @@ import com.smartbox.investory.ryczalt.persistence.RyczaltSourceReferenceJpaRepos
 import com.smartbox.investory.shared.currency.CurrencyType;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.time.YearMonth;
+import java.util.ArrayList;
 import java.util.EnumMap;
+import java.util.HexFormat;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -42,6 +49,7 @@ import org.springframework.transaction.annotation.Transactional;
  * accounting classifications are left {@code null} for completeness checks to surface.
  */
 @Service
+@Slf4j
 public class RyczaltKsefImportService implements RyczaltKsefApi {
   private static final String ENTITY_TYPE = "INVOICE";
   private static final String SOURCE = "KSEF";
@@ -93,11 +101,16 @@ public class RyczaltKsefImportService implements RyczaltKsefApi {
     int failed = 0;
     Map<InvoiceDirection, Set<YearMonth>> touched = new EnumMap<>(InvoiceDirection.class);
     for (InvoiceSourceRecord record : records) {
-      if (record.netAmount() == null
-          || record.vatAmount() == null
-          || record.grossAmount() == null
-          || record.accountingDate() == null) {
+      List<String> missingFields = missingRequiredFields(record);
+      if (!missingFields.isEmpty()) {
         failed++;
+        log.warn(
+            "KSeF invoice rejected: profileId={}, requestedMonth={}, sourceFingerprint={}, direction={}, missingFields={}",
+            profileId,
+            month,
+            sourceFingerprint(record.sourceExternalId()),
+            record.direction(),
+            missingFields);
         continue;
       }
       var existing =
@@ -123,7 +136,9 @@ public class RyczaltKsefImportService implements RyczaltKsefApi {
       }
       if (existing.isPresent()) {
         RyczaltInvoiceEntity invoice =
-            invoices.findById(existing.get().getEntityId()).orElseThrow();
+            invoices
+                .findByIdAndProfileId(existing.get().getEntityId(), profileId)
+                .orElseThrow();
         YearMonth current =
             YearMonth.of(invoice.getPeriod().getYear(), invoice.getPeriod().getMonth());
         requireMutable(profileId, current);
@@ -209,6 +224,28 @@ public class RyczaltKsefImportService implements RyczaltKsefApi {
                             : InputChange.COST_INVOICE_CHANGED,
                         ACTOR)));
     return new RyczaltKsefSyncResult(records.size(), imported, duplicates, updated, failed);
+  }
+
+  private static List<String> missingRequiredFields(InvoiceSourceRecord record) {
+    List<String> missing = new ArrayList<>(4);
+    if (record.netAmount() == null) missing.add("netAmount");
+    if (record.vatAmount() == null) missing.add("vatAmount");
+    if (record.grossAmount() == null) missing.add("grossAmount");
+    if (record.accountingDate() == null) missing.add("accountingDate");
+    return List.copyOf(missing);
+  }
+
+  /** Returns a stable log correlation key without including the KSeF number in the log. */
+  private static String sourceFingerprint(String sourceExternalId) {
+    if (sourceExternalId == null || sourceExternalId.isBlank()) return "missing";
+    try {
+      byte[] digest =
+          MessageDigest.getInstance("SHA-256")
+              .digest(sourceExternalId.getBytes(StandardCharsets.UTF_8));
+      return HexFormat.of().formatHex(digest, 0, 6);
+    } catch (NoSuchAlgorithmException exception) {
+      throw new IllegalStateException("SHA-256 is unavailable", exception);
+    }
   }
 
   private RyczaltPeriodEntity requireMutable(long profileId, YearMonth month) {

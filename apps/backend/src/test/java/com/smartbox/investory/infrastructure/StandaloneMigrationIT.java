@@ -1,6 +1,7 @@
 package com.smartbox.investory.infrastructure;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import org.junit.jupiter.api.Test;
@@ -20,6 +21,30 @@ class StandaloneMigrationIT {
             statement, "SELECT 1 FROM information_schema.tables WHERE table_schema='ryczalt' AND table_name='ryczalt_invoice'"));
         assertTrue(MigrationTestDatabase.exists(
             statement, "SELECT 1 FROM information_schema.tables WHERE table_schema='ryczalt' AND table_name='integration_instances'"));
+        assertTrue(MigrationTestDatabase.exists(statement, """
+            SELECT 1 FROM information_schema.columns
+            WHERE table_schema='ryczalt' AND table_name='app_users' AND column_name='google_subject'
+            """));
+        assertFalse(MigrationTestDatabase.exists(statement, """
+            SELECT 1 FROM information_schema.columns
+            WHERE table_schema='ryczalt' AND table_name='app_users' AND column_name='birth_date'
+            """));
+        assertFalse(MigrationTestDatabase.exists(statement, """
+            SELECT 1 FROM information_schema.columns
+            WHERE table_schema='ryczalt' AND table_name='portfolios' AND column_name='taxpayer_nip'
+            """));
+        assertTrue(MigrationTestDatabase.exists(statement, """
+            SELECT 1 FROM information_schema.columns
+            WHERE table_schema='ryczalt' AND table_name='ryczalt_invoice'
+              AND column_name='fx_provider_reference'
+            """));
+        assertTrue(MigrationTestDatabase.exists(statement, """
+            SELECT 1 FROM information_schema.columns
+            WHERE table_schema='ryczalt' AND table_name='ryczalt_native_month_input'
+              AND column_name='opening_vat_carry_forward' AND is_nullable='YES'
+            """));
+        assertEquals(2, MigrationTestDatabase.singleInt(statement,
+            "SELECT count(*) FROM ryczalt.flyway_schema_history WHERE success AND type='SQL'"));
         assertEquals(0, MigrationTestDatabase.singleInt(statement,
             "SELECT count(*) FROM ryczalt.app_users"));
 

@@ -191,6 +191,7 @@ class HttpRyczaltWebAccountingClientTest {
     SecurityContextHolder.getContext()
         .setAuthentication(
             UsernamePasswordAuthenticationToken.authenticated(session, null, List.of()));
-    return new HttpRyczaltWebAccountingClient(builder.build(), JsonMapper.builder().build());
+    RestClient backend = builder.build();
+    return new HttpRyczaltWebAccountingClient(backend, backend, JsonMapper.builder().build());
   }
 }

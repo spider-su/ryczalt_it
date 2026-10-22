@@ -6,9 +6,6 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface RyczaltCalculationJpaRepository
     extends JpaRepository<RyczaltCalculationEntity, Long> {
-  Optional<RyczaltCalculationEntity> findByProfileIdAndPeriodIdAndType(
-      long profileId, long periodId, CalculationType type);
-
   Optional<RyczaltCalculationEntity> findByProfileIdAndPeriodIdAndTypeAndCurrentTrue(
       long profileId, long periodId, CalculationType type);
 

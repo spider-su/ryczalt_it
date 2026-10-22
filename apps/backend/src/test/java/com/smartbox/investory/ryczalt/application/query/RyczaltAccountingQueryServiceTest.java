@@ -94,11 +94,11 @@ class RyczaltAccountingQueryServiceTest {
     RyczaltCalculationEntity ryczalt =
         calculation(
             CalculationType.RYCZALT,
-            "{\"revenueBeforeDeductions\":61849.12,\"taxableBase\":61102,\"calculatedTax\":7332,\"healthDeduction\":747.52,\"socialContributionDeduction\":0}");
+            "{\"revenue\":61849.12,\"taxableBase\":61102,\"calculatedTax\":7332,\"healthDeduction\":747.52,\"socialContributionDeduction\":0}");
     RyczaltCalculationEntity vat =
         calculation(
             CalculationType.VAT,
-            "{\"outputVatAfterSalesCorrection\":6808,\"deductibleInputVat\":68.54,\"calculatedVat\":6739}");
+            "{\"outputVat\":6808,\"deductibleInputVat\":68.54,\"explicitAdjustments\":12,\"calculatedVat\":6739}");
     RyczaltCalculationEntity zus = calculation(CalculationType.ZUS, "{\"totalZus\":1495.04}");
     when(periods.findByProfileIdAndYearAndMonth(7L, 2026, 2)).thenReturn(Optional.of(period));
     when(period.getProfileId()).thenReturn(7L);
@@ -119,6 +119,7 @@ class RyczaltAccountingQueryServiceTest {
     assertEquals(new BigDecimal("6808"), audit.outputVat());
     assertEquals(new BigDecimal("68.54"), audit.inputVat());
     assertEquals(new BigDecimal("6739"), audit.finalPayable());
+    assertEquals(new BigDecimal("12"), audit.vatAdjustments());
   }
 
   private static RyczaltCalculationEntity calculation(CalculationType type, String result) {

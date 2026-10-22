@@ -9,6 +9,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.function.Supplier;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpEntity;
@@ -30,10 +31,15 @@ final class HttpRyczaltWebAccountingClient implements RyczaltWebAccountingClient
   private static final ParameterizedTypeReference<List<JsonNode>> JSON_LIST =
       new ParameterizedTypeReference<>() {};
   private final RestClient backend;
+  private final RestClient ksefBackend;
   private final ObjectMapper json;
 
-  HttpRyczaltWebAccountingClient(RestClient customerWebBackendRestClient, ObjectMapper json) {
+  HttpRyczaltWebAccountingClient(
+      RestClient customerWebBackendRestClient,
+      @Qualifier("customerWebKsefBackendRestClient") RestClient customerWebKsefBackendRestClient,
+      ObjectMapper json) {
     this.backend = customerWebBackendRestClient;
+    this.ksefBackend = customerWebKsefBackendRestClient;
     this.json = json;
   }
 
@@ -284,7 +290,7 @@ final class HttpRyczaltWebAccountingClient implements RyczaltWebAccountingClient
 
   @Override
   public ImportResult syncKsef(long p, YearMonth m) {
-    JsonNode n = post(path(p, "/ksef/sync"), Map.of("month", m));
+    JsonNode n = post(ksefBackend, path(p, "/ksef/sync"), Map.of("month", m));
     return new ImportResult(
         integer(n, "received"),
         integer(n, "imported"),
@@ -324,9 +330,17 @@ final class HttpRyczaltWebAccountingClient implements RyczaltWebAccountingClient
   }
 
   private JsonNode post(String path, Object body, MediaType type) {
+    return post(backend, path, body, type);
+  }
+
+  private JsonNode post(RestClient client, String path, Object body) {
+    return post(client, path, body, MediaType.APPLICATION_JSON);
+  }
+
+  private JsonNode post(RestClient client, String path, Object body, MediaType type) {
     return exchange(
         () ->
-            backend
+            client
                 .post()
                 .uri(path)
                 .header(HttpHeaders.AUTHORIZATION, bearer())

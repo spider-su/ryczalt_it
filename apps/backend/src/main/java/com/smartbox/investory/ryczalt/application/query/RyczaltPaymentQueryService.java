@@ -100,13 +100,7 @@ public class RyczaltPaymentQueryService {
     BigDecimal outstanding =
         paid.signum() > 0 && withinTolerance(rawOutstanding) ? BigDecimal.ZERO : rawOutstanding;
     ObligationStatus status =
-        paid.signum() == 0
-            ? ObligationStatus.OPEN
-            : outstanding.signum() == 0
-                ? (paid.compareTo(row.getAmount()) <= 0
-                    ? ObligationStatus.PAID
-                    : ObligationStatus.OVERPAID)
-                : ObligationStatus.PARTIALLY_PAID;
+        ObligationStatus.fromPayments(row.getAmount(), paid, paymentTolerance);
     return new RyczaltObligationReadModel(
         row.id(),
         row.getType(),

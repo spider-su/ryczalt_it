@@ -11,12 +11,16 @@ CREATE TABLE ryczalt.app_users (
     role          VARCHAR(32) NOT NULL DEFAULT 'USER',
     created_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
+    google_subject VARCHAR(255),
     CONSTRAINT chk_app_users_username_not_blank CHECK (btrim(username) <> ''),
     CONSTRAINT chk_app_users_display_name_not_blank CHECK (btrim(display_name) <> '')
 );
 CREATE UNIQUE INDEX uq_app_users_email_ci
     ON ryczalt.app_users (lower(email))
     WHERE email IS NOT NULL;
+CREATE UNIQUE INDEX uq_app_users_google_subject
+    ON ryczalt.app_users (google_subject)
+    WHERE google_subject IS NOT NULL;
 
 CREATE TABLE ryczalt.portfolios (
     id             BIGSERIAL PRIMARY KEY,

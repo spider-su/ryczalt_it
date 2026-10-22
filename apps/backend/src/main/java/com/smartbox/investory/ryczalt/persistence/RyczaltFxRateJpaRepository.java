@@ -14,10 +14,6 @@ public interface RyczaltFxRateJpaRepository extends JpaRepository<RyczaltFxRateE
   Optional<RyczaltFxRateEntity> findByProviderAndCurrencyAndEffectiveDate(
       String provider, CurrencyType currency, LocalDate effectiveDate);
 
-  Optional<RyczaltFxRateEntity>
-      findTopByProviderAndCurrencyAndEffectiveDateLessThanEqualOrderByEffectiveDateDesc(
-          String provider, CurrencyType currency, LocalDate effectiveDate);
-
   @Modifying
   @Query(
       value =

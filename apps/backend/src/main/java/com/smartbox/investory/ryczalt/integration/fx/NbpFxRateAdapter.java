@@ -3,7 +3,9 @@ package com.smartbox.investory.ryczalt.integration.fx;
 import com.smartbox.investory.integrations.fx.nbp.NbpClient;
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
 import org.springframework.beans.factory.annotation.Value;
@@ -13,6 +15,7 @@ import org.springframework.stereotype.Component;
 @Component
 public class NbpFxRateAdapter implements FxRateSourcePort {
   public static final String PROVIDER = "NBP";
+  private static final List<String> SUPPORTED_CURRENCIES = List.of("EUR", "USD");
 
   private final NbpClient client;
   private final String baseUrl;
@@ -52,5 +55,42 @@ public class NbpFxRateAdapter implements FxRateSourcePort {
         rate,
         PROVIDER,
         "NBP-A-" + table.getEffectiveDate());
+  }
+
+  @Override
+  public List<FxRate> fetchHistory(LocalDate from, LocalDate to) {
+    if (from == null || to == null || from.isAfter(to)) {
+      throw new IllegalArgumentException("Invalid NBP FX history range");
+    }
+    List<NbpClient.NbpTable> tables = client.findTables(from, to, baseUrl);
+    List<FxRate> result = new ArrayList<>();
+    for (NbpClient.NbpTable table : tables) {
+      LocalDate effectiveDate = table.getEffectiveDate();
+      if (effectiveDate == null || effectiveDate.isBefore(from) || effectiveDate.isAfter(to)) {
+        throw new IllegalArgumentException("NBP returned a table outside the requested range");
+      }
+      for (String currency : SUPPORTED_CURRENCIES) {
+        BigDecimal rate =
+            table.getRates().stream()
+                .filter(value -> currency.equalsIgnoreCase(value.getCode()))
+                .map(NbpClient.NbpRate::getMid)
+                .filter(value -> value != null && value.signum() > 0)
+                .findFirst()
+                .orElseThrow(
+                    () ->
+                        new IllegalArgumentException(
+                            "NBP has no " + currency + " rate for " + effectiveDate));
+        result.add(
+            new FxRate(
+                currency,
+                effectiveDate,
+                effectiveDate,
+                rate,
+                PROVIDER,
+                "NBP-A-" + effectiveDate));
+      }
+    }
+    if (result.isEmpty()) throw new IllegalArgumentException("NBP returned no FX history");
+    return List.copyOf(result);
   }
 }

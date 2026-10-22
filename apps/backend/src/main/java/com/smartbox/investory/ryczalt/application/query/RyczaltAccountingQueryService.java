@@ -166,20 +166,20 @@ public class RyczaltAccountingQueryService {
       List<RyczaltCalculationEntity> current) {
     JsonNode ryczalt = result(current, CalculationType.RYCZALT);
     JsonNode vat = result(current, CalculationType.VAT);
-    BigDecimal monthlyAdvance = number(ryczalt, "monthlyAdvance", number(ryczalt, "calculatedTax"));
+    BigDecimal monthlyAdvance = number(ryczalt, "calculatedTax");
     BigDecimal cumulativeTax = number(ryczalt, "cumulativeTax", yearToDateTax(profileId, month));
     return new RyczaltPeriodReadModel.Audit(
-        number(ryczalt, "revenueBeforeDeductions", summary.revenue()),
+        number(ryczalt, "revenue", summary.revenue()),
         number(ryczalt, "socialContributionDeduction"),
         number(ryczalt, "healthDeduction"),
         number(ryczalt, "otherDeduction"),
         number(ryczalt, "taxableBase"),
         cumulativeTax,
         monthlyAdvance,
-        number(vat, "outputVatAfterSalesCorrection", number(vat, "outputVat")),
-        number(vat, "deductibleInputVat", number(vat, "inputVat")),
-        number(vat, "explicitVatAdjustments", number(vat, "vatAdjustments")),
-        number(vat, "calculatedVat", summary.vat()));
+        number(vat, "outputVat"),
+        number(vat, "deductibleInputVat"),
+        number(vat, "explicitAdjustments"),
+        number(vat, "calculatedVat"));
   }
 
   private JsonNode result(List<RyczaltCalculationEntity> rows, CalculationType type) {
