@@ -43,9 +43,13 @@ describe("ApiAccountingRepository missing month handling", () => {
     });
   });
 
-  it("keeps a generic missing route as an error, not an empty month", async () => {
+  it.each([
+    "The requested API resource was not found",
+    "Ryczalt period does not exist for profile 2: 2026-10",
+    "Ryczalt period does not exist for profile 1: 2026-09",
+  ])("keeps an unrelated 404 as an error: %s", async (message) => {
     const missingRoute = new ApiError(
-      "The requested API resource was not found",
+      message,
       404,
       undefined,
       "not-found",

@@ -29,9 +29,10 @@ jobs:
     env:
       CI: '1'
       EXPO_NO_TELEMETRY: '1'
+      SENTRY_DISABLE_AUTO_UPLOAD: 'true'
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
         with:
           node-version: 24
           cache: npm
@@ -45,12 +46,10 @@ jobs:
           packages: platform-tools
       - run: sdkmanager 'platforms;android-36' 'build-tools;36.0.0' 'ndk;27.1.12297006' 'cmake;3.22.1'
       - run: npm ci
-      - name: Align Expo SDK patch dependencies
-        run: npm install --no-save --package-lock=false 'expo@~57.0.28' 'expo-notifications@~57.0.22' 'expo-splash-screen@~57.0.10'
       - run: npm run ci
       - run: npx expo-doctor
       - name: Generate native Android project locally
-        run: npx expo prebuild --clean --platform android
+        run: npx expo prebuild --clean --platform android --no-install
       - name: Assemble debug APK locally
         working-directory: apps/mobile/android
         run: ./gradlew --no-daemon assembleDebug
