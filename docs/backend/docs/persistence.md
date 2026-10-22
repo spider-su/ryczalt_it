@@ -58,6 +58,22 @@ obligations through payment-match rows.
   transitional columns are not alternative runtime sources of truth. Removal
   requires a separately reviewed migration and retention decision.
 
+## Cleanup inventory (documentation only)
+
+| Candidate | Current interpretation | Decision before any database change |
+| --- | --- | --- |
+| `app_users.birth_date` | Transitional identity field; not canonical taxpayer data | Verify all readers, writers and populated values before dropping |
+| `portfolios.owner`, `taxpayer_*`, `tax_micro_account`, `zus_payment_account` | Legacy/import compatibility; canonical taxpayer and payment facts belong in `ryczalt_profile` | Check runtime consumers, imports, constraints, exports and actual data before migration |
+| Historical `accounting_*` tables | Retained migration-era data, not active accounting storage | Confirm retention, backups, restore and downstream dependencies; separate cleanup decision |
+| `ryczalt_source_reference` and `ryczalt_invoice_candidate` | Active provenance and invoice recognition concepts | Keep |
+| `ryczalt_payment_match`, `ryczalt_calculation` revisions | Active settlement and audit history | Keep |
+| `ryczalt_native_month_input` | Active monthly and opening-state facts | Keep; do not split solely for normalization |
+
+**No column/table removal is authorized by this inventory.** It records candidates
+for a later code-and-data usage audit, not proof that every consumer is absent.
+Do not conflate cost-invoice manual payment confirmation with tax-obligation
+payment allocations. See [migration history](migration.md) for archival context.
+
 ## Tables and ownership
 
 `ryczalt_period` is one profile-owned `YearMonth` and lifecycle status. Its unique key is
