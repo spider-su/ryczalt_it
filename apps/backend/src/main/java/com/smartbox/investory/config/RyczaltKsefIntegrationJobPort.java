@@ -42,7 +42,7 @@ public class RyczaltKsefIntegrationJobPort implements KsefSyncJobPort {
         if (result.failed() > 0) {
           failures.add(profileId);
           log.warn(
-              "KSeF sync rejected invoices: profileId={}, month={}, failed={}",
+              "KSeF sync completed with rejected invoices: profileId={}, month={}, failed={}; see per-invoice WARN entries for missing fields",
               profileId,
               month,
               result.failed());
