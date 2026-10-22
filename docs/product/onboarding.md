@@ -33,8 +33,10 @@ unsupported configurations are rejected. See [controlled POC scope](poc-scope.md
 For mid-year use, verify an explicit accounting start date and the opening
 facts required for calculations. Missing prior VAT carry-forward, year-to-date
 revenue, consumed deductions, or contribution facts cannot be represented as
-zero. The backend requires a complete opening-state record and fails closed when
-required monthly contribution or historical calculation facts are absent. Do
+zero. The intended contract requires a complete opening-state record and fail-closed
+handling of missing monthly contribution or historical calculation facts.
+The roadmap still tracks prior-VAT fallback and opening-state completeness as
+unverified correctness gaps; do not infer that all paths enforce this contract. Do
 not use a profile until its opening state and first supported month have been
 validated against regression tests and deployed acceptance evidence.
 
