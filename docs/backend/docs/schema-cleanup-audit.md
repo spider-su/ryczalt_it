@@ -1,8 +1,10 @@
 # Database schema cleanup audit
 
-This note records a read-only inspection of the configured production K3s PostgreSQL database and
-the bounded cleanup proposed by Flyway migration `01.027`. It contains aggregate counts and schema
-facts only; no taxpayer, account, invoice, or credential values are included.
+This note records a read-only inspection of the deployed K3s PostgreSQL database and the bounded
+cleanup implemented by Flyway migration `01.027`. The task owner identified the target as the
+unreleased development instance. Its current Kubernetes namespace and Argo CD Application are both
+named `ryczalt-it-prod`. This note contains aggregate counts and schema facts only; no taxpayer,
+account, invoice, or credential values are included.
 
 ## Inspection findings
 
@@ -65,22 +67,32 @@ configuration, or dependency changes are part of this cleanup.
 - Review canonical profile fields without current Java consumers separately; documentation and
   current product direction are not sufficient evidence to delete them in this migration.
 
-## Live migration plan
+## Live migration record
 
-The live database has **not** been changed. Before applying `01.027` to K3s:
+After separate operator approval, migration `01.027` was applied to the development instance on
+2026-10-22. The verified pre-migration state was Flyway `01.026`, 1,447 application rows across 25
+tables, plus 11 Flyway history rows.
 
-1. Confirm the target cluster, namespace, database, and active backend image with the operator.
-2. Quiesce application writes and take an encrypted custom-format PostgreSQL backup. Restore that
-   backup into an isolated database and verify the restore and pre-migration row/schema counts.
-3. Run the migration against the restored copy first. Confirm Flyway `01.027`, the canonical profile
-   row count, all accounting table counts, and the absence of the removed columns/indexes.
-4. Schedule a maintenance window, quiesce writes again, repeat preflight conflict checks, and apply
-   the pinned release containing `01.027`. Run backend smoke checks and verify Flyway history and
-   aggregate row counts before restoring traffic.
-5. If post-migration verification fails, keep writes stopped and restore the verified backup using
-   the approved recovery procedure; do not attempt ad hoc reverse SQL because the dropped columns
-   cannot be reconstructed from the migration alone in every possible case.
+- An encrypted custom-format backup was created and restored into a temporary isolated database.
+  All 26 source/restored base-table counts matched at Flyway `01.026`.
+- Flyway `01.027` was applied to that restored copy first. The current backend started and passed
+  its health check against the migrated copy. The temporary restored database was removed after
+  verification.
+- Before the live migration, the application database role was temporarily disabled and its 10
+  existing sessions were terminated. The role was re-enabled after the migration and checks.
+- Flyway applied exactly one migration to the live database, to version `01.027`. The 25
+  application-table row counts changed only by the expected one new canonical profile row; Flyway
+  history gained its expected twelfth row. Invoices (148), source references (355), and every other
+  application-table row count remained unchanged.
+- Post-migration checks found both canonical profile rows populated, no removed columns, both
+  redundant indexes absent, both backing unique indexes present, `portfolios.owner` retained, all
+  declared constraints validated, and no audited profile/period mismatches.
+- The deployed backend remained on its existing immutable image digest and returned
+  `/actuator/health` status `UP` with 1/1 pod ready. No application deployment was performed.
+- The encrypted backup and matching age identity remain in the operator's private local recovery
+  directory; neither is committed to the repository.
 
-The live migration is destructive at the schema level. Applying it requires a separate explicit
-operator approval after reviewing the target, backup/restore evidence, maintenance window, and
-release digest. This PR does not execute that operation.
+The live migration is destructive at the schema level. The development operation is complete. Any
+future migration to a separately managed production target still requires its own explicit
+approval, verified backup/restore, maintenance window, and release digest. Do not attempt ad hoc
+reverse SQL; use the verified backup recovery procedure if rollback is needed.
