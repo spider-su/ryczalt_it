@@ -42,6 +42,16 @@ Authoritative owner of (within implemented and validated contracts):
 
 No frontend directly owns or recalculates these rules.
 
+Current hard runtime limits for this controlled POC remain explicit:
+
+- supported accounting year: `2026`
+- supported ryczałt rate: `12%`
+- supported taxpayer profile: JDG with active monthly VAT and monthly PIT
+- unsupported configurations are rejected by backend validation
+
+Treat broader product wording in this document as architecture intent, not a
+claim that unsupported years/rates/regimes are already accepted in runtime.
+
 ### Mobile
 
 Expo / React Native.

@@ -45,6 +45,10 @@ This integration test requires a Docker daemon available to Testcontainers.
 
 ## Standalone release state
 
+> **Historical snapshot section.** Statements below are migration-era context and
+> must not be used as current deployment/capability claims without fresh runtime
+> verification.
+
 Historical snapshot (2026-09-27; **not** a current deployment-status claim): the standalone schema migrations
 remain a pre-production baseline in the repository-managed release lifecycle:
 PR #11 is unmerged, the repository has no GitHub release or deployment records,
@@ -67,6 +71,9 @@ wide old-versus-new execution was migration-era evidence; it is not part of the 
 validation path.
 
 Stage 4 limitations and explicit non-goals:
+
+> **Historical stage limitations.** These bullets describe migration-stage
+> constraints, not the sole source of current product boundaries.
 
 - no source-document classification or legacy database adapter;
 - no FX-rate acquisition or evidence persistence;

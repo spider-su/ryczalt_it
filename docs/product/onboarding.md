@@ -23,6 +23,13 @@ When a user has no accessible configured profile, show a clear access/setup
 state and route them to the administrator/support process. Do not start an
 accounting wizard that duplicates backend-provided configuration.
 
+Current backend contract for this case:
+
+- `GET /api/v1/auth/me` returns `403` with `ApiError.message`
+  `AUTH_PROFILE_ACCESS_REQUIRED: No accessible profile is assigned to this user. Contact administrator.`
+- Treat this as an authenticated-but-unassigned user state (not as invalid
+  credentials and not as a transient server outage).
+
 ## POC account acceptance
 
 Before inviting a controlled POC user, verify that the backend profile is
