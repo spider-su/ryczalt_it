@@ -36,7 +36,7 @@ class StandaloneMigrationIT {
 
         assertEquals(1, MigrationTestDatabase.singleInt(statement,
             "SELECT count(*) FROM ryczalt.ryczalt_profile WHERE profile_id=" + profileId
-                + " AND auto_approve_known_counterparties IS TRUE"));
+                + " AND auto_approve_known_counterparties IS FALSE"));
         assertEquals(1, MigrationTestDatabase.singleInt(statement,
             "SELECT count(*) FROM information_schema.table_constraints "
                 + "WHERE constraint_schema='ryczalt' AND table_name='ryczalt_profile' "
