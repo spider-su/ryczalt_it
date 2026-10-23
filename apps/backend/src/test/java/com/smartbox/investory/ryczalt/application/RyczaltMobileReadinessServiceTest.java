@@ -121,13 +121,13 @@ class RyczaltMobileReadinessServiceTest {
   }
 
   @Test
-  void rejectsMonthsOutsideSupportedCalculationYear() {
+  void rejectsMonthsWithoutEffectiveTaxRules() {
     assertThrows(IllegalArgumentException.class,
-        () -> service().readiness(7L, YearMonth.of(2027, 1)));
+        () -> service().readiness(7L, YearMonth.of(2025, 12)));
   }
 
   private RyczaltMobileReadinessService service() {
     return new RyczaltMobileReadinessService(
-        jdbc, monthInputs, periods, invoices, calculations, audit);
+        jdbc, monthInputs, periods, invoices, calculations, audit, com.smartbox.investory.ryczalt.calculation.rules.TestTaxRules.from2026());
   }
 }

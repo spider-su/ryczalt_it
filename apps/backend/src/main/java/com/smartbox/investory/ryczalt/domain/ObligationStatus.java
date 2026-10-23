@@ -11,6 +11,8 @@ public enum ObligationStatus {
 
   public static ObligationStatus fromPayments(
       ObligationType type, BigDecimal expected, BigDecimal paid, BigDecimal tolerance) {
+    // Nothing is due (e.g. VAT refund month or tax covered by deductions): settled without payment.
+    if (expected.signum() <= 0 && paid.signum() == 0) return PAID;
     if (paid.signum() == 0) return OPEN;
     BigDecimal difference = paid.subtract(expected);
     // ZUS reconciliation tolerates grosz differences, but never a full PLN or missing payment.

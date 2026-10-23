@@ -6,16 +6,14 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.TreeMap;
 
-/** Pure ryczałt calculation over normalized PLN revenue buckets. */
+/** Pure ryczałt calculation over normalized PLN revenue buckets under the effective rule set. */
 public final class RyczaltCalculator {
+  private final com.smartbox.investory.ryczalt.calculation.rules.RyczaltRuleSet rules;
   private final String ruleVersion;
 
-  public RyczaltCalculator() {
-    this(RyczaltRules2026.VERSION);
-  }
-
-  public RyczaltCalculator(String ruleVersion) {
-    this.ruleVersion = Objects.requireNonNull(ruleVersion, "ruleVersion");
+  public RyczaltCalculator(com.smartbox.investory.ryczalt.calculation.rules.RyczaltRuleSet rules) {
+    this.rules = Objects.requireNonNull(rules, "rules");
+    this.ruleVersion = rules.version();
   }
 
   public RyczaltCalculationResult calculate(RyczaltCalculationInput input) {
@@ -23,7 +21,7 @@ public final class RyczaltCalculator {
     BigDecimal totalRevenue = revenue.values().stream().reduce(BigDecimal.ZERO, BigDecimal::add);
     BigDecimal healthDeduction =
         RoundingPolicy.roundHealthDeduction(
-            input.healthContributionPaid().multiply(RyczaltRules2026.HEALTH_DEDUCTION_RATIO));
+            input.healthContributionPaid().multiply(rules.healthDeductionRatio()));
     BigDecimal available =
         input
             .socialContributionDeduction()

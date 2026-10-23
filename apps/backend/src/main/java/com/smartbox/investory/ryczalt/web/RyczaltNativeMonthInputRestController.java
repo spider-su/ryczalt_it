@@ -34,7 +34,10 @@ public class RyczaltNativeMonthInputRestController {
     if (!authorization.canWrite(profileId, authentication))
       throw new org.springframework.web.server.ResponseStatusException(
           org.springframework.http.HttpStatus.FORBIDDEN);
-    inputs.save(profileId, month, request.command());
+    inputs.save(profileId, month, request.command(
+        request.qualifyingUop() != null
+            ? request.qualifyingUop()
+            : inputs.carriedQualifyingUop(profileId, month)));
     return ResponseEntity.noContent().build();
   }
 
@@ -46,9 +49,10 @@ public class RyczaltNativeMonthInputRestController {
     return inputs.settings(profileId, month);
   }
 
+  /** {@code qualifyingUop} is optional: when omitted it is carried from the latest earlier month. */
   public record InputRequest(
       boolean jdgActive,
-      boolean qualifyingUop,
+      Boolean qualifyingUop,
       String zusRegime,
       boolean voluntarySickness,
       BigDecimal ytdRyczaltRevenue,
@@ -65,10 +69,10 @@ public class RyczaltNativeMonthInputRestController {
       BigDecimal openingHealthContributionsPaid,
       BigDecimal openingDeductionsConsumed,
       BigDecimal openingVatCarryForward) {
-    RyczaltNativeMonthInputService.Command command() {
+    RyczaltNativeMonthInputService.Command command(boolean resolvedQualifyingUop) {
       return new RyczaltNativeMonthInputService.Command(
           jdgActive,
-          qualifyingUop,
+          resolvedQualifyingUop,
           zusRegime,
           voluntarySickness,
           ytdRyczaltRevenue,

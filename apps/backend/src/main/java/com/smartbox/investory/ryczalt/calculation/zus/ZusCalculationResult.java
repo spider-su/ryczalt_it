@@ -8,6 +8,6 @@ public record ZusCalculationResult(
     BigDecimal healthPaidForDeduction,
     BigDecimal total,
     BigDecimal deductibleSocial,
-    ZusRules2026.HealthBand healthBand,
+    HealthBand healthBand,
     String reason,
     String ruleVersion) {}

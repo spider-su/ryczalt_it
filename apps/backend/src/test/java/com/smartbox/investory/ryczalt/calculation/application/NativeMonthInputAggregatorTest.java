@@ -28,7 +28,7 @@ class NativeMonthInputAggregatorTest {
   private final RyczaltNativeMonthInputJpaRepository monthInputs =
       mock(RyczaltNativeMonthInputJpaRepository.class);
   private final NativeMonthInputAggregator aggregator =
-      new NativeMonthInputAggregator(invoices, monthInputs);
+      new NativeMonthInputAggregator(invoices, monthInputs, com.smartbox.investory.ryczalt.calculation.rules.TestTaxRules.from2026());
 
   @Test
   void priorYearAccountingStartDoesNotIncludePreviousYearInCurrentYtdFacts() {

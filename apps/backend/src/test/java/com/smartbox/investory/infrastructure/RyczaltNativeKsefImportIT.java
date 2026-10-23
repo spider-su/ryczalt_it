@@ -1,7 +1,6 @@
 package com.smartbox.investory.infrastructure;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.smartbox.investory.ryczalt.application.RyczaltAutoRecalculationService;
 import com.smartbox.investory.ryczalt.application.ksef.RyczaltKsefImportService;
@@ -14,7 +13,6 @@ import com.smartbox.investory.ryczalt.integration.fx.RyczaltFxRateService;
 import com.smartbox.investory.ryczalt.integration.ksef.InvoiceSourcePort;
 import com.smartbox.investory.ryczalt.integration.ksef.InvoiceSourceRecord;
 import com.smartbox.investory.ryczalt.integration.ksef.KsefSyncMode;
-import com.smartbox.investory.ryczalt.persistence.FrozenPeriodMutationException;
 import com.smartbox.investory.ryczalt.persistence.InvoiceDirection;
 import com.smartbox.investory.ryczalt.persistence.RyczaltCounterpartyEntity;
 import com.smartbox.investory.ryczalt.persistence.RyczaltCounterpartyJpaRepository;
@@ -290,14 +288,16 @@ class RyczaltNativeKsefImportIT {
   }
 
   @Test
-  void frozenPeriodRejectsSync() {
+  void frozenPeriodSkipsItsInvoicesWithoutFailingTheSync() {
     jdbc.update(
         "INSERT INTO ryczalt.ryczalt_period(profile_id, period_year, period_month, status)"
             + " VALUES (1, 2026, 2, 'FROZEN')");
     source.records.add(income("KSEF-1", "29600"));
 
-    assertThatThrownBy(() -> ksefImport.sync(1, YearMonth.of(2026, 2), Set.of(KsefSyncMode.SALES)))
-        .isInstanceOf(FrozenPeriodMutationException.class);
+    var result = ksefImport.sync(1, YearMonth.of(2026, 2), Set.of(KsefSyncMode.SALES));
+
+    assertThat(result.failed()).isEqualTo(1);
+    assertThat(result.imported()).isZero();
     assertThat(invoices.count()).isZero();
   }
 

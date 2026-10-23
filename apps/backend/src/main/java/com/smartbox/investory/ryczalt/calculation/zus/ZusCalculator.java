@@ -1,19 +1,16 @@
 package com.smartbox.investory.ryczalt.calculation.zus;
 
 import com.smartbox.investory.ryczalt.calculation.RoundingPolicy;
+import com.smartbox.investory.ryczalt.calculation.rules.ZusRuleSet;
 import java.math.BigDecimal;
 import java.util.Objects;
 
-/** Pure ZUS calculation for the supported JDG/UoP cases. */
+/** Pure ZUS calculation for the supported JDG/UoP cases, using the rule set effective for the month. */
 public final class ZusCalculator {
-  private final String ruleVersion;
+  private final ZusRuleSet rules;
 
-  public ZusCalculator() {
-    this(ZusRules2026.VERSION);
-  }
-
-  public ZusCalculator(String ruleVersion) {
-    this.ruleVersion = Objects.requireNonNull(ruleVersion, "ruleVersion");
+  public ZusCalculator(ZusRuleSet rules) {
+    this.rules = Objects.requireNonNull(rules, "rules");
   }
 
   public ZusCalculationResult calculate(ZusCalculationInput input) {
@@ -27,46 +24,45 @@ public final class ZusCalculator {
     if (input.voluntarySickness() && (!input.jdgActive() || input.qualifyingUop())) {
       throw new IllegalArgumentException("Voluntary sickness is supported only for active JDG primary insurance");
     }
+    BigDecimal fullJdgSocial = input.fullJdgSocial() == null ? rules.fullJdgSocial() : input.fullJdgSocial();
+    HealthBand band =
+        input.explicitHealthBand() == null
+            ? rules.healthBand(input.ytdRyczaltRevenue())
+            : input.explicitHealthBand();
     BigDecimal social =
         input.jdgActive() && !input.qualifyingUop()
-            ? input
-                .fullJdgSocial()
-                .add(input.voluntarySickness() ? ZusRules2026.VOLUNTARY_SICKNESS : BigDecimal.ZERO)
+            ? fullJdgSocial.add(input.voluntarySickness() ? rules.voluntarySickness() : BigDecimal.ZERO)
             : BigDecimal.ZERO;
     BigDecimal calculatedDeductibleSocial =
-        input.jdgActive() && !input.qualifyingUop()
-            ? input
-                .fullJdgSocial()
-                .subtract(ZusRules2026.LABOUR_FUND)
-                .add(input.voluntarySickness() ? ZusRules2026.VOLUNTARY_SICKNESS : BigDecimal.ZERO)
-            : BigDecimal.ZERO;
-    if (input.socialContributionDeduction() == null) {
-      throw new IllegalArgumentException("Actual paid social contribution amount is required; use zero if unpaid");
-    }
-    if (input.healthContributionPaidOverride() == null) {
-      throw new IllegalArgumentException("Actual paid health contribution amount is required; use zero if unpaid");
-    }
-    BigDecimal deductibleSocial = input.socialContributionDeduction()
-        .min(calculatedDeductibleSocial);
+        rules.deductibleSocial(
+            input.jdgActive(), input.qualifyingUop(), input.voluntarySickness(), fullJdgSocial);
+    // Simplification: when no actual paid amount is supplied, the contribution is assumed to be
+    // paid in full, i.e. paid equals the calculated obligation for the month.
+    BigDecimal paidSocial = input.socialContributionDeduction() == null
+        ? calculatedDeductibleSocial
+        : input.socialContributionDeduction();
+    BigDecimal deductibleSocial = paidSocial.min(calculatedDeductibleSocial);
     BigDecimal health =
         input.jdgActive()
             ? input.healthContributionOverride() == null
-                ? input.explicitHealthBand().monthlyAmount()
+                ? rules.healthAmount(band)
                 : input.healthContributionOverride()
             : BigDecimal.ZERO;
     social = RoundingPolicy.roundZusContribution(social);
     health = RoundingPolicy.roundZusContribution(health);
     BigDecimal healthPaidForDeduction =
         RoundingPolicy.roundZusContribution(
-            input.healthContributionPaidOverride());
+            input.healthContributionPaidOverride() == null
+                ? health
+                : input.healthContributionPaidOverride());
     return new ZusCalculationResult(
         social,
         health,
         healthPaidForDeduction,
         RoundingPolicy.roundZusContribution(social.add(health)),
         RoundingPolicy.roundZusContribution(deductibleSocial),
-        input.explicitHealthBand(),
+        band,
         input.qualifyingUop() ? "UOP_PRIMARY_INSURANCE" : "JDG_PRIMARY_INSURANCE",
-        ruleVersion);
+        rules.version());
   }
 }

@@ -2,6 +2,7 @@ package com.smartbox.investory.ryczalt.application;
 
 import com.smartbox.investory.ryczalt.application.port.RyczaltAuditEventWriter;
 import com.smartbox.investory.ryczalt.calculation.InputChange;
+import com.smartbox.investory.ryczalt.calculation.rules.TaxRuleSets;
 import com.smartbox.investory.ryczalt.domain.PeriodStatus;
 import com.smartbox.investory.ryczalt.persistence.CalculationType;
 import com.smartbox.investory.ryczalt.persistence.RyczaltCalculationJpaRepository;
@@ -28,6 +29,8 @@ public class RyczaltMobileReadinessService {
   private final RyczaltInvoiceJpaRepository invoices;
   private final RyczaltCalculationJpaRepository calculations;
   private final RyczaltAuditEventWriter auditEvents;
+  private final TaxRuleSets taxRules;
+  private final RyczaltAutoRecalculationService autoRecalculation;
 
   public RyczaltMobileReadinessService(
       JdbcTemplate jdbc,
@@ -35,13 +38,29 @@ public class RyczaltMobileReadinessService {
       RyczaltPeriodJpaRepository periods,
       RyczaltInvoiceJpaRepository invoices,
       RyczaltCalculationJpaRepository calculations,
-      RyczaltAuditEventWriter auditEvents) {
+      RyczaltAuditEventWriter auditEvents,
+      TaxRuleSets taxRules) {
+    this(jdbc, monthInputs, periods, invoices, calculations, auditEvents, taxRules, null);
+  }
+
+  @org.springframework.beans.factory.annotation.Autowired
+  public RyczaltMobileReadinessService(
+      JdbcTemplate jdbc,
+      RyczaltNativeMonthInputJpaRepository monthInputs,
+      RyczaltPeriodJpaRepository periods,
+      RyczaltInvoiceJpaRepository invoices,
+      RyczaltCalculationJpaRepository calculations,
+      RyczaltAuditEventWriter auditEvents,
+      TaxRuleSets taxRules,
+      RyczaltAutoRecalculationService autoRecalculation) {
     this.jdbc = jdbc;
     this.monthInputs = monthInputs;
     this.periods = periods;
     this.invoices = invoices;
     this.calculations = calculations;
     this.auditEvents = auditEvents;
+    this.taxRules = taxRules;
+    this.autoRecalculation = autoRecalculation;
   }
 
   @Transactional(readOnly = true)
@@ -63,9 +82,7 @@ public class RyczaltMobileReadinessService {
         .orElse(null);
     boolean accountingConfigured = opening != null
         && !month.isBefore(YearMonth.from(opening.accountingStartDate()));
-    boolean zusConfigured = monthly != null
-        && monthly.socialContributionDeduction() != null
-        && monthly.healthContributionPaidOverride() != null;
+    boolean zusConfigured = monthly != null;
     RyczaltPeriodEntity period = periods
         .findByProfileIdAndYearAndMonth(profileId, month.getYear(), month.getMonthValue())
         .orElse(null);
@@ -130,6 +147,7 @@ public class RyczaltMobileReadinessService {
     periods.save(period);
     auditEvents.write(profileId, period.id(), "ACTIVITY_CONFIRMED_NO_REVENUE",
         "NO_REVENUE", actor, now);
+    if (autoRecalculation != null) autoRecalculation.recalculateFromAfterCommit(profileId, month);
     return new Confirmation("NO_REVENUE", period.getActivityConfirmedAt());
   }
 
@@ -141,10 +159,9 @@ public class RyczaltMobileReadinessService {
     return value != null && !value.toString().isBlank();
   }
 
-  private static void requireSupportedMonth(YearMonth month) {
+  private void requireSupportedMonth(YearMonth month) {
     Objects.requireNonNull(month, "month");
-    if (month.getYear() != 2026)
-      throw new IllegalArgumentException("Only 2026 accounting readiness is supported");
+    taxRules.requireSupported(month);
   }
 
   public record Readiness(
