@@ -85,6 +85,8 @@ jobs:
             test: RyczaltNativeKsefImportIT
           - name: period-lifecycle
             test: RyczaltPeriodLifecycleConcurrencyIT
+          - name: tax-rule-sets
+            test: JdbcTaxRuleSetsIT
     defaults:
       run:
         working-directory: apps/backend
