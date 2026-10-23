@@ -1,6 +1,7 @@
 package com.smartbox.investory.ryczalt.calculation.application;
 
 import com.smartbox.investory.ryczalt.application.NeedsReviewException;
+import com.smartbox.investory.ryczalt.calculation.rules.TaxRuleSets;
 import com.smartbox.investory.ryczalt.calculation.vat.VatCalculationInput;
 import com.smartbox.investory.ryczalt.calculation.zus.ZusCalculationInput;
 import com.smartbox.investory.ryczalt.domain.ApprovalStatus;
@@ -22,15 +23,19 @@ import org.springframework.stereotype.Service;
 public class NativeMonthInputAggregator {
   private final RyczaltInvoiceJpaRepository invoices;
   private final RyczaltNativeMonthInputJpaRepository monthInputs;
+  private final TaxRuleSets taxRules;
 
   public NativeMonthInputAggregator(
-      RyczaltInvoiceJpaRepository invoices, RyczaltNativeMonthInputJpaRepository monthInputs) {
+      RyczaltInvoiceJpaRepository invoices,
+      RyczaltNativeMonthInputJpaRepository monthInputs,
+      TaxRuleSets taxRules) {
     this.invoices = invoices;
     this.monthInputs = monthInputs;
+    this.taxRules = taxRules;
   }
 
   public NativeMonthCalculationInput aggregate(long profileId, long periodId, YearMonth month) {
-    if (month.getYear() != 2026) throw new IllegalArgumentException("Only 2026 accounting calculations are supported");
+    var zusRules = taxRules.zus(month);
     RyczaltNativeMonthInputEntity opening = monthInputs
         .findFirstByProfileIdAndAccountingStartDateIsNotNullOrderByYearAscMonthAsc(profileId)
         .orElseThrow(() -> needsReview(month, "opening accounting state is not configured"));
@@ -63,7 +68,7 @@ public class NativeMonthInputAggregator {
             zus.voluntarySickness(),
             ytdRevenue,
             zus.fullJdgSocial(),
-            com.smartbox.investory.ryczalt.calculation.zus.ZusRules2026.healthBandAfterPaidSocial(ytdRevenue, paidSocialYtd),
+            zusRules.healthBandAfterPaidSocial(ytdRevenue, paidSocialYtd),
             zus.socialContributionDeduction(),
             zus.healthContributionOverride(),
             zus.healthContributionPaidOverride()),
@@ -71,7 +76,9 @@ public class NativeMonthInputAggregator {
         settings.salesCorrections(),
         settings.explicitVatAdjustments(),
         month.equals(start) ? opening.openingVatCarryForward() : null,
-        month.equals(start) ? openingDeductionCarryForward(opening) : null);
+        month.equals(start)
+            ? openingDeductionCarryForward(opening, taxRules.ryczalt(month).healthDeductionRatio())
+            : null);
   }
 
   public boolean hasRevenueInvoices(long profileId, long periodId) {
@@ -79,10 +86,10 @@ public class NativeMonthInputAggregator {
         .stream().anyMatch(invoice -> invoice.getDirection() == InvoiceDirection.INCOME);
   }
 
-  private BigDecimal openingDeductionCarryForward(RyczaltNativeMonthInputEntity opening) {
+  private BigDecimal openingDeductionCarryForward(
+      RyczaltNativeMonthInputEntity opening, BigDecimal healthDeductionRatio) {
     BigDecimal healthDeduction = com.smartbox.investory.ryczalt.calculation.RoundingPolicy
-        .roundHealthDeduction(opening.openingHealthContributionsPaid().multiply(
-            com.smartbox.investory.ryczalt.calculation.ryczalt.RyczaltRules2026.HEALTH_DEDUCTION_RATIO));
+        .roundHealthDeduction(opening.openingHealthContributionsPaid().multiply(healthDeductionRatio));
     return opening.openingSocialContributionsPaid().add(healthDeduction)
         .subtract(opening.openingDeductionsConsumed()).max(BigDecimal.ZERO);
   }
@@ -103,9 +110,13 @@ public class NativeMonthInputAggregator {
     for (YearMonth cursor = start; !cursor.isAfter(month); cursor = cursor.plusMonths(1)) {
       YearMonth requiredMonth = cursor;
       var row = monthInputs.findByProfileIdAndYearAndMonth(profileId, requiredMonth.getYear(), requiredMonth.getMonthValue())
-          .orElseThrow(() -> needsReview(month, "historical paid social contribution facts are missing for " + requiredMonth));
-      if (row.socialContributionDeduction() == null) throw needsReview(month, "historical paid social contribution amount is missing for " + requiredMonth);
-      result = result.add(row.socialContributionDeduction());
+          .orElseThrow(() -> needsReview(month, "historical monthly ZUS settings are missing for " + requiredMonth));
+      // Without an actual paid amount the month's deductible social obligation is assumed paid.
+      var zus = row.zusSettings();
+      result = result.add(row.socialContributionDeduction() != null
+          ? row.socialContributionDeduction()
+          : taxRules.zus(requiredMonth).deductibleSocial(
+              zus.jdgActive(), zus.qualifyingUop(), zus.voluntarySickness(), zus.fullJdgSocial()));
     }
     return result;
   }

@@ -37,11 +37,11 @@ class NativeMonthCalculationServiceTest {
   private final SettlementService settlement = mock(SettlementService.class);
 
   @org.junit.jupiter.api.Test
-  void rejectsUnsupportedTaxYearsBeforeCreatingPeriods() {
+  void rejectsMonthsBeforeTheFirstRuleSetBeforeCreatingPeriods() {
     var service = service();
-    for (int year : List.of(2025, 2027)) {
+    for (YearMonth month : List.of(YearMonth.of(2025, 1), YearMonth.of(2025, 12))) {
       org.junit.jupiter.api.Assertions.assertThrows(IllegalArgumentException.class,
-          () -> service.calculate(7L, YearMonth.of(year, 1), null));
+          () -> service.calculate(7L, month, null));
     }
     org.mockito.Mockito.verifyNoInteractions(periods);
   }
@@ -99,7 +99,8 @@ class NativeMonthCalculationServiceTest {
             obligations,
             settlement,
             calculationRows,
-            JsonMapper.builder().build());
+            JsonMapper.builder().build(),
+            com.smartbox.investory.ryczalt.calculation.rules.TestTaxRules.from2026());
     var result =
         service.calculate(
             7L,
@@ -129,6 +130,35 @@ class NativeMonthCalculationServiceTest {
     verify(obligations, times(3)).save(any());
     verify(periods).save(period);
     verify(settlement).settlePeriod(7L, month);
+  }
+
+  @Test
+  void laterYearKeepsUsingTheLatestEffectiveRuleSetsUntilNewOnesAreConfigured() {
+    YearMonth month = YearMonth.of(2027, 2);
+    RyczaltPeriodEntity period = mock(RyczaltPeriodEntity.class);
+    when(period.id()).thenReturn(20L);
+    when(period.getYear()).thenReturn(2027);
+    when(period.getMonth()).thenReturn(2);
+    when(period.getStatus()).thenReturn(PeriodStatus.OPEN);
+    when(periods.findLocked(7L, 2027, 2)).thenReturn(Optional.of(period));
+    when(obligations.findByProfileIdAndPeriodIdOrderByTypeAsc(7L, 20L)).thenReturn(List.of());
+    when(calculations.saveCurrent(any(), any(Long.TYPE), any(), any(), any(), any(), any()))
+        .thenAnswer(invocation -> mock(RyczaltCalculationEntity.class));
+
+    var result = service().calculate(7L, month, new NativeMonthCalculationInput(
+        Map.of(new BigDecimal("0.12"), new BigDecimal("10000.00")),
+        new VatCalculationInput(new BigDecimal("2300.00"), BigDecimal.ZERO, BigDecimal.ZERO),
+        new ZusCalculationInput(true, false, "JDG", false, new BigDecimal("10000.00"), null,
+            null, null, null, null),
+        BigDecimal.ZERO));
+
+    assertEquals("ZUS_2026_POC_V1", result.zusResult().ruleVersion());
+    assertEquals(0, new BigDecimal("1788.29").compareTo(result.zusResult().social()));
+    assertEquals(0, new BigDecimal("498.35").compareTo(result.zusResult().health()));
+    for (String version : List.of("RYCZALT_2026_POC_V1", "VAT_2026_POC_V1", "ZUS_2026_POC_V1")) {
+      verify(calculations).saveCurrent(any(), any(Long.TYPE), any(), any(), any(),
+          org.mockito.ArgumentMatchers.eq(version), any());
+    }
   }
 
   @Test
@@ -231,7 +261,8 @@ class NativeMonthCalculationServiceTest {
         obligations,
         settlement,
         calculationRows,
-        JsonMapper.builder().build());
+        JsonMapper.builder().build(),
+        com.smartbox.investory.ryczalt.calculation.rules.TestTaxRules.from2026());
   }
 
   private static ZusCalculationInput paidInput() {

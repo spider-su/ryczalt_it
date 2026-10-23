@@ -405,6 +405,7 @@ class RyczaltNativeBankImportIT {
     RyczaltBankImportService.class,
     NativeMonthCalculationService.class,
     com.smartbox.investory.ryczalt.calculation.application.NativeMonthInputAggregator.class,
+    com.smartbox.investory.ryczalt.persistence.JdbcTaxRuleSets.class,
     com.smartbox.investory.ryczalt.persistence.RyczaltCalculationPersistenceAdapter.class,
     CsvBankTransactionSourceAdapter.class,
     RyczaltPeriodLifecycleService.class,

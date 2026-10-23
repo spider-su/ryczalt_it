@@ -76,6 +76,10 @@ class CanonicalSchemaMigrationIT {
             "SELECT count(*) FROM ryczalt.app_users"));
         assertEquals(0, MigrationTestDatabase.singleInt(statement,
             "SELECT count(*) FROM ryczalt.integration_jobs"));
+        assertEquals(6, MigrationTestDatabase.singleInt(statement, """
+            SELECT count(*) FROM ryczalt.ryczalt_tax_rule_set
+            WHERE effective_from IN (DATE '2025-01-01', DATE '2026-01-01')
+            """));
       }
     }
   }

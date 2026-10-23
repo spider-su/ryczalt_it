@@ -16,6 +16,7 @@ import com.smartbox.investory.ryczalt.persistence.RyczaltPaymentMatchEntity;
 import com.smartbox.investory.ryczalt.persistence.RyczaltPaymentMatchJpaRepository;
 import com.smartbox.investory.ryczalt.persistence.RyczaltPeriodEntity;
 import com.smartbox.investory.ryczalt.persistence.RyczaltPeriodJpaRepository;
+import com.smartbox.investory.ryczalt.persistence.RyczaltPeriodLifecycleService;
 import com.smartbox.investory.ryczalt.persistence.RyczaltTransactionEntity;
 import com.smartbox.investory.ryczalt.persistence.RyczaltTransactionJpaRepository;
 import java.math.BigDecimal;
@@ -37,6 +38,7 @@ public class SettlementService {
   private final RyczaltPaymentAccountResolver paymentAccounts;
   private final PaymentChecker checker;
   private final BigDecimal paymentTolerance;
+  private final RyczaltPeriodLifecycleService lifecycle;
 
   public SettlementService(
       RyczaltPeriodJpaRepository periods,
@@ -44,7 +46,8 @@ public class SettlementService {
       RyczaltTransactionJpaRepository transactions,
       RyczaltPaymentMatchJpaRepository matches,
       RyczaltPaymentAccountResolver paymentAccounts,
-      @Value("${app.ryczalt.payment.tolerance-pln:0}") BigDecimal paymentTolerance) {
+      @Value("${app.ryczalt.payment.tolerance-pln:0}") BigDecimal paymentTolerance,
+      RyczaltPeriodLifecycleService lifecycle) {
     this.periods = periods;
     this.obligations = obligations;
     this.transactions = transactions;
@@ -52,6 +55,7 @@ public class SettlementService {
     this.paymentAccounts = paymentAccounts;
     this.checker = new PaymentChecker();
     this.paymentTolerance = paymentTolerance == null ? BigDecimal.ZERO : paymentTolerance;
+    this.lifecycle = lifecycle;
   }
 
   @Transactional
@@ -68,11 +72,20 @@ public class SettlementService {
             .filter(transaction -> transaction.getAmount().signum() < 0)
             .toList();
     PaymentAccountRules accountRules = paymentAccounts.forProfile(profileId);
-    return obligations.findByProfileIdAndPeriodIdOrderByTypeAsc(profileId, period.id()).stream()
-        .map(
-            obligation ->
-                settleOne(profileId, period, obligation, storedTransactions, accountRules))
-        .toList();
+    List<PaymentCheckResult> results =
+        obligations.findByProfileIdAndPeriodIdOrderByTypeAsc(profileId, period.id()).stream()
+            .map(
+                obligation ->
+                    settleOne(profileId, period, obligation, storedTransactions, accountRules))
+            .toList();
+    completeIfSettled(profileId, period);
+    return results;
+  }
+
+  /** The month is completed (frozen) as soon as all three obligations are paid. */
+  private void completeIfSettled(long profileId, RyczaltPeriodEntity period) {
+    if (lifecycle == null || period.getStatus().isFrozen()) return;
+    lifecycle.completeIfSettled(profileId, YearMonth.of(period.getYear(), period.getMonth()));
   }
 
   @Transactional
@@ -117,6 +130,7 @@ public class SettlementService {
                 PaymentMatchType.MANUAL,
                 Instant.now()));
     refreshStatus(profileId, obligation);
+    completeIfSettled(profileId, obligation.getPeriod());
     return saved;
   }
 
@@ -147,6 +161,7 @@ public class SettlementService {
     requireMutable(obligation.getPeriod());
     obligation.markManuallyPaid(paidDate, note);
     refreshStatus(profileId, obligation);
+    completeIfSettled(profileId, obligation.getPeriod());
   }
 
   @Transactional

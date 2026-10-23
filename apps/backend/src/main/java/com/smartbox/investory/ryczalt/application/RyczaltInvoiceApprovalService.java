@@ -202,7 +202,9 @@ public class RyczaltInvoiceApprovalService {
                 ? InputChange.INCOME_INVOICE_CHANGED
                 : InputChange.COST_INVOICE_CHANGED,
             "INVOICE_APPROVAL");
-    autoRecalculation.recalculateAfterCommit(profileId, staled);
+    // Calculate from the invoice month onward, including a month never calculated before.
+    autoRecalculation.recalculateAfterCommit(
+        profileId, java.util.stream.Stream.concat(staled.stream(), java.util.stream.Stream.of(month)).toList());
     return new InvoiceView(
         invoice.id(),
         profileId,

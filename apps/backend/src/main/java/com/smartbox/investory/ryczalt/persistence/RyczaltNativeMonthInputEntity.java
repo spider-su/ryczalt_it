@@ -137,6 +137,26 @@ public class RyczaltNativeMonthInputEntity extends RyczaltEntity {
     return left.compareTo(right) == 0;
   }
 
+  public YearMonth yearMonth() {
+    return YearMonth.of(year, month);
+  }
+
+  /** True when the employment/insurance settings (not amounts) equal the given row's. */
+  public boolean sameInsuranceSettingsAs(ZusSettings other) {
+    return jdgActive == other.jdgActive()
+        && qualifyingUop == other.qualifyingUop()
+        && java.util.Objects.equals(zusRegime, other.zusRegime())
+        && voluntarySickness == other.voluntarySickness();
+  }
+
+  /** Replaces only the employment/insurance settings, keeping the month's amounts. */
+  public void applyInsuranceSettings(ZusSettings settings) {
+    this.jdgActive = settings.jdgActive();
+    this.qualifyingUop = settings.qualifyingUop();
+    this.zusRegime = settings.zusRegime();
+    this.voluntarySickness = settings.voluntarySickness();
+  }
+
   public ZusSettings zusSettings() {
     return new ZusSettings(
         jdgActive,

@@ -4,6 +4,8 @@ import com.smartbox.investory.ryczalt.calculation.InputFingerprint;
 import com.smartbox.investory.ryczalt.calculation.ryczalt.RyczaltCalculationInput;
 import com.smartbox.investory.ryczalt.calculation.ryczalt.RyczaltCalculationResult;
 import com.smartbox.investory.ryczalt.calculation.ryczalt.RyczaltCalculator;
+import com.smartbox.investory.ryczalt.calculation.rules.RyczaltRuleSet;
+import com.smartbox.investory.ryczalt.calculation.rules.TaxRuleSets;
 import com.smartbox.investory.ryczalt.calculation.vat.VatCalculationResult;
 import com.smartbox.investory.ryczalt.calculation.vat.VatCalculator;
 import com.smartbox.investory.ryczalt.calculation.zus.ZusCalculationResult;
@@ -46,6 +48,7 @@ public class NativeMonthCalculationService {
   private final RyczaltCalculationJpaRepository calculationRows;
   private final ObjectMapper json;
   private final RyczaltNativeMonthInputJpaRepository monthInputs;
+  private final TaxRuleSets taxRules;
 
   @Autowired
   public NativeMonthCalculationService(
@@ -56,7 +59,8 @@ public class NativeMonthCalculationService {
       SettlementService settlement,
       RyczaltCalculationJpaRepository calculationRows,
       ObjectMapper json,
-      RyczaltNativeMonthInputJpaRepository monthInputs) {
+      RyczaltNativeMonthInputJpaRepository monthInputs,
+      TaxRuleSets taxRules) {
     this.periods = periods;
     this.inputAggregator = inputAggregator;
     this.calculations = calculations;
@@ -65,19 +69,21 @@ public class NativeMonthCalculationService {
     this.calculationRows = calculationRows;
     this.json = Objects.requireNonNull(json, "json");
     this.monthInputs = monthInputs;
+    this.taxRules = Objects.requireNonNull(taxRules, "taxRules");
   }
 
   public NativeMonthCalculationService(RyczaltPeriodJpaRepository periods,
       NativeMonthInputAggregator inputAggregator, RyczaltCalculationPersistenceAdapter calculations,
       RyczaltObligationJpaRepository obligations, SettlementService settlement,
-      RyczaltCalculationJpaRepository calculationRows, ObjectMapper json) {
-    this(periods, inputAggregator, calculations, obligations, settlement, calculationRows, json, null);
+      RyczaltCalculationJpaRepository calculationRows, ObjectMapper json, TaxRuleSets taxRules) {
+    this(periods, inputAggregator, calculations, obligations, settlement, calculationRows, json, null,
+        taxRules);
   }
 
   @Transactional
   public NativeMonthCalculationResult calculateFromPersistedInvoices(
       long profileId, YearMonth month) {
-    requireSupportedYear(month);
+    taxRules.requireSupported(month);
     RyczaltPeriodEntity period = period(profileId, month);
     if (!inputAggregator.hasRevenueInvoices(profileId, period.id())
         && !"NO_REVENUE".equals(period.getActivityConfirmationType())) {
@@ -91,20 +97,23 @@ public class NativeMonthCalculationService {
   @Transactional
   public NativeMonthCalculationResult calculate(
       long profileId, YearMonth month, NativeMonthCalculationInput input) {
-    requireSupportedYear(month);
-    requireSupportedConfiguration(input);
+    // Rules effective for the month: the latest rule set of each type starting on or before it.
+    var zusRuleSet = taxRules.zus(month);
+    var ryczaltRuleSet = taxRules.ryczalt(month);
+    var vatRuleSet = taxRules.vat(month);
+    requireSupportedConfiguration(input, ryczaltRuleSet);
     RyczaltPeriodEntity period = period(profileId, month);
     if (period.getStatus().isFrozen()) {
       throw new IllegalStateException("Frozen period cannot be recalculated: " + month);
     }
 
-    String ryczaltRules = ruleVersion("RYCZALT", month);
-    String vatRules = ruleVersion("VAT", month);
-    String zusRules = ruleVersion("ZUS", month);
-    ZusCalculationResult zusResult = new ZusCalculator(zusRules).calculate(input.zus());
+    String ryczaltRules = ryczaltRuleSet.version();
+    String vatRules = vatRuleSet.version();
+    String zusRules = zusRuleSet.version();
+    ZusCalculationResult zusResult = new ZusCalculator(zusRuleSet).calculate(input.zus());
     NativeMonthCalculationInput calculationInput = withHistoricalCarryForwards(profileId, month, input);
     RyczaltCalculationResult ryczaltResult =
-        new RyczaltCalculator(ryczaltRules)
+        new RyczaltCalculator(ryczaltRuleSet)
             .calculate(
                 new RyczaltCalculationInput(
                     input.revenueByRate(),
@@ -112,7 +121,7 @@ public class NativeMonthCalculationService {
                     zusResult.healthPaidForDeduction(),
                     calculationInput.deductionsAlreadyConsumed(),
                     calculationInput.deductionCarryForward()));
-    VatCalculationResult vatResult = new VatCalculator(vatRules).calculate(calculationInput.vat());
+    VatCalculationResult vatResult = new VatCalculator(vatRuleSet).calculate(calculationInput.vat());
 
     RyczaltCalculationEntity ryczaltCalculation =
         save(
@@ -168,17 +177,12 @@ public class NativeMonthCalculationService {
         zusResult);
   }
 
-  private static void requireSupportedConfiguration(NativeMonthCalculationInput input) {
+  private static void requireSupportedConfiguration(
+      NativeMonthCalculationInput input, RyczaltRuleSet rules) {
     Objects.requireNonNull(input, "input");
-    BigDecimal supportedRate = new BigDecimal("0.12");
-    if (input.revenueByRate().keySet().stream()
-        .anyMatch(rate -> rate == null || rate.compareTo(supportedRate) != 0)) {
-      throw new IllegalArgumentException("Only the 12% ryczałt rate is supported");
+    if (input.revenueByRate().keySet().stream().anyMatch(rate -> !rules.supportsRate(rate))) {
+      throw new IllegalArgumentException(rules.unsupportedRateMessage());
     }
-  }
-
-  private static void requireSupportedYear(YearMonth month) {
-    if (month.getYear() != 2026) throw new IllegalArgumentException("Only 2026 accounting calculations are supported");
   }
 
   private RyczaltPeriodEntity period(long profileId, YearMonth month) {
@@ -241,9 +245,6 @@ public class NativeMonthCalculationService {
     return InputFingerprint.sha256(ruleVersion + "|" + json(value));
   }
 
-  private String ruleVersion(String type, YearMonth month) {
-    return type + "_2026_POC_V1";
-  }
 
   private NativeMonthCalculationInput withHistoricalCarryForwards(
       long profileId, YearMonth month, NativeMonthCalculationInput input) {

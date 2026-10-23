@@ -53,6 +53,7 @@ class RyczaltAccountingQueryServiceTest {
 
   @BeforeEach
   void setUp() {
+    when(inputSettings.supports(org.mockito.ArgumentMatchers.any())).thenReturn(true);
     when(inputSettings.settings(org.mockito.ArgumentMatchers.anyLong(), org.mockito.ArgumentMatchers.any()))
         .thenReturn(new com.smartbox.investory.ryczalt.application.RyczaltNativeMonthInputService.InputSettings(null, null, List.of()));
     service =
@@ -74,6 +75,8 @@ class RyczaltAccountingQueryServiceTest {
     when(period.id()).thenReturn(10L);
     when(period.getProfileId()).thenReturn(7L);
     when(periods.findByProfileIdAndYearAndMonth(7L,2026,7)).thenReturn(Optional.of(period));
+    when(period.getYear()).thenReturn(2026);
+    when(period.getMonth()).thenReturn(7);
     var obligation = mock(RyczaltObligationEntity.class);
     when(obligation.id()).thenReturn(25L);
     when(obligation.getType()).thenReturn(ObligationType.ZUS);
@@ -168,6 +171,8 @@ class RyczaltAccountingQueryServiceTest {
     when(period.getProfileId()).thenReturn(7L);
     when(period.id()).thenReturn(1L);
     when(period.getStatus()).thenReturn(PeriodStatus.FROZEN);
+    when(period.getYear()).thenReturn(2026);
+    when(period.getMonth()).thenReturn(2);
     when(invoices.findByProfileIdAndPeriodIdOrderByAccountingDateAscIdAsc(7L, 1L))
         .thenReturn(List.of());
     when(transactions.findByProfileIdAndPeriodIdOrderByBookingDateAscIdAsc(7L, 1L))

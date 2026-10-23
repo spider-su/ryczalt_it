@@ -1,12 +1,14 @@
 package com.smartbox.investory.ryczalt.calculation.vat;
 
+import com.smartbox.investory.ryczalt.calculation.rules.TestTaxRules;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import java.math.BigDecimal;
 import org.junit.jupiter.api.Test;
 
 class VatCalculatorTest {
-  private final VatCalculator calculator = new VatCalculator();
+  private final VatCalculator calculator = new VatCalculator(TestTaxRules.VAT_2026);
 
   @Test
   void settlesOutputCorrectionAndInputVatAtWholePlnBoundary() {
@@ -31,7 +33,7 @@ class VatCalculatorTest {
 
     assertAmount("13", adjusted.calculatedVat());
     assertAmount("0", excessInput.calculatedVat());
-    assertEquals(VatRules2026.VERSION, adjusted.ruleVersion());
+    assertEquals(TestTaxRules.VAT_2026.version(), adjusted.ruleVersion());
   }
 
   @Test
