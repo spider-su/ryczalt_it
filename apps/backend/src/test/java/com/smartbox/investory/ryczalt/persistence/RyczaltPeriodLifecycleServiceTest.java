@@ -40,6 +40,47 @@ class RyczaltPeriodLifecycleServiceTest {
   }
 
   @Test
+  void monthCompletesAutomaticallyOnlyOnceAllThreeObligationsArePaid() {
+    RyczaltPeriodEntity period = mock(RyczaltPeriodEntity.class);
+    when(period.id()).thenReturn(10L);
+    when(period.getStatus()).thenReturn(PeriodStatus.CALCULATED);
+    when(periods.findLocked(7L, 2026, 9)).thenReturn(Optional.of(period));
+    List<RyczaltCalculationEntity> current = java.util.Arrays.stream(CalculationType.values())
+        .map(type -> {
+          var calculation = mock(RyczaltCalculationEntity.class);
+          when(calculation.getType()).thenReturn(type);
+          when(calculation.isCurrent()).thenReturn(true);
+          when(calculation.getStatus()).thenReturn(CalculationStatus.CURRENT);
+          return calculation;
+        }).toList();
+    when(calculations.findByProfileIdAndPeriodId(7L, 10L)).thenReturn(current);
+    var paid = obligation(com.smartbox.investory.ryczalt.domain.ObligationStatus.PAID);
+    var open = obligation(com.smartbox.investory.ryczalt.domain.ObligationStatus.OPEN);
+    when(obligations.findByProfileIdAndPeriodIdOrderByTypeAsc(7L, 10L))
+        .thenReturn(List.of(paid, paid, open));
+    var service = new RyczaltPeriodLifecycleService(periods, calculations, obligations, auditEvents);
+
+    org.junit.jupiter.api.Assertions.assertFalse(service.completeIfSettled(7L, YearMonth.of(2026, 9)));
+    verify(period, never()).markFrozen(org.mockito.ArgumentMatchers.any());
+
+    when(obligations.findByProfileIdAndPeriodIdOrderByTypeAsc(7L, 10L))
+        .thenReturn(List.of(paid, paid, paid));
+    org.junit.jupiter.api.Assertions.assertTrue(service.completeIfSettled(7L, YearMonth.of(2026, 9)));
+    verify(period).markFrozen(org.mockito.ArgumentMatchers.any());
+    verify(auditEvents).write(org.mockito.ArgumentMatchers.eq(7L), org.mockito.ArgumentMatchers.eq(10L),
+        org.mockito.ArgumentMatchers.eq("PERIOD_FROZEN"), org.mockito.ArgumentMatchers.any(),
+        org.mockito.ArgumentMatchers.eq(RyczaltPeriodLifecycleService.AUTO_COMPLETION_ACTOR),
+        org.mockito.ArgumentMatchers.any());
+  }
+
+  private static RyczaltObligationEntity obligation(
+      com.smartbox.investory.ryczalt.domain.ObligationStatus status) {
+    var obligation = mock(RyczaltObligationEntity.class);
+    when(obligation.getStatus()).thenReturn(status);
+    return obligation;
+  }
+
+  @Test
   void historicalVatChangeInvalidatesLaterVatAndPreflightsFrozenDependencies() {
     var july = mock(RyczaltPeriodEntity.class);
     var august = mock(RyczaltPeriodEntity.class);

@@ -1,5 +1,7 @@
 package com.smartbox.investory.ryczalt.calculation.ryczalt;
 
+import com.smartbox.investory.ryczalt.calculation.rules.TestTaxRules;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import java.math.BigDecimal;
@@ -8,7 +10,7 @@ import java.util.Map;
 import org.junit.jupiter.api.Test;
 
 class RyczaltCalculatorTest {
-  private final RyczaltCalculator calculator = new RyczaltCalculator();
+  private final RyczaltCalculator calculator = new RyczaltCalculator(TestTaxRules.RYCZALT_2026);
 
   @Test
   void calculatesSingleRateRevenue() {
@@ -22,7 +24,7 @@ class RyczaltCalculatorTest {
     assertAmount("10000", result.revenue());
     assertAmount("10000", result.taxableBase());
     assertAmount("1200", result.calculatedTax());
-    assertEquals(RyczaltRules2026.VERSION, result.ruleVersion());
+    assertEquals(TestTaxRules.RYCZALT_2026.version(), result.ruleVersion());
   }
 
   @Test

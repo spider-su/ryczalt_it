@@ -9,17 +9,14 @@ public record ZusCalculationInput(
     boolean voluntarySickness,
     BigDecimal ytdRyczaltRevenue,
     BigDecimal fullJdgSocial,
-    ZusRules2026.HealthBand explicitHealthBand,
+    HealthBand explicitHealthBand,
     BigDecimal socialContributionDeduction,
     BigDecimal healthContributionOverride,
     BigDecimal healthContributionPaidOverride) {
   public ZusCalculationInput {
     if (ytdRyczaltRevenue == null) throw new IllegalArgumentException("Cumulative ryczałt revenue is required");
-    fullJdgSocial = fullJdgSocial == null ? ZusRules2026.FULL_JDG_SOCIAL : fullJdgSocial;
-    explicitHealthBand =
-        explicitHealthBand == null
-            ? ZusRules2026.healthBand(ytdRyczaltRevenue)
-            : explicitHealthBand;
+    // fullJdgSocial and explicitHealthBand may be null: the calculator resolves them from the
+    // ZUS rule set effective for the month.
     if (socialContributionDeduction != null && socialContributionDeduction.signum() < 0)
       throw new IllegalArgumentException("socialContributionDeduction must not be negative");
     if (healthContributionOverride != null && healthContributionOverride.signum() < 0)
@@ -35,7 +32,7 @@ public record ZusCalculationInput(
       boolean voluntarySickness,
       BigDecimal ytdRyczaltRevenue,
       BigDecimal fullJdgSocial,
-      ZusRules2026.HealthBand explicitHealthBand) {
+      HealthBand explicitHealthBand) {
     this(
         jdgActive,
         qualifyingUop,
@@ -56,7 +53,7 @@ public record ZusCalculationInput(
       boolean voluntarySickness,
       BigDecimal ytdRyczaltRevenue,
       BigDecimal fullJdgSocial,
-      ZusRules2026.HealthBand explicitHealthBand,
+      HealthBand explicitHealthBand,
       BigDecimal socialContributionDeduction,
       BigDecimal healthContributionOverride) {
     this(

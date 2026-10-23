@@ -45,6 +45,32 @@ public class RyczaltPeriodLifecycleService {
       throw new IllegalStateException(
           "Period needs current calculations and settled obligations before freezing");
     }
+    freezeEligible(profileId, period, actor, reason);
+  }
+
+  /**
+   * Completes the month automatically once its three obligations are paid and its calculations are
+   * current: the period becomes immutable history. A no-op otherwise.
+   *
+   * @return true when the period was frozen by this call
+   */
+  @Transactional
+  public boolean completeIfSettled(long profileId, YearMonth month) {
+    RyczaltPeriodEntity period =
+        periods.findLocked(profileId, month.getYear(), month.getMonthValue()).orElse(null);
+    if (period == null || period.getStatus().isFrozen() || !period.getStatus().canFreeze()) return false;
+    if (!FreezeEligibility.isEligible(
+        period,
+        calculations.findByProfileIdAndPeriodId(profileId, period.id()),
+        obligations.findByProfileIdAndPeriodIdOrderByTypeAsc(profileId, period.id()))) return false;
+    freezeEligible(profileId, period, AUTO_COMPLETION_ACTOR, "All obligations paid");
+    return true;
+  }
+
+  public static final String AUTO_COMPLETION_ACTOR = "system:month-completion";
+
+  private void freezeEligible(
+      long profileId, RyczaltPeriodEntity period, String actor, String reason) {
     period.markFrozen(Instant.now());
     periods.save(period);
     calculations
@@ -95,7 +121,11 @@ public class RyczaltPeriodLifecycleService {
       }
     }
     for (var period : chain) {
-      boolean activityConfirmationCleared = period.clearActivityConfirmation();
+      // A no-revenue confirmation is about the changed month's own facts; later months keep theirs
+      // so the automatic calculation chain is not broken by an earlier month's change.
+      boolean activityConfirmationCleared =
+          YearMonth.of(period.getYear(), period.getMonth()).equals(month)
+              && period.clearActivityConfirmation();
       boolean[] hadCalculation = {false};
       affected.forEach(type -> calculations
           .findByProfileIdAndPeriodIdAndTypeAndCurrentTrue(profileId, period.id(), type)

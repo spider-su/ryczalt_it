@@ -7,12 +7,8 @@ import java.math.BigDecimal;
 public final class VatCalculator {
   private final String ruleVersion;
 
-  public VatCalculator() {
-    this(VatRules2026.VERSION);
-  }
-
-  public VatCalculator(String ruleVersion) {
-    this.ruleVersion = java.util.Objects.requireNonNull(ruleVersion, "ruleVersion");
+  public VatCalculator(com.smartbox.investory.ryczalt.calculation.rules.VatRuleSet rules) {
+    this.ruleVersion = java.util.Objects.requireNonNull(rules, "rules").version();
   }
 
   public VatCalculationResult calculate(VatCalculationInput input) {

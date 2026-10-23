@@ -288,7 +288,7 @@ public class RyczaltAccountingQueryService {
             invoice.getReference()));
       }
     }
-    if (loaded.period.getYear() == 2026) {
+    if (inputSettings.supports(month(loaded.period))) {
       var settings = inputSettings.settings(loaded.period.getProfileId(), month(loaded.period));
       if (!settings.missingFields().isEmpty()) {
         result.add(new RyczaltIssueReadModel("input-settings", "MISSING_ACCOUNTING_INPUTS",

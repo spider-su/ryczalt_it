@@ -145,6 +145,15 @@ public class RyczaltInvoiceEntity extends RyczaltEntity {
     return period;
   }
 
+  public void correctAccountingDate(LocalDate date, RyczaltPeriodEntity target) {
+    if (target.getProfileId() != profileId
+        || date.getYear() != target.getYear() || date.getMonthValue() != target.getMonth()) {
+      throw new IllegalArgumentException("Corrected date must belong to the invoice profile and period");
+    }
+    this.accountingDate = date;
+    moveToPeriod(target);
+  }
+
   public void moveToPeriod(RyczaltPeriodEntity period) {
     if (period == null) throw new IllegalArgumentException("Invoice period is required");
     this.period = period;

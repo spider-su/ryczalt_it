@@ -64,6 +64,7 @@ public class RyczaltKsefImportService implements RyczaltKsefApi {
   private final RyczaltCounterpartyService counterparties;
   private final RyczaltFxRateService fxRates;
   private final RyczaltAutoRecalculationService autoRecalculation;
+  private final RyczaltKsefDateCorrectionService dateCorrections;
 
   public RyczaltKsefImportService(
       InvoiceSourcePort source,
@@ -73,7 +74,9 @@ public class RyczaltKsefImportService implements RyczaltKsefApi {
       RyczaltPeriodLifecycleService lifecycle,
       RyczaltCounterpartyService counterparties,
       RyczaltFxRateService fxRates,
-      RyczaltAutoRecalculationService autoRecalculation) {
+      RyczaltAutoRecalculationService autoRecalculation,
+      RyczaltKsefDateCorrectionService dateCorrections) {
+    this.dateCorrections = dateCorrections;
     this.autoRecalculation = autoRecalculation;
     this.source = source;
     this.periods = periods;
@@ -104,7 +107,28 @@ public class RyczaltKsefImportService implements RyczaltKsefApi {
     int updated = 0;
     int failed = 0;
     Map<InvoiceDirection, Set<YearMonth>> touched = new EnumMap<>(InvoiceDirection.class);
-    for (InvoiceSourceRecord record : records) {
+    var ordered = records.stream().sorted(java.util.Comparator
+        .comparing((InvoiceSourceRecord r) -> r.saleDateCorrection() != null)
+        .thenComparing(InvoiceSourceRecord::issueDate,
+            java.util.Comparator.nullsLast(java.util.Comparator.naturalOrder()))).toList();
+    for (InvoiceSourceRecord record : ordered) {
+      if (record.saleDateCorrection() != null) {
+        if (dateCorrections.alreadyApplied(profileId, record.sourceExternalId())) {
+          duplicates++;
+          continue;
+        }
+        try {
+          var change = dateCorrections.apply(profileId, record);
+          touched.computeIfAbsent(change.direction(), ignored -> new HashSet<>()).add(change.from());
+          touched.get(change.direction()).add(change.to());
+          updated++;
+        } catch (IllegalArgumentException exception) {
+          failed++;
+          log.warn("KSeF date correction rejected: profileId={}, sourceFingerprint={}, reason={}",
+              profileId, sourceFingerprint(record.sourceExternalId()), exception.getMessage());
+        }
+        continue;
+      }
       List<String> missingFields = missingRequiredFields(record);
       if (!missingFields.isEmpty()) {
         failed++;
@@ -120,11 +144,21 @@ public class RyczaltKsefImportService implements RyczaltKsefApi {
       var existing =
           sourceReferences.findByProfileIdAndEntityTypeAndSourceAndExternalId(
               profileId, ENTITY_TYPE, SOURCE, record.sourceExternalId());
-      if (existing.isPresent() && !reimport) {
+      if (existing.isPresent() && (!reimport
+          || dateCorrections.hasAppliedCorrection(profileId, existing.get().getEntityId()))) {
         duplicates++;
         continue;
       }
       YearMonth target = YearMonth.from(record.accountingDate());
+      if (isFrozen(profileId, target)) {
+        // Completed months are immutable history. Skip instead of failing the whole sync; the
+        // invoice is picked up again once the period is reopened for a correction.
+        failed++;
+        log.warn(
+            "KSeF invoice skipped: profileId={}, requestedMonth={}, sourceFingerprint={}, frozenPeriod={}",
+            profileId, month, sourceFingerprint(record.sourceExternalId()), target);
+        continue;
+      }
       var counterparty =
           counterparties.resolveByTaxId(
               profileId,
@@ -145,6 +179,13 @@ public class RyczaltKsefImportService implements RyczaltKsefApi {
                 .orElseThrow();
         YearMonth current =
             YearMonth.of(invoice.getPeriod().getYear(), invoice.getPeriod().getMonth());
+        if (isFrozen(profileId, current)) {
+          failed++;
+          log.warn(
+              "KSeF invoice update skipped: profileId={}, sourceFingerprint={}, frozenPeriod={}",
+              profileId, sourceFingerprint(record.sourceExternalId()), current);
+          continue;
+        }
         requireMutable(profileId, current);
         if (!current.equals(target)) {
           invoice.moveToPeriod(requireMutable(profileId, target));
@@ -229,7 +270,10 @@ public class RyczaltKsefImportService implements RyczaltKsefApi {
                                 ? InputChange.INCOME_INVOICE_CHANGED
                                 : InputChange.COST_INVOICE_CHANGED,
                             ACTOR))));
-    autoRecalculation.recalculateAfterCommit(profileId, List.copyOf(staled));
+    // Calculate from the earliest touched month, including months never calculated before.
+    java.util.TreeSet<YearMonth> changedMonths = new java.util.TreeSet<>(staled);
+    touched.values().forEach(changedMonths::addAll);
+    autoRecalculation.recalculateAfterCommit(profileId, List.copyOf(changedMonths));
     return new RyczaltKsefSyncResult(records.size(), imported, duplicates, updated, failed);
   }
 
@@ -253,6 +297,13 @@ public class RyczaltKsefImportService implements RyczaltKsefApi {
     } catch (NoSuchAlgorithmException exception) {
       throw new IllegalStateException("SHA-256 is unavailable", exception);
     }
+  }
+
+  private boolean isFrozen(long profileId, YearMonth month) {
+    return periods
+        .findByProfileIdAndYearAndMonth(profileId, month.getYear(), month.getMonthValue())
+        .map(period -> period.getStatus().isFrozen())
+        .orElse(false);
   }
 
   private RyczaltPeriodEntity requireMutable(long profileId, YearMonth month) {

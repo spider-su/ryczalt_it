@@ -235,8 +235,14 @@ CREATE TABLE ryczalt.ryczalt_profile (
     surname VARCHAR(120),
     date_of_birth DATE,
     auto_approve_known_counterparties BOOLEAN NOT NULL DEFAULT FALSE,
+    -- Declared revenue of a year before the accounting history starts; used only for the ZUS
+    -- health band forecast. When approved invoices cover that year, history is used instead.
+    prior_year_revenue NUMERIC(19,2) CHECK (prior_year_revenue IS NULL OR prior_year_revenue >= 0),
+    prior_year_revenue_year INTEGER,
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT ck_ryczalt_profile_prior_year_revenue
+        CHECK ((prior_year_revenue IS NULL) = (prior_year_revenue_year IS NULL))
 );
 
 CREATE TABLE ryczalt.ryczalt_fx_resolution (
@@ -252,6 +258,33 @@ CREATE TABLE ryczalt.ryczalt_fx_resolution (
 );
 CREATE INDEX ix_ryczalt_fx_resolution_lookup
     ON ryczalt.ryczalt_fx_resolution(currency, requested_date);
+
+-- Effective-dated tax rules. A rule set applies from effective_from (first day of a month) until a
+-- later rule set of the same type exists; e.g. 2026-01 rules keep applying in 2027 unless a newer
+-- rule set (say 2027-04) is added. Months before the first rule set of a type are unsupported.
+CREATE TABLE ryczalt.ryczalt_tax_rule_set (
+    id BIGSERIAL PRIMARY KEY,
+    rule_type VARCHAR(8) NOT NULL CHECK (rule_type IN ('RYCZALT','VAT','ZUS')),
+    effective_from DATE NOT NULL CHECK (EXTRACT(DAY FROM effective_from) = 1),
+    rule_version VARCHAR(64) NOT NULL CHECK (length(btrim(rule_version)) > 0),
+    parameters JSONB NOT NULL DEFAULT '{}'::jsonb CHECK (jsonb_typeof(parameters) = 'object'),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT uq_ryczalt_tax_rule_set_effective UNIQUE (rule_type, effective_from),
+    CONSTRAINT uq_ryczalt_tax_rule_set_version UNIQUE (rule_type, rule_version)
+);
+COMMENT ON TABLE ryczalt.ryczalt_tax_rule_set IS 'Effective-dated ZUS, ryczałt and VAT rule parameters; the latest effective_from on or before a month applies.';
+
+INSERT INTO ryczalt.ryczalt_tax_rule_set (rule_type, effective_from, rule_version, parameters) VALUES
+    ('ZUS', DATE '2025-01-01', 'ZUS_2025_POC_V1',
+     '{"socialInsurance":"1518.98","labourFund":"127.49","voluntarySickness":"127.49","healthLowRevenueUpTo":"60000","healthMediumRevenueUpTo":"300000","healthLow":"461.66","healthMedium":"769.43","healthHigh":"1384.97"}'),
+    ('RYCZALT', DATE '2025-01-01', 'RYCZALT_2025_POC_V1',
+     '{"healthDeductionRatio":"0.50","supportedRates":["0.12"]}'),
+    ('VAT', DATE '2025-01-01', 'VAT_2025_POC_V1', '{}'),
+    ('ZUS', DATE '2026-01-01', 'ZUS_2026_POC_V1',
+     '{"socialInsurance":"1649.82","labourFund":"138.47","voluntarySickness":"138.47","healthLowRevenueUpTo":"60000","healthMediumRevenueUpTo":"300000","healthLow":"498.35","healthMedium":"830.58","healthHigh":"1495.04"}'),
+    ('RYCZALT', DATE '2026-01-01', 'RYCZALT_2026_POC_V1',
+     '{"healthDeductionRatio":"0.50","supportedRates":["0.12"]}'),
+    ('VAT', DATE '2026-01-01', 'VAT_2026_POC_V1', '{}');
 
 CREATE TABLE ryczalt.integration_jobs (
     id BIGSERIAL PRIMARY KEY,

@@ -66,6 +66,54 @@ class RyczaltNativeMonthInputRestControllerTest {
   }
 
   @Test
+  void omittedQualifyingUopIsCarriedFromEarlierMonth() throws Exception {
+    when(inputs.carriedQualifyingUop(7L, YearMonth.of(2026, 10))).thenReturn(true);
+
+    mvc.perform(put("/api/profiles/7/accounting/periods/2026-10/input-settings")
+            .principal(authentication).contentType("application/json")
+            .content("""
+                {"jdgActive":true,"voluntarySickness":false,"zusRegime":"JDG",
+                 "deductionsAlreadyConsumed":0,"salesCorrections":0,"explicitVatAdjustments":0}
+                """))
+        .andExpect(status().isNoContent());
+
+    var captured = org.mockito.ArgumentCaptor.forClass(RyczaltNativeMonthInputService.Command.class);
+    verify(inputs).save(eq(7L), eq(YearMonth.of(2026, 10)), captured.capture());
+    org.junit.jupiter.api.Assertions.assertTrue(captured.getValue().qualifyingUop());
+    org.junit.jupiter.api.Assertions.assertNull(captured.getValue().socialContributionDeduction());
+  }
+
+  @Test
+  void explicitQualifyingUopWinsOverCarry() throws Exception {
+    mvc.perform(put("/api/profiles/7/accounting/periods/2026-10/input-settings")
+            .principal(authentication).contentType("application/json")
+            .content("""
+                {"jdgActive":true,"qualifyingUop":false,"voluntarySickness":false,"zusRegime":"JDG",
+                 "socialContributionDeduction":0,"healthContributionPaidOverride":0,
+                 "deductionsAlreadyConsumed":0,"salesCorrections":0,"explicitVatAdjustments":0}
+                """))
+        .andExpect(status().isNoContent());
+
+    org.mockito.Mockito.verify(inputs, org.mockito.Mockito.never()).carriedQualifyingUop(
+        org.mockito.ArgumentMatchers.anyLong(), any());
+  }
+
+  @Test
+  void omittedQualifyingUopWithNothingToCarryIsBadRequest() throws Exception {
+    when(inputs.carriedQualifyingUop(7L, YearMonth.of(2026, 10)))
+        .thenThrow(new IllegalArgumentException("qualifyingUop is required: no earlier month input to carry it from"));
+
+    mvc.perform(put("/api/profiles/7/accounting/periods/2026-10/input-settings")
+            .principal(authentication).contentType("application/json")
+            .content("""
+                {"jdgActive":true,"voluntarySickness":false,"zusRegime":"JDG",
+                 "deductionsAlreadyConsumed":0,"salesCorrections":0,"explicitVatAdjustments":0}
+                """))
+        .andExpect(status().isBadRequest());
+    org.mockito.Mockito.verify(inputs, org.mockito.Mockito.never()).save(any(Long.class), any(), any());
+  }
+
+  @Test
   void settingsReadRequiresProfileAccess() throws Exception {
     mvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get(
         "/api/profiles/7/accounting/periods/2026-09/input-settings").principal(authentication))

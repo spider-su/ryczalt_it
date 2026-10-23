@@ -26,6 +26,8 @@ import java.time.YearMonth;
 import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.springframework.jdbc.core.ConnectionCallback;
 import org.springframework.jdbc.core.JdbcTemplate;
 
@@ -65,6 +67,57 @@ class RyczaltFxRateJobSchedulerTest {
 
     verifyNoInteractions(jdbc, fxRates);
     verify(jobs, never()).save(any());
+  }
+
+  @ParameterizedTest
+  @CsvSource({
+      "2026-10-23T12:00:00Z, 2026-09",
+      "2026-10-30T23:05:00Z, 2026-10", // Already the last day in Warsaw.
+      "2026-10-31T22:05:00Z, 2026-10",
+      "2026-01-01T12:00:00Z, 2025-12",
+      "2027-02-28T12:00:00Z, 2027-02",
+      "2028-02-28T12:00:00Z, 2028-01",
+      "2028-02-29T12:00:00Z, 2028-02",
+      "2026-10-31T23:05:00Z, 2026-10" // First day of November in Warsaw.
+  })
+  void overdueOrForcedRunRefreshesLatestMonthWhoseLastDayHasArrived(
+      String instant, String expectedMonth) throws Exception {
+    time = time(instant);
+    YearMonth expected = YearMonth.parse(expectedMonth);
+    IntegrationJobEntity job = job();
+    job.setCron("0 0 23 L * *");
+    job.setLastCompletedAt(expected.minusMonths(2).atEndOfMonth().atTime(23, 0)
+        .atZone(ZoneId.of("Europe/Warsaw")));
+    active(job);
+    lock(true);
+    when(fxRates.refreshMonth(expected)).thenReturn(
+        new RyczaltFxRateService.FxRateRefreshResult(expected, 4, 4, 60, 0, 0));
+
+    scheduler().poll();
+
+    verify(fxRates).refreshMonth(expected);
+    assertThat(job.getLastStatus()).isEqualTo("SUCCESS");
+    assertThat(job.getCron()).isEqualTo("0 0 23 L * *");
+    assertThat(job.getLastStartedAt()).isEqualTo(time.now(ZoneId.of("Europe/Warsaw")));
+    assertThat(job.getLastCompletedAt()).isEqualTo(time.now(ZoneId.of("Europe/Warsaw")));
+  }
+
+  @Test
+  void providerFailureRemainsFailedWithoutInventingRates() throws Exception {
+    time = time("2026-10-23T12:00:00Z");
+    IntegrationJobEntity job = job();
+    job.setLastCompletedAt(ZonedDateTime.parse("2026-08-31T23:00:00+02:00[Europe/Warsaw]"));
+    active(job);
+    lock(true);
+    when(fxRates.refreshMonth(YearMonth.of(2026, 9)))
+        .thenThrow(new IllegalStateException("NBP returned HTTP 400"));
+
+    scheduler().poll();
+
+    assertThat(job.getLastStatus()).isEqualTo("FAILED");
+    assertThat(job.getLastError()).isEqualTo("NBP returned HTTP 400");
+    assertThat(job.getLastCompletedAt()).isNotNull();
+    verify(fxRates, never()).refreshMonth(YearMonth.of(2026, 10));
   }
 
   private RyczaltFxRateJobScheduler scheduler() {

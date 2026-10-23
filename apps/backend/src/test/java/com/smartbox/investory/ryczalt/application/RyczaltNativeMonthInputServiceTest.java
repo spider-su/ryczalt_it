@@ -18,7 +18,8 @@ class RyczaltNativeMonthInputServiceTest {
   private final RyczaltNativeMonthInputJpaRepository inputs = mock();
   private final RyczaltPeriodLifecycleService lifecycle = mock();
   private final RyczaltNativeMonthInputService service =
-      new RyczaltNativeMonthInputService(inputs, lifecycle);
+      new RyczaltNativeMonthInputService(inputs, lifecycle,
+          com.smartbox.investory.ryczalt.calculation.rules.TestTaxRules.from2026());
 
   @org.junit.jupiter.api.BeforeEach
   void configuredOpening() {
@@ -32,15 +33,27 @@ class RyczaltNativeMonthInputServiceTest {
   }
 
   @Test
-  void rejectsMissingPaidFactsBeforeWriting() {
-    var incomplete = new RyczaltNativeMonthInputService.Command(true, false, "JDG", false,
+  void paidFactsAreOptionalBecauseTheyDefaultToTheCalculatedObligation() {
+    var withoutPaidAmounts = new RyczaltNativeMonthInputService.Command(true, false, "JDG", false,
         null, null, null, null, null, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO);
+    service.save(7L, YearMonth.of(2026, 9), withoutPaidAmounts);
+    org.mockito.Mockito.verify(inputs).save(org.mockito.ArgumentMatchers.any());
+    org.junit.jupiter.api.Assertions.assertNull(withoutPaidAmounts.socialContributionDeduction());
+    org.junit.jupiter.api.Assertions.assertNull(withoutPaidAmounts.healthContributionPaidOverride());
+  }
+
+  @Test
+  void carriesQualifyingUopFromLatestEarlierMonthAndFailsClosedWithoutOne() {
+    var earlier = new RyczaltNativeMonthInputEntity(7L, YearMonth.of(2026, 9),
+        new RyczaltNativeMonthInputService.Command(true, true, "JDG", false,
+            null, null, null, null, null, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO));
+    when(inputs.findEarlier(7L, 2026, 10, org.springframework.data.domain.PageRequest.of(0, 1)))
+        .thenReturn(java.util.List.of(earlier));
+
+    org.junit.jupiter.api.Assertions.assertTrue(service.carriedQualifyingUop(7L, YearMonth.of(2026, 10)));
     var error = org.junit.jupiter.api.Assertions.assertThrows(IllegalArgumentException.class,
-        () -> service.save(7L, YearMonth.of(2026, 9), incomplete));
-    org.junit.jupiter.api.Assertions.assertTrue(error.getMessage().contains("socialContributionDeduction"));
-    org.junit.jupiter.api.Assertions.assertTrue(error.getMessage().contains("healthContributionPaidOverride"));
-    verifyNoInteractions(lifecycle);
-    org.mockito.Mockito.verify(inputs, org.mockito.Mockito.never()).save(org.mockito.ArgumentMatchers.any());
+        () -> service.carriedQualifyingUop(7L, YearMonth.of(2026, 1)));
+    org.junit.jupiter.api.Assertions.assertTrue(error.getMessage().contains("qualifyingUop"));
   }
 
   @Test
@@ -56,7 +69,7 @@ class RyczaltNativeMonthInputServiceTest {
   void reportsMissingFieldsWithoutInventingValuesAndScopesToProfile() {
     var view = service.settings(8L, YearMonth.of(2026, 9));
     org.junit.jupiter.api.Assertions.assertNull(view.settings());
-    org.junit.jupiter.api.Assertions.assertEquals(8, view.missingFields().size());
+    org.junit.jupiter.api.Assertions.assertEquals(7, view.missingFields().size());
     verify(inputs).findByProfileIdAndYearAndMonth(8L, 2026, 9);
     verify(inputs).findFirstByProfileIdAndAccountingStartDateIsNotNullOrderByYearAscMonthAsc(8L);
   }
@@ -156,6 +169,56 @@ class RyczaltNativeMonthInputServiceTest {
     verify(lifecycle)
         .invalidateFrom(
             7L, YearMonth.of(2026, 9), InputChange.VAT_ADJUSTMENT_CHANGED, "native-month-input");
+  }
+
+  @Test
+  void settingsChangeBecomesTheBaseForFollowingMonthsAndRecalculates() {
+    RyczaltAutoRecalculationService autoRecalculation = mock();
+    var service = new RyczaltNativeMonthInputService(inputs, lifecycle,
+        com.smartbox.investory.ryczalt.calculation.rules.TestTaxRules.from2026(), autoRecalculation);
+    var september = uop(9, true);
+    var october = uop(10, true);
+    var november = uop(11, true);
+    var december = uop(12, false); // explicitly set later; must not be overwritten
+    when(inputs.findByProfileIdAndYearAndMonth(7L, 2026, 9)).thenReturn(Optional.of(september));
+    when(inputs.findLater(7L, 2026, 9)).thenReturn(java.util.List.of(october, november, december));
+
+    service.save(7L, YearMonth.of(2026, 9), new RyczaltNativeMonthInputService.Command(
+        true, false, "JDG", false, null, null, null, null, null,
+        BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO));
+
+    org.junit.jupiter.api.Assertions.assertFalse(october.zusSettings().qualifyingUop());
+    org.junit.jupiter.api.Assertions.assertFalse(november.zusSettings().qualifyingUop());
+    org.junit.jupiter.api.Assertions.assertFalse(december.zusSettings().qualifyingUop());
+    verify(inputs).save(october);
+    verify(inputs).save(november);
+    verify(inputs, org.mockito.Mockito.never()).save(december);
+    verify(lifecycle).invalidateFrom(7L, YearMonth.of(2026, 9), InputChange.ZUS_INPUT_CHANGED, "native-month-input");
+    verify(autoRecalculation).recalculateFromAfterCommit(7L, YearMonth.of(2026, 9));
+  }
+
+  @Test
+  void laterMonthWithItsOwnSettingsStopsPropagation() {
+    var service = new RyczaltNativeMonthInputService(inputs, lifecycle,
+        com.smartbox.investory.ryczalt.calculation.rules.TestTaxRules.from2026());
+    var september = uop(9, true);
+    var october = uop(10, false);
+    var november = uop(11, true);
+    when(inputs.findByProfileIdAndYearAndMonth(7L, 2026, 9)).thenReturn(Optional.of(september));
+    when(inputs.findLater(7L, 2026, 9)).thenReturn(java.util.List.of(october, november));
+
+    service.save(7L, YearMonth.of(2026, 9), new RyczaltNativeMonthInputService.Command(
+        true, false, "JDG", false, null, null, null, null, null,
+        BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO));
+
+    org.junit.jupiter.api.Assertions.assertTrue(november.zusSettings().qualifyingUop());
+    verify(inputs, org.mockito.Mockito.never()).save(november);
+  }
+
+  private static RyczaltNativeMonthInputEntity uop(int month, boolean qualifyingUop) {
+    return new RyczaltNativeMonthInputEntity(7L, YearMonth.of(2026, month),
+        new RyczaltNativeMonthInputService.Command(true, qualifyingUop, "JDG", false,
+            null, null, null, null, null, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO));
   }
 
   private RyczaltNativeMonthInputService.Command command(
