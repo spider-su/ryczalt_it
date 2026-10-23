@@ -6,6 +6,8 @@ import com.smartbox.investory.ryczalt.calculation.InputChange;
 import com.smartbox.investory.ryczalt.domain.PeriodStatus;
 import java.time.Instant;
 import java.time.YearMonth;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Set;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -66,13 +68,21 @@ public class RyczaltPeriodLifecycleService {
   }
 
   @Transactional
-  public void invalidate(long profileId, YearMonth month, InputChange change, String actor) {
-    invalidateFrom(profileId, month, change, actor);
+  public List<YearMonth> invalidate(
+      long profileId, YearMonth month, InputChange change, String actor) {
+    return invalidateFrom(profileId, month, change, actor);
   }
 
+  /**
+   * Invalidates affected calculations from {@code month} onward.
+   *
+   * @return months (ascending) whose current calculation was actually marked stale
+   */
   @Transactional
-  public void invalidateFrom(long profileId, YearMonth month, InputChange change, String actor) {
+  public List<YearMonth> invalidateFrom(
+      long profileId, YearMonth month, InputChange change, String actor) {
     Set<CalculationType> affected = CalculationInvalidationPolicy.affectedBy(change);
+    List<YearMonth> staled = new ArrayList<>();
     var chain = periods.findByProfileIdOrderByYearDescMonthDesc(profileId).stream()
         .filter(period -> !YearMonth.of(period.getYear(), period.getMonth()).isBefore(month))
         .sorted(java.util.Comparator.comparing(p -> YearMonth.of(p.getYear(), p.getMonth())))
@@ -86,9 +96,18 @@ public class RyczaltPeriodLifecycleService {
     }
     for (var period : chain) {
       boolean activityConfirmationCleared = period.clearActivityConfirmation();
+      boolean[] hadCalculation = {false};
       affected.forEach(type -> calculations
           .findByProfileIdAndPeriodIdAndTypeAndCurrentTrue(profileId, period.id(), type)
-          .ifPresent(calculation -> { calculation.markStale(); calculations.save(calculation); }));
+          .ifPresent(calculation -> {
+            hadCalculation[0] = true;
+            calculation.markStale();
+            calculations.save(calculation);
+          }));
+      if (hadCalculation[0]) {
+        staled.add(YearMonth.of(period.getYear(), period.getMonth()));
+      }
+
       if (!affected.isEmpty() && period.getStatus() != PeriodStatus.OPEN) {
         period.markDirty();
       }
@@ -101,6 +120,7 @@ public class RyczaltPeriodLifecycleService {
       }
       auditEvents.write(profileId, period.id(), "CALCULATION_INVALIDATED", change.name(), actor, Instant.now());
     }
+    return staled;
   }
 
   private RyczaltPeriodEntity findLocked(long profileId, YearMonth month) {
