@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { appSafeAreaEdges, fallbackSafeAreaEdges, modalSafeAreaEdges } from './safeAreaLayout';
+import { appEdgesForNavigation, appSafeAreaEdges, appSafeAreaEdgesWithoutTabs, fallbackSafeAreaEdges, modalSafeAreaEdges } from './safeAreaLayout';
 
 describe('safe-area ownership', () => {
   it('assigns the app top edge, fallback both edges, and modal both edges', () => {
