@@ -314,6 +314,97 @@ class RyczaltNativeKsefImportIT {
     assertThat(period.getStatus()).isEqualTo(PeriodStatus.DIRTY);
   }
 
+  private InvoiceSourceRecord dateCorrection() {
+    return new InvoiceSourceRecord("DATE-CORRECTION", InvoiceDirection.INCOME, "COR/EXAMPLE",
+        LocalDate.of(2026, 2, 20), LocalDate.of(2026, 1, 31),
+        BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, "PLN", "Buyer", "2222222222",
+        null, null, "PL", new InvoiceSourceRecord.SaleDateCorrection("ORIGINAL", "FV/ORIGINAL",
+            LocalDate.of(2026, 2, 10), LocalDate.of(2026, 1, 31), "Sale date corrected"));
+  }
+
+  @Test
+  void dateCorrectionMovesOriginalAndPreservesPaymentAndAmountsAcrossRepeatImports() {
+    source.records.add(income("ORIGINAL", "1000"));
+    ksefImport.sync(1, YearMonth.of(2026, 2), Set.of(KsefSyncMode.SALES));
+    var original = invoices.findAll().getFirst();
+    original.markManuallyPaid(LocalDate.of(2026, 2, 12), "Confirmed payment");
+    invoices.save(original);
+    long periodId = jdbc.queryForObject("SELECT period_id FROM ryczalt.ryczalt_invoice WHERE id=?", Long.class, original.id());
+    jdbc.update("INSERT INTO ryczalt.ryczalt_transaction(profile_id,period_id,booking_date,amount,currency) VALUES (1,?,'2026-02-12',100,'PLN')", periodId);
+    jdbc.update("INSERT INTO ryczalt.ryczalt_obligation(profile_id,period_id,obligation_type,amount,currency,status) VALUES (1,?,'VAT',100,'PLN','PAID')", periodId);
+    jdbc.update("INSERT INTO ryczalt.ryczalt_payment_match(profile_id,obligation_id,transaction_id,matched_amount,match_type) SELECT 1,o.id,t.id,100,'MANUAL' FROM ryczalt.ryczalt_obligation o JOIN ryczalt.ryczalt_transaction t ON t.period_id=o.period_id WHERE o.period_id=?", periodId);
+    String payments = jdbc.queryForObject("SELECT jsonb_agg(to_jsonb(m))::text FROM ryczalt.ryczalt_payment_match m", String.class);
+    source.records.addFirst(dateCorrection()); // Original must be processed before its correction.
+
+    assertThat(ksefImport.reimport(1, YearMonth.of(2026, 2)).updated()).isEqualTo(2);
+    assertThat(ksefImport.reimport(1, YearMonth.of(2026, 2)).duplicates()).isEqualTo(2);
+    var corrected = invoices.findByIdAndProfileId(original.id(), 1).orElseThrow();
+    assertThat(invoices.count()).isEqualTo(1);
+    assertThat(corrected.getAccountingDate()).isEqualTo(LocalDate.of(2026, 1, 31));
+    assertThat(jdbc.queryForObject("SELECT p.period_month FROM ryczalt.ryczalt_period p JOIN ryczalt.ryczalt_invoice i ON i.period_id=p.id WHERE i.id=?", Integer.class, original.id())).isEqualTo(1);
+    assertThat(corrected.getIssueDate()).isEqualTo(LocalDate.of(2026, 2, 10));
+    assertThat(corrected.getNetAmount()).isEqualByComparingTo("1000");
+    assertThat(corrected.getGrossAmount()).isEqualByComparingTo("1000");
+    assertThat(corrected.getPaymentStatus()).isEqualTo("MANUALLY_CONFIRMED");
+    assertThat(corrected.getManualPaidDate()).isEqualTo(LocalDate.of(2026, 2, 12));
+    assertThat(jdbc.queryForObject("SELECT count(*) FROM ryczalt.ryczalt_correction", Long.class)).isEqualTo(1);
+    assertThat(jdbc.queryForObject("SELECT jsonb_agg(to_jsonb(m))::text FROM ryczalt.ryczalt_payment_match m", String.class)).isEqualTo(payments);
+    assertThat(jdbc.queryForObject("SELECT count(*) FROM ryczalt.ryczalt_transaction", Long.class)).isEqualTo(1);
+  }
+
+  @Test
+  void dateCorrectionCannotUseAnotherProfilesOriginal() {
+    source.records.add(income("ORIGINAL", "1000"));
+    ksefImport.sync(1, YearMonth.of(2026, 2), Set.of(KsefSyncMode.SALES));
+    source.records.clear();
+    source.records.add(dateCorrection());
+    assertThat(ksefImport.sync(2, YearMonth.of(2026, 2), Set.of(KsefSyncMode.SALES)).failed()).isEqualTo(1);
+    assertThat(invoices.findAll().getFirst().getAccountingDate()).isEqualTo(LocalDate.of(2026, 2, 10));
+    assertThat(jdbc.queryForObject("SELECT count(*) FROM ryczalt.ryczalt_correction", Long.class)).isZero();
+  }
+
+  @Test
+  void dateCorrectionRejectsFrozenTargetWithoutPartialHistory() {
+    source.records.add(income("ORIGINAL", "1000"));
+    ksefImport.sync(1, YearMonth.of(2026, 2), Set.of(KsefSyncMode.SALES));
+    periods.save(new RyczaltPeriodEntity(1, 2026, 1, PeriodStatus.FROZEN));
+    source.records.clear();
+    source.records.add(dateCorrection());
+    assertThatThrownBy(() -> ksefImport.sync(1, YearMonth.of(2026, 2), Set.of(KsefSyncMode.SALES)))
+        .isInstanceOf(FrozenPeriodMutationException.class);
+    assertThat(invoices.findAll().getFirst().getAccountingDate()).isEqualTo(LocalDate.of(2026, 2, 10));
+    assertThat(jdbc.queryForObject("SELECT count(*) FROM ryczalt.ryczalt_correction", Long.class)).isZero();
+  }
+
+  @Test
+  void sharedCorrectionIsAppliedOnceWithinEachProfile() {
+    source.records.add(income("ORIGINAL", "1000"));
+    ksefImport.sync(1, YearMonth.of(2026, 2), Set.of(KsefSyncMode.SALES));
+    ksefImport.sync(2, YearMonth.of(2026, 2), Set.of(KsefSyncMode.SALES));
+    source.records.clear();
+    source.records.add(dateCorrection());
+    assertThat(ksefImport.sync(1, YearMonth.of(2026, 2), Set.of(KsefSyncMode.SALES)).updated()).isEqualTo(1);
+    assertThat(ksefImport.sync(2, YearMonth.of(2026, 2), Set.of(KsefSyncMode.SALES)).updated()).isEqualTo(1);
+    assertThat(invoices.count()).isEqualTo(2);
+    assertThat(invoices.findAll()).allSatisfy(row ->
+        assertThat(row.getAccountingDate()).isEqualTo(LocalDate.of(2026, 1, 31)));
+    assertThat(jdbc.queryForObject("SELECT count(*) FROM ryczalt.ryczalt_correction", Long.class)).isEqualTo(2);
+  }
+
+  @Test
+  void correctionInvalidatesBothOldAndNewAccountingMonths() {
+    source.records.add(income("ORIGINAL", "1000"));
+    ksefImport.sync(1, YearMonth.of(2026, 2), Set.of(KsefSyncMode.SALES));
+    periods.save(new RyczaltPeriodEntity(1, 2026, 1, PeriodStatus.CALCULATED));
+    jdbc.update("UPDATE ryczalt.ryczalt_period SET status='CALCULATED' WHERE profile_id=1");
+    jdbc.update("INSERT INTO ryczalt.ryczalt_calculation(profile_id,period_id,calculation_type,status,is_current,result_json,input_fingerprint,rule_version,calculator_version,calculated_at) SELECT profile_id,id,'RYCZALT','CURRENT',true,'{}','test','test','test',CURRENT_TIMESTAMP FROM ryczalt.ryczalt_period WHERE profile_id=1");
+    source.records.clear();
+    source.records.add(dateCorrection());
+    ksefImport.sync(1, YearMonth.of(2026, 2), Set.of(KsefSyncMode.SALES));
+    assertThat(jdbc.queryForObject("SELECT count(*) FROM ryczalt.ryczalt_calculation WHERE is_current", Long.class)).isZero();
+    assertThat(jdbc.queryForObject("SELECT count(*) FROM ryczalt.ryczalt_period WHERE status='DIRTY'", Long.class)).isEqualTo(2);
+  }
+
   /** In-memory stand-in for the external KSeF transport. */
   static class ProgrammableInvoiceSource implements InvoiceSourcePort {
     final List<InvoiceSourceRecord> records = new ArrayList<>();
@@ -339,6 +430,8 @@ class RyczaltNativeKsefImportIT {
       })
   @Import({
     RyczaltKsefImportService.class,
+    com.smartbox.investory.ryczalt.application.ksef.RyczaltKsefDateCorrectionService.class,
+    com.smartbox.investory.ryczalt.persistence.JdbcRyczaltCorrectionWriter.class,
     RyczaltInvoiceQueryService.class,
     com.smartbox.investory.ryczalt.application.RyczaltCounterpartyService.class,
     RyczaltPeriodLifecycleService.class,

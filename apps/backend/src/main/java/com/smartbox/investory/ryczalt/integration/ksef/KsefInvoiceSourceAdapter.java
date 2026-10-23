@@ -6,6 +6,8 @@ import com.smartbox.investory.integrations.ksef.KsefInvoiceService;
 import com.smartbox.investory.integrations.ksef.KsefSubject;
 import com.smartbox.investory.ryczalt.persistence.InvoiceDirection;
 import java.nio.charset.StandardCharsets;
+import java.math.BigDecimal;
+import com.smartbox.investory.integrations.ksef.KsefInvoiceMetadata.InvoiceMetadata;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
@@ -36,18 +38,20 @@ public class KsefInvoiceSourceAdapter implements InvoiceSourcePort {
       KsefSubject subject = mode == KsefSyncMode.SALES ? KsefSubject.SELLER : KsefSubject.BUYER;
       InvoiceDirection direction =
           mode == KsefSyncMode.SALES ? InvoiceDirection.INCOME : InvoiceDirection.COST;
-      for (String ksefNumber : invoices.listInvoiceNumbers(command.month(), subject)) {
+      for (var metadata : invoices.listInvoiceMetadata(command.month(), subject)) {
+        String ksefNumber = metadata.ksefNumber();
         if (!seen.add(ksefNumber)) continue;
         Fa3Invoice invoice =
             parser.parse(invoices.downloadInvoice(ksefNumber).getBytes(StandardCharsets.UTF_8));
-        records.add(toRecord(ksefNumber, direction, invoice));
+        records.add(toRecord(metadata, direction, invoice));
       }
     }
     return records;
   }
 
   private InvoiceSourceRecord toRecord(
-      String ksefNumber, InvoiceDirection direction, Fa3Invoice invoice) {
+      InvoiceMetadata metadata, InvoiceDirection direction, Fa3Invoice invoice) {
+    String ksefNumber = metadata.ksefNumber();
     LocalDate issueDate = invoice.issueDate() != null ? invoice.issueDate() : invoice.saleDate();
     LocalDate accountingDate = invoice.saleDate() != null ? invoice.saleDate() : issueDate;
     if (issueDate == null || accountingDate == null) {
@@ -56,20 +60,37 @@ public class KsefInvoiceSourceAdapter implements InvoiceSourcePort {
     boolean sale = direction == InvoiceDirection.INCOME;
     String counterpartyName = sale ? invoice.buyerName() : invoice.sellerName();
     String counterpartyTaxId = sale ? invoice.buyerNip() : invoice.sellerNip();
+    InvoiceSourceRecord.SaleDateCorrection correction = null;
+    if ("KOR".equals(invoice.invoiceType()) && invoice.saleDate() != null
+        && invoice.correctedInvoices().size() == 1 && !invoice.hasInvoiceLines()
+        && metadata.hasZeroAmounts() && zeroOrAbsent(invoice.netAmount())
+        && zeroOrAbsent(invoice.vatAmount()) && invoice.grossAmount() != null
+        && invoice.grossAmount().signum() == 0) {
+      var original = invoice.correctedInvoices().getFirst();
+      if (original.ksefNumber() != null && original.reference() != null && original.issueDate() != null) {
+        correction = new InvoiceSourceRecord.SaleDateCorrection(original.ksefNumber(),
+            original.reference(), original.issueDate(), invoice.saleDate(), invoice.correctionReason());
+      }
+    }
     return new InvoiceSourceRecord(
         ksefNumber,
         direction,
         invoice.reference(),
         issueDate,
         accountingDate,
-        invoice.netAmount(),
-        invoice.vatAmount(),
+        correction == null ? invoice.netAmount() : metadata.netAmount(),
+        correction == null ? invoice.vatAmount() : metadata.vatAmount(),
         invoice.grossAmount(),
         invoice.currency() == null ? "PLN" : invoice.currency(),
         counterpartyName,
         counterpartyTaxId,
         // KSeF does not carry a ryczalt rate or a deductible-VAT decision; leave them unresolved.
         null,
-        null);
+        null,
+        "PL",
+        correction);
+  }
+  private boolean zeroOrAbsent(BigDecimal amount) {
+    return amount == null || amount.signum() == 0;
   }
 }

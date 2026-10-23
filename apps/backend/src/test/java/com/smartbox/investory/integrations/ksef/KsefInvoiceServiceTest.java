@@ -42,7 +42,7 @@ class KsefInvoiceServiceTest {
 
     assertThatThrownBy(
             () -> new KsefInvoiceService(configuration, plugin, client)
-                .listInvoiceNumbers(YearMonth.of(2026, 9), KsefSubject.SELLER))
+                .listInvoiceMetadata(YearMonth.of(2026, 9), KsefSubject.SELLER))
         .isInstanceOf(IllegalStateException.class)
         .hasMessageContaining("exceeded page limit");
   }

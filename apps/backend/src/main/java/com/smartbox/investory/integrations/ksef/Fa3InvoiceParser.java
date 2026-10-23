@@ -67,11 +67,31 @@ public class Fa3InvoiceParser {
           vat,
           gross,
           invoiceType,
-          vatRate);
+          vatRate,
+          correctedInvoices(document),
+          firstText(document, "PrzyczynaKorekty"),
+          document.getElementsByTagNameNS("*", "FaWiersz").getLength() > 0);
     } catch (Exception exception) {
       throw new IllegalStateException(
           "Could not parse KSeF invoice XML: " + rootMessage(exception), exception);
     }
+  }
+
+  private List<Fa3Invoice.CorrectedInvoice> correctedInvoices(Document document) {
+    List<Fa3Invoice.CorrectedInvoice> result = new ArrayList<>();
+    NodeList nodes = document.getElementsByTagNameNS("*", "DaneFaKorygowanej");
+    for (int i = 0; i < nodes.getLength(); i++) {
+      var element = (org.w3c.dom.Element) nodes.item(i);
+      result.add(new Fa3Invoice.CorrectedInvoice(
+          childText(element, "NrKSeFFaKorygowanej"), childText(element, "NrFaKorygowanej"),
+          date(childText(element, "DataWystFaKorygowanej"))));
+    }
+    return List.copyOf(result);
+  }
+
+  private String childText(org.w3c.dom.Element element, String name) {
+    NodeList nodes = element.getElementsByTagNameNS("*", name);
+    return nodes.getLength() == 1 ? clean(nodes.item(0).getTextContent()) : null;
   }
 
   private BigDecimal sumNumberedFields(Document document, String prefix) {
