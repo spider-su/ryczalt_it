@@ -33,13 +33,31 @@ class RyczaltNativeMonthInputServiceTest {
   }
 
   @Test
-  void paidFactsAreOptionalBecauseTheyDefaultToTheCalculatedObligation() {
+  void savingIncompletePaidFactsPreservesNullsForReadinessChecks() {
     var withoutPaidAmounts = new RyczaltNativeMonthInputService.Command(true, false, "JDG", false,
         null, null, null, null, null, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO);
     service.save(7L, YearMonth.of(2026, 9), withoutPaidAmounts);
     org.mockito.Mockito.verify(inputs).save(org.mockito.ArgumentMatchers.any());
     org.junit.jupiter.api.Assertions.assertNull(withoutPaidAmounts.socialContributionDeduction());
     org.junit.jupiter.api.Assertions.assertNull(withoutPaidAmounts.healthContributionPaidOverride());
+  }
+
+  @Test
+  void missingPaidHealthIsOptionalButMissingPaidSocialIsReported() {
+    var month = YearMonth.of(2026, 1);
+    var settings = new RyczaltNativeMonthInputEntity(7L, month,
+        new RyczaltNativeMonthInputService.Command(true, true, "JDG", false,
+            null, null, BigDecimal.ZERO, null, null,
+            BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO));
+    when(inputs.findByProfileIdAndYearAndMonth(7L, 2026, 1)).thenReturn(Optional.of(settings));
+    org.junit.jupiter.api.Assertions.assertTrue(service.settings(7L, month).missingFields().isEmpty());
+    var missingSocial = new RyczaltNativeMonthInputEntity(7L, month,
+        new RyczaltNativeMonthInputService.Command(true, true, "JDG", false,
+            null, null, null, null, null,
+            BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO));
+    when(inputs.findByProfileIdAndYearAndMonth(7L, 2026, 1)).thenReturn(Optional.of(missingSocial));
+    org.junit.jupiter.api.Assertions.assertEquals(java.util.List.of("socialContributionDeduction"),
+        service.settings(7L, month).missingFields());
   }
 
   @Test

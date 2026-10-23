@@ -39,7 +39,10 @@ PLN 60,000, medium through PLN 300,000, then high. Opening YTD values anchor the
 month; only approved income invoices from the configured start date onward are added, so earlier
 imports are not double counted. Cumulative revenue is recomputed from facts, not persisted as a
 derived month-input value. Actual paid social and health amounts are separate from amounts due;
-explicit zero is valid, while missing payment facts block calculation.
+explicit zero is valid. Missing paid social blocks persisted-invoice calculation. Missing paid health
+assumes the rounded calculated health contribution was paid, including a health-liability override
+(or zero for inactive JDG); explicit paid-health overrides take precedence. This temporary assumption
+does not create bank evidence, mark obligations paid, or populate the stored input.
 Unused deductible contributions are carried from the previous current ryczałt result; first-month
 opening paid contributions (less opening deductions already consumed) seed that carry-forward.
 
@@ -49,7 +52,7 @@ The existing `ryczalt_native_month_input` row for the accounting start month sto
 and explicit opening YTD revenue, paid social, paid health, consumed deductions, and VAT
 carry-forward. All opening values are required and non-negative; `NULL` means unconfigured and
 numeric zero means known zero. Opening values are facts, not fake invoices/payments. Calculation
-before the start month, without opening state, or without monthly paid social/health facts fails as
+before the start month, without opening state, or without monthly paid social facts fails as
 `NEEDS_REVIEW`. Only 2026 and `zusRegime: JDG` are supported. Voluntary sickness requires active JDG
 primary insurance; Ulga na start, preferential ZUS, and Mały ZUS Plus are unsupported.
 

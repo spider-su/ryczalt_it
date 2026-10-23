@@ -157,8 +157,9 @@ public class RyczaltNativeMonthInputService {
           "openingSocialContributionsPaid", "openingHealthContributionsPaid",
           "openingDeductionsConsumed", "openingVatCarryForward"));
     }
-    // Paid amounts are optional (assumed equal to the obligation); only the month's settings row is required.
+    // Paid health is optional (assumed equal to calculated health); social needs an explicit fact.
     if (input == null) missing.add("qualifyingUop");
+    else if (input.socialContributionDeduction() == null) missing.add("socialContributionDeduction");
     Command command = null;
     if (input != null) {
       var zus = input.zusSettings();

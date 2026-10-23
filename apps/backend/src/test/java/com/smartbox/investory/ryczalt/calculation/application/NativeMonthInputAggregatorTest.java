@@ -31,6 +31,24 @@ class NativeMonthInputAggregatorTest {
       new NativeMonthInputAggregator(invoices, monthInputs, com.smartbox.investory.ryczalt.calculation.rules.TestTaxRules.from2026());
 
   @Test
+  void missingPaidSocialStillBlocksCalculationWhenPaidHealthCanDefault() {
+    var month = YearMonth.of(2026, 1);
+    var settings = new RyczaltNativeMonthInputEntity(7L, month,
+        new RyczaltNativeMonthInputService.Command(true, true, "JDG", false,
+            null, null, null, null, null, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO,
+            month.atDay(1), BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO,
+            BigDecimal.ZERO, BigDecimal.ZERO));
+    when(monthInputs.findFirstByProfileIdAndAccountingStartDateIsNotNullOrderByYearAscMonthAsc(7L))
+        .thenReturn(Optional.of(settings));
+    when(monthInputs.findByProfileIdAndYearAndMonth(7L, 2026, 1)).thenReturn(Optional.of(settings));
+
+    var error = assertThrows(com.smartbox.investory.ryczalt.application.NeedsReviewException.class,
+        () -> aggregator.aggregate(7L, 70L, month));
+    org.assertj.core.api.Assertions.assertThat(error.getMessage())
+        .contains("actual paid social contribution amount is required");
+  }
+
+  @Test
   void priorYearAccountingStartDoesNotIncludePreviousYearInCurrentYtdFacts() {
     var openingCommand = new RyczaltNativeMonthInputService.Command(true, false, "JDG", false,
         null, null, null, null, null, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO,

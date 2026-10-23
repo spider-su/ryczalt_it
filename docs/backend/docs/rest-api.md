@@ -135,7 +135,10 @@ include `accountingStartDate`, `openingYtdRevenue`, `openingSocialContributionsP
 the date is supplied, every amount is required (zero is explicit known zero) and the date must
 belong to that path month in 2026. For every managed month, `socialContributionDeduction` and
 `healthContributionPaidOverride` are amounts actually paid that month, not amounts due; send zero
-when nothing was paid. Missing payment facts prevent calculation. `ytdRyczaltRevenue` is a legacy
+when nothing was paid. Missing `socialContributionDeduction` prevents calculation. A missing or null
+`healthContributionPaidOverride` assumes the rounded calculated health contribution was paid;
+an explicit paid-health amount, including zero, overrides this temporary simplification. The
+assumption is used during calculation and does not populate the stored input or mark an obligation paid. `ytdRyczaltRevenue` is a legacy
 field and is ignored by cumulative aggregation, which recomputes from opening state and approved
 invoices. The API accepts only `zusRegime: "JDG"`; voluntary sickness requires active JDG primary
 insurance. Unsupported years/regimes and frozen downstream dependencies fail explicitly.

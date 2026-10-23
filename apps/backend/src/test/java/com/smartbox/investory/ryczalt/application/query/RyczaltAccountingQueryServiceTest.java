@@ -124,14 +124,14 @@ class RyczaltAccountingQueryServiceTest {
     when(periods.findByProfileIdAndYearAndMonth(7L, 2026, 9)).thenReturn(Optional.of(period));
     when(inputSettings.settings(7L, YearMonth.of(2026, 9)))
         .thenReturn(new com.smartbox.investory.ryczalt.application.RyczaltNativeMonthInputService.InputSettings(
-            null, null, List.of("accountingStartDate", "healthContributionPaidOverride")));
+            null, null, List.of("accountingStartDate", "socialContributionDeduction")));
     var issues = service.getIssues(7L, YearMonth.of(2026, 9));
     org.assertj.core.api.Assertions.assertThat(issues)
         .anySatisfy(issue -> {
           assertEquals("MISSING_ACCOUNTING_INPUTS", issue.code());
           assertEquals(IssueKind.BLOCKED, issue.kind());
           org.assertj.core.api.Assertions.assertThat(issue.message())
-              .contains("opening accounting state", "paid social/health contributions");
+              .contains("opening accounting state", "paid social contributions", "Missing paid-health amounts assume");
         });
   }
 

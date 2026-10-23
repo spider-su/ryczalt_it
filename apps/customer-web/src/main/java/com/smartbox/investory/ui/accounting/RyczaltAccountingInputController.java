@@ -17,12 +17,12 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
-/** Explicit taxpayer facts; missing amounts are never inferred from calculated liabilities. */
+/** Taxpayer facts with an optional paid-health override; blank assumes calculated health was paid. */
 @Controller
 public class RyczaltAccountingInputController {
   static final List<Field> MONTHLY = List.of(
       new Field("socialContributionDeduction", "Social contributions actually paid (PLN)", true),
-      new Field("healthContributionPaidOverride", "Health contributions actually paid (PLN)", true),
+      new Field("healthContributionPaidOverride", "Health contributions actually paid (PLN; blank assumes calculated health was paid)", false),
       new Field("fullJdgSocial", "Full JDG social contribution override (PLN, optional)", false),
       new Field("healthContributionOverride", "Health liability override (PLN, optional)", false),
       new Field("deductionsAlreadyConsumed", "Deductions already consumed (PLN)", true),

@@ -293,8 +293,8 @@ public class RyczaltAccountingQueryService {
       if (!settings.missingFields().isEmpty()) {
         result.add(new RyczaltIssueReadModel("input-settings", "MISSING_ACCOUNTING_INPUTS",
             CheckSeverity.ERROR, IssueKind.BLOCKED, "Accounting inputs required",
-            "Complete the opening accounting state and actual paid social/health contributions in Accounting inputs. "
-                + "Use actual paid amounts; enter zero only when confirmed.", "input-settings"));
+            "Complete the opening accounting state, monthly insurance settings and actual paid social contributions in Accounting inputs. "
+                + "Missing paid-health amounts assume the calculated health contribution was paid; an explicit zero means none was paid.", "input-settings"));
       }
     }
     for (CalculationType type : CalculationType.values()) {
