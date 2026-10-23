@@ -34,3 +34,27 @@ WHERE j.job_type = 'sync-invoices';
 Changing `enabled`, the six-field Spring cron, or `timezone` in the row takes
 effect at the next poll. A failed run is retried at the next scheduled time;
 check `last_status` and backend logs after that run.
+
+## Zero-value sale-date corrections
+
+The importer applies a sale-date correction to the existing invoice rather than
+creating a second invoice or payable. Automatic handling requires all of:
+
+- one XML `DaneFaKorygowanej` link containing the original KSeF number, reference
+  and issue date, plus an explicit corrected `P_6` sale date;
+- correction type `KOR`, explicit zero net/VAT/gross in KSeF metadata, zero XML
+  gross, absent or zero XML net/VAT totals, and no invoice lines;
+- an original invoice with matching identity, direction and counterparty in the
+  same profile, in PLN, with both accounting periods unfrozen.
+
+The existing invoice ID, issue date, amounts, approval and payment state remain
+intact. Its accounting date and period change together. The importer records a
+`ryczalt_correction` history row and an `INVOICE_CORRECTION` source reference,
+then invalidates calculations from both affected months onward. The correction
+source reference points to the original invoice; it is not another invoice.
+
+Repeat imports skip an already applied correction. Reimporting an original with
+an applied correction preserves its corrected state. Older or same-day conflicting
+corrections require review. Foreign-currency date corrections also require review
+because moving the recognition date may affect historical FX facts. Missing
+metadata amounts are never treated as confirmed zeros.

@@ -64,6 +64,7 @@ public class RyczaltKsefImportService implements RyczaltKsefApi {
   private final RyczaltCounterpartyService counterparties;
   private final RyczaltFxRateService fxRates;
   private final RyczaltAutoRecalculationService autoRecalculation;
+  private final RyczaltKsefDateCorrectionService dateCorrections;
 
   public RyczaltKsefImportService(
       InvoiceSourcePort source,
@@ -73,7 +74,9 @@ public class RyczaltKsefImportService implements RyczaltKsefApi {
       RyczaltPeriodLifecycleService lifecycle,
       RyczaltCounterpartyService counterparties,
       RyczaltFxRateService fxRates,
-      RyczaltAutoRecalculationService autoRecalculation) {
+      RyczaltAutoRecalculationService autoRecalculation,
+      RyczaltKsefDateCorrectionService dateCorrections) {
+    this.dateCorrections = dateCorrections;
     this.autoRecalculation = autoRecalculation;
     this.source = source;
     this.periods = periods;
@@ -104,7 +107,28 @@ public class RyczaltKsefImportService implements RyczaltKsefApi {
     int updated = 0;
     int failed = 0;
     Map<InvoiceDirection, Set<YearMonth>> touched = new EnumMap<>(InvoiceDirection.class);
-    for (InvoiceSourceRecord record : records) {
+    var ordered = records.stream().sorted(java.util.Comparator
+        .comparing((InvoiceSourceRecord r) -> r.saleDateCorrection() != null)
+        .thenComparing(InvoiceSourceRecord::issueDate,
+            java.util.Comparator.nullsLast(java.util.Comparator.naturalOrder()))).toList();
+    for (InvoiceSourceRecord record : ordered) {
+      if (record.saleDateCorrection() != null) {
+        if (dateCorrections.alreadyApplied(profileId, record.sourceExternalId())) {
+          duplicates++;
+          continue;
+        }
+        try {
+          var change = dateCorrections.apply(profileId, record);
+          touched.computeIfAbsent(change.direction(), ignored -> new HashSet<>()).add(change.from());
+          touched.get(change.direction()).add(change.to());
+          updated++;
+        } catch (IllegalArgumentException exception) {
+          failed++;
+          log.warn("KSeF date correction rejected: profileId={}, sourceFingerprint={}, reason={}",
+              profileId, sourceFingerprint(record.sourceExternalId()), exception.getMessage());
+        }
+        continue;
+      }
       List<String> missingFields = missingRequiredFields(record);
       if (!missingFields.isEmpty()) {
         failed++;
@@ -120,7 +144,8 @@ public class RyczaltKsefImportService implements RyczaltKsefApi {
       var existing =
           sourceReferences.findByProfileIdAndEntityTypeAndSourceAndExternalId(
               profileId, ENTITY_TYPE, SOURCE, record.sourceExternalId());
-      if (existing.isPresent() && !reimport) {
+      if (existing.isPresent() && (!reimport
+          || dateCorrections.hasAppliedCorrection(profileId, existing.get().getEntityId()))) {
         duplicates++;
         continue;
       }
