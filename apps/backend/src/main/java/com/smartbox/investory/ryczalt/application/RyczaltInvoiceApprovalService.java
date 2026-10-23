@@ -25,6 +25,7 @@ public class RyczaltInvoiceApprovalService {
   private final RyczaltPeriodLifecycleService lifecycle;
   private final RyczaltCounterpartyService counterpartyService;
   private final RyczaltFxRateService fxRates;
+  private final RyczaltAutoRecalculationService autoRecalculation;
 
   public RyczaltInvoiceApprovalService(
       RyczaltInvoiceCandidateJpaRepository candidates,
@@ -34,7 +35,9 @@ public class RyczaltInvoiceApprovalService {
       RyczaltSourceReferenceJpaRepository sources,
       RyczaltPeriodLifecycleService lifecycle,
       RyczaltCounterpartyService counterpartyService,
-      RyczaltFxRateService fxRates) {
+      RyczaltFxRateService fxRates,
+      RyczaltAutoRecalculationService autoRecalculation) {
+    this.autoRecalculation = autoRecalculation;
     this.candidates = candidates;
     this.counterparties = counterparties;
     this.invoices = invoices;
@@ -191,13 +194,15 @@ public class RyczaltInvoiceApprovalService {
               command.approve(),
               policy));
     }
-    lifecycle.invalidate(
-        profileId,
-        month,
-        candidate.getDirection() == InvoiceDirection.INCOME
-            ? InputChange.INCOME_INVOICE_CHANGED
-            : InputChange.COST_INVOICE_CHANGED,
-        "INVOICE_APPROVAL");
+    var staled =
+        lifecycle.invalidate(
+            profileId,
+            month,
+            candidate.getDirection() == InvoiceDirection.INCOME
+                ? InputChange.INCOME_INVOICE_CHANGED
+                : InputChange.COST_INVOICE_CHANGED,
+            "INVOICE_APPROVAL");
+    autoRecalculation.recalculateAfterCommit(profileId, staled);
     return new InvoiceView(
         invoice.id(),
         profileId,

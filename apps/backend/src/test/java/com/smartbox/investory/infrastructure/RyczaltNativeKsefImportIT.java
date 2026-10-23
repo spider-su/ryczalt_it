@@ -3,6 +3,7 @@ package com.smartbox.investory.infrastructure;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import com.smartbox.investory.ryczalt.application.RyczaltAutoRecalculationService;
 import com.smartbox.investory.ryczalt.application.ksef.RyczaltKsefImportService;
 import com.smartbox.investory.ryczalt.application.ksef.RyczaltKsefSyncResult;
 import com.smartbox.investory.ryczalt.application.query.RyczaltInvoiceQueryService;
@@ -344,6 +345,11 @@ class RyczaltNativeKsefImportIT {
     com.smartbox.investory.ryczalt.persistence.JdbcRyczaltAuditEventWriter.class
   })
   static class TestConfiguration {
+    @Bean
+    RyczaltAutoRecalculationService autoRecalculationService() {
+      return org.mockito.Mockito.mock(RyczaltAutoRecalculationService.class);
+    }
+
     @Bean
     ProgrammableInvoiceSource programmableInvoiceSource() {
       return new ProgrammableInvoiceSource();

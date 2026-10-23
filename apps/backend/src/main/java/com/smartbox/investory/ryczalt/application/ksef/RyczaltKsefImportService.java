@@ -1,5 +1,6 @@
 package com.smartbox.investory.ryczalt.application.ksef;
 
+import com.smartbox.investory.ryczalt.application.RyczaltAutoRecalculationService;
 import com.smartbox.investory.ryczalt.application.RyczaltCounterpartyService;
 import com.smartbox.investory.ryczalt.calculation.InputChange;
 import com.smartbox.investory.ryczalt.domain.ApprovalMethod;
@@ -62,6 +63,7 @@ public class RyczaltKsefImportService implements RyczaltKsefApi {
   private final RyczaltPeriodLifecycleService lifecycle;
   private final RyczaltCounterpartyService counterparties;
   private final RyczaltFxRateService fxRates;
+  private final RyczaltAutoRecalculationService autoRecalculation;
 
   public RyczaltKsefImportService(
       InvoiceSourcePort source,
@@ -70,7 +72,9 @@ public class RyczaltKsefImportService implements RyczaltKsefApi {
       RyczaltSourceReferenceJpaRepository sourceReferences,
       RyczaltPeriodLifecycleService lifecycle,
       RyczaltCounterpartyService counterparties,
-      RyczaltFxRateService fxRates) {
+      RyczaltFxRateService fxRates,
+      RyczaltAutoRecalculationService autoRecalculation) {
+    this.autoRecalculation = autoRecalculation;
     this.source = source;
     this.periods = periods;
     this.invoices = invoices;
@@ -212,17 +216,20 @@ public class RyczaltKsefImportService implements RyczaltKsefApi {
       imported++;
       touched.computeIfAbsent(record.direction(), ignored -> new HashSet<>()).add(target);
     }
+    java.util.TreeSet<YearMonth> staled = new java.util.TreeSet<>();
     touched.forEach(
         (direction, months) ->
             months.forEach(
                 m ->
-                    lifecycle.invalidate(
-                        profileId,
-                        m,
-                        direction == InvoiceDirection.INCOME
-                            ? InputChange.INCOME_INVOICE_CHANGED
-                            : InputChange.COST_INVOICE_CHANGED,
-                        ACTOR)));
+                    staled.addAll(
+                        lifecycle.invalidate(
+                            profileId,
+                            m,
+                            direction == InvoiceDirection.INCOME
+                                ? InputChange.INCOME_INVOICE_CHANGED
+                                : InputChange.COST_INVOICE_CHANGED,
+                            ACTOR))));
+    autoRecalculation.recalculateAfterCommit(profileId, List.copyOf(staled));
     return new RyczaltKsefSyncResult(records.size(), imported, duplicates, updated, failed);
   }
 
