@@ -1,6 +1,7 @@
 package com.smartbox.investory.infrastructure;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.smartbox.investory.ryczalt.application.RyczaltAutoRecalculationService;
 import com.smartbox.investory.ryczalt.application.ksef.RyczaltKsefImportService;
@@ -13,6 +14,7 @@ import com.smartbox.investory.ryczalt.integration.fx.RyczaltFxRateService;
 import com.smartbox.investory.ryczalt.integration.ksef.InvoiceSourcePort;
 import com.smartbox.investory.ryczalt.integration.ksef.InvoiceSourceRecord;
 import com.smartbox.investory.ryczalt.integration.ksef.KsefSyncMode;
+import com.smartbox.investory.ryczalt.persistence.FrozenPeriodMutationException;
 import com.smartbox.investory.ryczalt.persistence.InvoiceDirection;
 import com.smartbox.investory.ryczalt.persistence.RyczaltCounterpartyEntity;
 import com.smartbox.investory.ryczalt.persistence.RyczaltCounterpartyJpaRepository;
