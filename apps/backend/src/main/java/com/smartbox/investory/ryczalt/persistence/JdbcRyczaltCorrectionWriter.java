@@ -31,7 +31,7 @@ public class JdbcRyczaltCorrectionWriter implements RyczaltCorrectionWriter {
         entityType,
         entityId,
         reason,
-        requestedAt,
+        java.sql.Timestamp.from(requestedAt),
         correctionPeriodId);
     return jdbc.queryForObject(
         "SELECT currval(pg_get_serial_sequence('ryczalt.ryczalt_correction', 'id'))", Long.class);

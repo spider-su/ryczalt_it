@@ -31,18 +31,18 @@ public class KsefInvoiceService {
   }
 
   /** Discovers all KSeF document numbers for a month from the taxpayer's chosen perspective. */
-  public List<String> listInvoiceNumbers(YearMonth month, KsefSubject subject) {
+  public List<KsefInvoiceMetadata.InvoiceMetadata> listInvoiceMetadata(YearMonth month, KsefSubject subject) {
     PluginConfig config = configuration();
     KsefClient.KsefAccess access = authenticate(config);
     KsefEnvironment environment = plugin.environment(config);
     OffsetDateTime from = month.atDay(1).atStartOfDay().atOffset(ZoneOffset.UTC);
     OffsetDateTime to = month.plusMonths(1).atDay(1).atStartOfDay().atOffset(ZoneOffset.UTC);
-    List<String> numbers = new ArrayList<>();
+    List<KsefInvoiceMetadata.InvoiceMetadata> numbers = new ArrayList<>();
     for (int page = 0; page < MAX_PAGES; page++) {
       String metadata =
           client.queryInvoices(
               environment, access.accessToken(), subject.code(), from, to, page, PAGE_SIZE);
-      List<String> pageNumbers = KsefInvoiceMetadata.extractKsefNumbers(metadata);
+      var pageNumbers = KsefInvoiceMetadata.extractInvoices(metadata);
       numbers.addAll(pageNumbers);
       if (pageNumbers.size() < PAGE_SIZE) break;
       if (page == MAX_PAGES - 1) {

@@ -26,7 +26,10 @@ public record InvoiceSourceRecord(
     String counterpartyTaxId,
     BigDecimal ryczaltRate,
     BigDecimal deductibleVat,
-    String counterpartyCountry) {
+    String counterpartyCountry,
+    SaleDateCorrection saleDateCorrection) {
+  public record SaleDateCorrection(String originalExternalId, String originalReference,
+      LocalDate originalIssueDate, LocalDate correctedSaleDate, String reason) {}
   public InvoiceSourceRecord(
       String sourceExternalId,
       InvoiceDirection direction,
@@ -55,6 +58,7 @@ public record InvoiceSourceRecord(
         counterpartyTaxId,
         ryczaltRate,
         deductibleVat,
-        "PL");
+        "PL",
+        null);
   }
 }

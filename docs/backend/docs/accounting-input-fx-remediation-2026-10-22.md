@@ -168,3 +168,13 @@ customer-web tests passed, with zero failures, errors or skips.
   `DROP DATABASE ... WITH (FORCE)` statement; this helper connects only to the
   test container. The full suite was rerun after the fix.
 - `git diff --check` passed.
+
+### Month selected for an NBP refresh
+
+The month-end cron remains unchanged. Each execution uses its configured timezone
+and refreshes the current month only when its last calendar day has arrived.
+An earlier forced or catch-up execution refreshes the previous month instead.
+This keeps the requested end date out of the future, including January/year
+boundaries and leap years. The start log records both the run date and selected
+month. Genuine provider errors still mark the job failed; they are not hidden
+by a retry with guessed rates.

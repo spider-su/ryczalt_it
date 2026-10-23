@@ -114,7 +114,13 @@ public class RyczaltFxRateJobScheduler {
     job.setLastError(null);
     jobs.save(job);
     try {
-      var result = fxRates.refreshMonth(YearMonth.from(startedAt));
+      YearMonth targetMonth = YearMonth.from(startedAt);
+      if (startedAt.toLocalDate().isBefore(targetMonth.atEndOfMonth())) {
+        targetMonth = targetMonth.minusMonths(1);
+      }
+      log.info("NBP FX refresh started: jobId={}, runDate={}, targetMonth={}",
+          job.getId(), startedAt.toLocalDate(), targetMonth);
+      var result = fxRates.refreshMonth(targetMonth);
       job.setLastStatus("SUCCESS");
       log.info(
           "NBP FX refresh completed: jobId={}, month={}, observations={}, ratesInserted={}, resolutionsInserted={}, ratesUnchanged={}, resolutionsUnchanged={}, outcome={}",

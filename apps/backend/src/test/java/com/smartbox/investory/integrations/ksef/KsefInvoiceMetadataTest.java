@@ -3,36 +3,48 @@ package com.smartbox.investory.integrations.ksef;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import java.util.List;
 import org.junit.jupiter.api.Test;
 
 class KsefInvoiceMetadataTest {
   @Test
   void extractsDocumentNumbers() {
     assertThat(
-            KsefInvoiceMetadata.extractKsefNumbers(
+            KsefInvoiceMetadata.extractInvoices(
                 """
                 {"invoices":[{"ksefNumber":" A "},{"ksefNumber":"B"}]}
                 """))
-        .isEqualTo(List.of("A", "B"));
+        .extracting(KsefInvoiceMetadata.InvoiceMetadata::ksefNumber)
+        .containsExactly("A", "B");
   }
 
   @Test
   void emptyInvoiceArrayMeansNoInvoices() {
-    assertThat(KsefInvoiceMetadata.extractKsefNumbers("{\"invoices\":[]}")).isEmpty();
+    assertThat(KsefInvoiceMetadata.extractInvoices("{\"invoices\":[]}")).isEmpty();
   }
 
   @Test
   void missingOrIncompleteMetadataFailsClosed() {
-    assertThatThrownBy(() -> KsefInvoiceMetadata.extractKsefNumbers("{}"))
+    assertThatThrownBy(() -> KsefInvoiceMetadata.extractInvoices("{}"))
         .isInstanceOf(IllegalStateException.class)
         .hasMessageContaining("invoices array");
     assertThatThrownBy(
-            () -> KsefInvoiceMetadata.extractKsefNumbers("{\"invoices\":[{}]}"))
+            () -> KsefInvoiceMetadata.extractInvoices("{\"invoices\":[{}]}"))
         .isInstanceOf(IllegalStateException.class)
         .hasMessageContaining("document number");
-    assertThatThrownBy(() -> KsefInvoiceMetadata.extractKsefNumbers(" "))
+    assertThatThrownBy(() -> KsefInvoiceMetadata.extractInvoices(" "))
         .isInstanceOf(IllegalStateException.class)
         .hasMessageContaining("empty");
+  }
+  @Test
+  void preservesExplicitZeroMetadataWithoutDefaultingMissingAmounts() {
+    var records = KsefInvoiceMetadata.extractInvoices("""
+        {"invoices":[{"ksefNumber":"CORRECTION","netAmount":0,"vatAmount":0,"grossAmount":0},
+        {"ksefNumber":"UNKNOWN"}]}
+        """);
+    assertThat(records.getFirst().hasZeroAmounts()).isTrue();
+    assertThat(records.getLast().hasZeroAmounts()).isFalse();
+    assertThatThrownBy(() -> KsefInvoiceMetadata.extractInvoices(
+        "{\"invoices\":[{\"ksefNumber\":\"BAD\",\"netAmount\":\"invalid\"}]}"))
+        .isInstanceOf(IllegalStateException.class);
   }
 }

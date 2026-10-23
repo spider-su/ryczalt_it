@@ -17,4 +17,9 @@ public record Fa3Invoice(
     BigDecimal vatAmount,
     BigDecimal grossAmount,
     String invoiceType,
-    BigDecimal vatRate) {}
+    BigDecimal vatRate,
+    java.util.List<CorrectedInvoice> correctedInvoices,
+    String correctionReason,
+    boolean hasInvoiceLines) {
+  public record CorrectedInvoice(String ksefNumber, String reference, LocalDate issueDate) {}
+}
