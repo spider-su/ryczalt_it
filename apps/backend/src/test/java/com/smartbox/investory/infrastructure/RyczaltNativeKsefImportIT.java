@@ -66,7 +66,6 @@ class RyczaltNativeKsefImportIT {
   @Autowired private com.smartbox.investory.ryczalt.application.RyczaltCounterpartyService counterpartyService;
   @Autowired private ProgrammableInvoiceSource source;
   @Autowired private RecordingNotifier notifier;
-  @Autowired private com.smartbox.investory.ryczalt.application.RyczaltCounterpartyService counterpartyService;
   @Autowired private RyczaltPeriodJpaRepository periods;
   @Autowired private RyczaltInvoiceJpaRepository invoices;
   @Autowired private RyczaltCounterpartyJpaRepository counterparties;
