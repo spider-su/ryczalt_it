@@ -6,6 +6,7 @@ import com.smartbox.investory.integrations.management.api.model.IntegrationType;
 import com.smartbox.investory.integrations.management.persistence.IntegrationInstanceRepository;
 import com.smartbox.investory.integrations.management.persistence.IntegrationJobEntity;
 import com.smartbox.investory.integrations.management.persistence.IntegrationJobRepository;
+import com.smartbox.investory.notifications.Notifier;
 import com.smartbox.investory.ryczalt.integration.fx.RyczaltFxRateService;
 import com.smartbox.investory.shared.time.ApplicationTime;
 import java.sql.Connection;
@@ -41,6 +42,7 @@ public class RyczaltFxRateJobScheduler {
   private final RyczaltFxRateService fxRates;
   private final ApplicationTime time;
   private final JdbcTemplate jdbc;
+  private final Notifier notifier;
 
   @Scheduled(fixedDelayString = "${app.integrations.scheduler-poll-ms:60000}")
   public void poll() {
@@ -140,6 +142,7 @@ public class RyczaltFxRateJobScheduler {
               ? exception.getClass().getSimpleName()
               : message.substring(0, Math.min(500, message.length())));
       log.error("NBP FX refresh job {} failed", job.getId(), exception);
+      notifier.notifyOperators("❌ NBP exchange-rate refresh failed\n" + Notifier.describe(exception));
     } finally {
       job.setLastCompletedAt(time.now(zone));
       jobs.save(job);

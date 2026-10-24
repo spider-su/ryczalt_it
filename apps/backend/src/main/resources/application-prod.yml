@@ -28,4 +28,4 @@ app:
       sync:
         enabled: ${APP_RYCZALT_KSEF_SYNC_ENABLED:false}
   notifications:
-    enabled: ${APP_NOTIFICATIONS_ENABLED:false}
+    enabled: ${APP_NOTIFICATIONS_ENABLED:true}

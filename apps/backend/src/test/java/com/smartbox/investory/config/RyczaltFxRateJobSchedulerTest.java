@@ -36,6 +36,8 @@ class RyczaltFxRateJobSchedulerTest {
   private final IntegrationInstanceRepository instances = mock(IntegrationInstanceRepository.class);
   private final RyczaltFxRateService fxRates = mock(RyczaltFxRateService.class);
   private final JdbcTemplate jdbc = mock(JdbcTemplate.class);
+  private final com.smartbox.investory.notifications.Notifier notifier =
+      mock(com.smartbox.investory.notifications.Notifier.class);
   private ClockApplicationTime time = time("2026-10-31T22:05:00Z");
 
   @Test
@@ -118,10 +120,11 @@ class RyczaltFxRateJobSchedulerTest {
     assertThat(job.getLastError()).isEqualTo("NBP returned HTTP 400");
     assertThat(job.getLastCompletedAt()).isNotNull();
     verify(fxRates, never()).refreshMonth(YearMonth.of(2026, 10));
+    verify(notifier).notifyOperators(org.mockito.ArgumentMatchers.contains("NBP returned HTTP 400"));
   }
 
   private RyczaltFxRateJobScheduler scheduler() {
-    return new RyczaltFxRateJobScheduler(jobs, instances, fxRates, time, jdbc);
+    return new RyczaltFxRateJobScheduler(jobs, instances, fxRates, time, jdbc, notifier);
   }
 
   private static IntegrationJobEntity job() {

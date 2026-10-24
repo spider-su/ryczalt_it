@@ -1,5 +1,6 @@
 package com.smartbox.investory.ryczalt.application.ksef;
 
+import com.smartbox.investory.notifications.Notifier;
 import com.smartbox.investory.ryczalt.application.RyczaltAutoRecalculationService;
 import com.smartbox.investory.ryczalt.application.RyczaltCounterpartyService;
 import com.smartbox.investory.ryczalt.calculation.InputChange;
@@ -67,6 +68,7 @@ public class RyczaltKsefImportService implements RyczaltKsefApi {
   private final RyczaltAutoRecalculationService autoRecalculation;
   private final RyczaltKsefDateCorrectionService dateCorrections;
   private final JdbcTemplate jdbc;
+  private final Notifier notifier;
 
   public RyczaltKsefImportService(
       InvoiceSourcePort source,
@@ -78,7 +80,9 @@ public class RyczaltKsefImportService implements RyczaltKsefApi {
       RyczaltFxRateService fxRates,
       RyczaltAutoRecalculationService autoRecalculation,
       RyczaltKsefDateCorrectionService dateCorrections,
-      JdbcTemplate jdbc) {
+      JdbcTemplate jdbc,
+      Notifier notifier) {
+    this.notifier = notifier;
     this.jdbc = jdbc;
     this.dateCorrections = dateCorrections;
     this.autoRecalculation = autoRecalculation;
@@ -139,6 +143,7 @@ public class RyczaltKsefImportService implements RyczaltKsefApi {
     int duplicates = 0;
     int updated = 0;
     int failed = 0;
+    List<KsefImportNotification.ImportedInvoice> importedInvoices = new ArrayList<>();
     Map<InvoiceDirection, Set<YearMonth>> touched = new EnumMap<>(InvoiceDirection.class);
     var ordered = records.stream().sorted(java.util.Comparator
         .comparing((InvoiceSourceRecord r) -> r.saleDateCorrection() != null)
@@ -288,6 +293,13 @@ public class RyczaltKsefImportService implements RyczaltKsefApi {
           new RyczaltSourceReferenceEntity(
               profileId, ENTITY_TYPE, saved.getId(), SOURCE, record.sourceExternalId(), null));
       imported++;
+      importedInvoices.add(new KsefImportNotification.ImportedInvoice(
+          record.direction(),
+          record.reference(),
+          record.counterpartyName(),
+          record.grossAmount(),
+          currency(record.currency()).name(),
+          status == ApprovalStatus.APPROVED));
       touched.computeIfAbsent(record.direction(), ignored -> new HashSet<>()).add(target);
     }
     java.util.TreeSet<YearMonth> staled = new java.util.TreeSet<>();
@@ -307,6 +319,9 @@ public class RyczaltKsefImportService implements RyczaltKsefApi {
     java.util.TreeSet<YearMonth> changedMonths = new java.util.TreeSet<>(staled);
     touched.values().forEach(changedMonths::addAll);
     autoRecalculation.recalculateAfterCommit(profileId, List.copyOf(changedMonths));
+    if (!importedInvoices.isEmpty()) {
+      notifier.notifyProfile(profileId, KsefImportNotification.format(importedInvoices));
+    }
     return new RyczaltKsefSyncResult(records.size(), imported, duplicates, updated, failed);
   }
 
