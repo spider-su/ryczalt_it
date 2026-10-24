@@ -191,6 +191,46 @@ class RyczaltAccountingQueryServiceTest {
     assertEquals(new BigDecimal("12"), audit.vatAdjustments());
   }
 
+  @Test
+  void staleHistoryIsReportedAsOutdatedAndUnknownAuditValuesStayUnknown() {
+    var period = mock(RyczaltPeriodEntity.class);
+    when(period.id()).thenReturn(10L);
+    when(period.getProfileId()).thenReturn(7L);
+    when(period.getYear()).thenReturn(2026);
+    when(period.getMonth()).thenReturn(7);
+    when(period.getStatus()).thenReturn(PeriodStatus.DIRTY);
+    when(periods.findByProfileIdAndYearAndMonth(7L, 2026, 7)).thenReturn(Optional.of(period));
+    var stale = calculation(CalculationType.RYCZALT, "{\"revenue\":100}");
+    when(stale.isCurrent()).thenReturn(false);
+    when(stale.getStatus()).thenReturn(CalculationStatus.STALE);
+    when(stale.getRevision()).thenReturn(2);
+    var older = calculation(CalculationType.RYCZALT, "{}");
+    when(older.isCurrent()).thenReturn(false);
+    when(older.getStatus()).thenReturn(CalculationStatus.STALE);
+    var vat = calculation(CalculationType.VAT, "{\"outputVat\":23,\"calculatedVat\":23}");
+    when(calculations.findByProfileIdAndPeriodId(7L, 10L)).thenReturn(List.of(older, stale, vat));
+
+    var result = service.getPeriod(7L, YearMonth.of(2026, 7));
+    org.assertj.core.api.Assertions.assertThat(result.audit().revenue()).isNull();
+    org.assertj.core.api.Assertions.assertThat(result.audit().healthDeduction()).isNull();
+    org.assertj.core.api.Assertions.assertThat(result.audit().monthlyAdvance()).isNull();
+    assertEquals(new BigDecimal("23"), result.audit().outputVat());
+    org.assertj.core.api.Assertions.assertThat(result.calculations()).hasSize(2);
+    var issues = service.getIssues(7L, YearMonth.of(2026, 7));
+    org.assertj.core.api.Assertions.assertThat(issues)
+        .anyMatch(issue -> issue.code().equals("DIRTY_CALCULATION") && issue.message().contains("RYCZALT"))
+        .noneMatch(issue -> issue.code().equals("MISSING_CALCULATION") && issue.message().contains("RYCZALT"))
+        .anyMatch(issue -> issue.code().equals("MISSING_CALCULATION") && issue.message().contains("ZUS"));
+
+    var current = calculation(CalculationType.RYCZALT, "{\"revenue\":200}");
+    when(calculations.findByProfileIdAndPeriodId(7L, 10L)).thenReturn(List.of(stale, current, older, vat));
+    var refreshed = service.getPeriod(7L, YearMonth.of(2026, 7));
+    assertEquals(new BigDecimal("200"), refreshed.audit().revenue());
+    org.assertj.core.api.Assertions.assertThat(refreshed.calculations()).hasSize(2);
+    org.assertj.core.api.Assertions.assertThat(service.getIssues(7L, YearMonth.of(2026, 7)))
+        .noneMatch(issue -> issue.message().contains("RYCZALT"));
+  }
+
   private static RyczaltCalculationEntity calculation(CalculationType type, String result) {
     RyczaltCalculationEntity calculation = mock(RyczaltCalculationEntity.class);
     when(calculation.getType()).thenReturn(type);

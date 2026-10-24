@@ -23,19 +23,9 @@ final class RyczaltAccountingPageViewAssembler {
         "OPEN",
         List.of(),
         new RyczaltWebAccountingClient.Summary(
-            BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO),
+            BigDecimal.ZERO, null, null, null),
         new RyczaltWebAccountingClient.Audit(
-            BigDecimal.ZERO,
-            BigDecimal.ZERO,
-            BigDecimal.ZERO,
-            BigDecimal.ZERO,
-            BigDecimal.ZERO,
-            BigDecimal.ZERO,
-            BigDecimal.ZERO,
-            BigDecimal.ZERO,
-            BigDecimal.ZERO,
-            BigDecimal.ZERO,
-            BigDecimal.ZERO),
+            null, null, null, null, null, null, null, null, null, null, null),
         new RyczaltWebAccountingClient.Documents(0, 0),
         new RyczaltWebAccountingClient.Settlement(
             0, 0, 0, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, true),

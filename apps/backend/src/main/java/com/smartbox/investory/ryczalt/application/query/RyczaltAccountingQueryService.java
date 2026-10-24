@@ -150,7 +150,7 @@ public class RyczaltAccountingQueryService {
         loaded.period.getStatus(),
         calculationStates(loaded.calculations, obligationRows),
         summary,
-        audit(profileId, month, summary, loaded.calculations),
+        audit(profileId, month, loaded.calculations),
         new RyczaltPeriodReadModel.Documents(invoiceRows.size(), transactionRows.size()),
         new RyczaltPeriodReadModel.SettlementSummary(
             obligationRows.size(),
@@ -169,24 +169,24 @@ public class RyczaltAccountingQueryService {
   private RyczaltPeriodReadModel.Audit audit(
       long profileId,
       YearMonth month,
-      RyczaltPeriodReadModel.Summary summary,
       List<RyczaltCalculationEntity> current) {
     JsonNode ryczalt = result(current, CalculationType.RYCZALT);
     JsonNode vat = result(current, CalculationType.VAT);
-    BigDecimal monthlyAdvance = number(ryczalt, "calculatedTax");
-    BigDecimal cumulativeTax = number(ryczalt, "cumulativeTax", yearToDateTax(profileId, month));
+    BigDecimal monthlyAdvance = ryczalt == null ? null : number(ryczalt, "calculatedTax");
+    BigDecimal cumulativeTax =
+        ryczalt == null ? null : number(ryczalt, "cumulativeTax", yearToDateTax(profileId, month));
     return new RyczaltPeriodReadModel.Audit(
-        number(ryczalt, "revenue", summary.revenue()),
-        number(ryczalt, "socialContributionDeduction"),
-        number(ryczalt, "healthDeduction"),
-        number(ryczalt, "otherDeduction"),
-        number(ryczalt, "taxableBase"),
+        ryczalt == null ? null : number(ryczalt, "revenue"),
+        ryczalt == null ? null : number(ryczalt, "socialContributionDeduction"),
+        ryczalt == null ? null : number(ryczalt, "healthDeduction"),
+        ryczalt == null ? null : number(ryczalt, "otherDeduction"),
+        ryczalt == null ? null : number(ryczalt, "taxableBase"),
         cumulativeTax,
         monthlyAdvance,
-        number(vat, "outputVat"),
-        number(vat, "deductibleInputVat"),
-        number(vat, "explicitAdjustments"),
-        number(vat, "calculatedVat"));
+        vat == null ? null : number(vat, "outputVat"),
+        vat == null ? null : number(vat, "deductibleInputVat"),
+        vat == null ? null : number(vat, "explicitAdjustments"),
+        vat == null ? null : number(vat, "calculatedVat"));
   }
 
   private JsonNode result(List<RyczaltCalculationEntity> rows, CalculationType type) {
@@ -298,11 +298,7 @@ public class RyczaltAccountingQueryService {
       }
     }
     for (CalculationType type : CalculationType.values()) {
-      RyczaltCalculationEntity calculation =
-          loaded.calculations.stream()
-              .filter(row -> row.getType() == type && row.isCurrent())
-              .findFirst()
-              .orElse(null);
+      RyczaltCalculationEntity calculation = latestCalculation(loaded.calculations, type);
       if (calculation == null) {
         result.add(
             new RyczaltIssueReadModel(
@@ -313,8 +309,7 @@ public class RyczaltAccountingQueryService {
                 "Missing calculation",
                 "No calculation is available for " + type.name(),
                 type.name()));
-      } else if (calculation.getStatus() == CalculationStatus.DIRTY
-          || calculation.getStatus() == CalculationStatus.STALE) {
+      } else if (!validCalculation(calculation)) {
         result.add(
             new RyczaltIssueReadModel(
                 "calculation:" + type.name(),
@@ -322,7 +317,8 @@ public class RyczaltAccountingQueryService {
                 CheckSeverity.ERROR,
                 IssueKind.BLOCKED,
                 "Calculation needs refresh",
-                "The " + type.name() + " calculation is not current",
+                "The " + type.name()
+                    + " calculation is outdated and needs recalculation. Existing payment confirmations are retained.",
                 type.name()));
       }
     }
@@ -382,8 +378,10 @@ public class RyczaltAccountingQueryService {
 
   private List<RyczaltPeriodReadModel.CalculationState> calculationStates(
       List<RyczaltCalculationEntity> rows, List<RyczaltObligationEntity> obligationRows) {
-    return rows.stream()
-        .sorted(Comparator.comparing(row -> row.getType().name()))
+    return java.util.Arrays.stream(CalculationType.values())
+        .sorted(Comparator.comparing(Enum::name))
+        .map(type -> latestCalculation(rows, type))
+        .filter(java.util.Objects::nonNull)
         .map(
             row ->
                 new RyczaltPeriodReadModel.CalculationState(
@@ -396,6 +394,15 @@ public class RyczaltAccountingQueryService {
                     row.getCalculatorVersion(),
                     row.getCalculatedAt()))
         .toList();
+  }
+
+  private RyczaltCalculationEntity latestCalculation(
+      List<RyczaltCalculationEntity> rows, CalculationType type) {
+    return rows.stream()
+        .filter(row -> row.getType() == type)
+        .max(Comparator.comparing(this::validCalculation)
+            .thenComparingInt(RyczaltCalculationEntity::getRevision))
+        .orElse(null);
   }
 
   private boolean validCalculation(RyczaltCalculationEntity row) {

@@ -272,6 +272,11 @@ public class RyczaltInvoiceEntity extends RyczaltEntity {
     return manualPaidNote;
   }
 
+  /** A rule waiver changes verification policy, not the recorded evidence of payment. */
+  public void waivePaymentVerification() {
+    this.paymentVerificationPolicy = PaymentVerificationPolicy.NOT_REQUIRED;
+  }
+
   public void markManuallyPaid(LocalDate paidDate, String note) {
     if (paidDate == null) throw new IllegalArgumentException("Payment date is required");
     this.paymentStatus = "MANUALLY_CONFIRMED";
