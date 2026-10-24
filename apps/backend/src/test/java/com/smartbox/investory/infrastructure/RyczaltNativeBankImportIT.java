@@ -74,7 +74,7 @@ class RyczaltNativeBankImportIT {
     try (Connection connection = dataSource.getConnection();
         var statement = connection.createStatement()) {
       statement.execute(
-          "TRUNCATE ryczalt.ryczalt_payment_match, ryczalt.ryczalt_source_reference,"
+          "TRUNCATE ryczalt.ryczalt_native_month_input, ryczalt.ryczalt_payment_match, ryczalt.ryczalt_source_reference,"
               + " ryczalt.ryczalt_obligation, ryczalt.ryczalt_transaction,"
               + " ryczalt.ryczalt_invoice, ryczalt.ryczalt_calculation,"
               + " ryczalt.ryczalt_audit_event, ryczalt.ryczalt_period RESTART IDENTITY"
@@ -203,6 +203,50 @@ class RyczaltNativeBankImportIT {
             String.class);
     assertThat(matches).isEqualTo(1);
     assertThat(status).isEqualTo("PAID");
+  }
+
+  @org.junit.jupiter.params.ParameterizedTest
+  @org.junit.jupiter.params.provider.NullSource
+  @org.junit.jupiter.params.provider.ValueSource(strings = {"0", "123.45"})
+  void persistedMissingPaidHealthUsesCalculatedHealthAndExplicitAmountsWin(String paid) {
+    var month = java.time.YearMonth.of(2026, 1);
+    var period = periods.save(new RyczaltPeriodEntity(1, 2026, 1, PeriodStatus.OPEN));
+    jdbc.update("""
+        INSERT INTO ryczalt.ryczalt_native_month_input
+          (profile_id,tax_year,tax_month,jdg_active,qualifying_uop,zus_regime,voluntary_sickness,
+           social_contribution_deduction,health_contribution_paid_override,
+           accounting_start_date,opening_ytd_revenue,opening_social_contributions_paid,
+           opening_health_contributions_paid,opening_deductions_consumed,opening_vat_carry_forward)
+        VALUES (1,2026,1,true,true,'JDG',false,0,?,DATE '2026-01-01',0,0,0,0,0)
+        """, paid == null ? null : new java.math.BigDecimal(paid));
+    jdbc.update("""
+        INSERT INTO ryczalt.ryczalt_invoice
+          (period_id,profile_id,direction,reference,issue_date,accounting_date,
+           net_amount,vat_amount,gross_amount,currency,booked_net_pln,booked_vat_pln,
+           ryczalt_rate,approval_status,classification,vat_treatment)
+        VALUES (?,1,'INCOME','HEALTH-DEFAULT-TEST',DATE '2026-01-15',DATE '2026-01-15',
+                10000,2300,12300,'PLN',10000,2300,0.12,'APPROVED','SERVICE','DOMESTIC_VAT')
+        """, period.id());
+
+    monthCalculation.calculateFromPersistedInvoices(1, month);
+
+    assertThat(jdbc.queryForObject("""
+        SELECT (result_json->>'healthPaidForDeduction')::numeric
+        FROM ryczalt.ryczalt_calculation
+        WHERE profile_id=1 AND calculation_type='ZUS' AND is_current
+        """, java.math.BigDecimal.class)).isEqualByComparingTo(paid == null ? "498.35" : paid);
+    assertThat(jdbc.queryForObject("""
+        SELECT health_contribution_paid_override FROM ryczalt.ryczalt_native_month_input
+        WHERE profile_id=1 AND tax_year=2026 AND tax_month=1
+        """, java.math.BigDecimal.class))
+        .isEqualTo(paid == null ? null : new java.math.BigDecimal(paid).setScale(4));
+    assertThat(jdbc.queryForObject("SELECT count(*) FROM ryczalt.ryczalt_obligation WHERE profile_id=1",
+        Integer.class)).isEqualTo(3);
+    assertThat(jdbc.queryForObject("""
+        SELECT (result_json->>'healthContributionPaid')::numeric
+        FROM ryczalt.ryczalt_calculation
+        WHERE profile_id=1 AND calculation_type='RYCZALT' AND is_current
+        """, java.math.BigDecimal.class)).isEqualByComparingTo(paid == null ? "498.35" : paid);
   }
 
   @Test

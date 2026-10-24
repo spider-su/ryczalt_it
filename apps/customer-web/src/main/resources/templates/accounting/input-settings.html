@@ -9,9 +9,9 @@
 <body><main class="container py-4">
   <a th:href="@{/profiles/{id}/accounting(id=${profileId},month=${month})}">Back to accounting</a>
   <h1 th:text="${'Accounting inputs · ' + month}">Accounting inputs</h1>
-  <p>Use actual accounting records. A blank amount means unknown; enter zero only when confirmed. Paid contributions are separate from calculated liabilities.</p>
+  <p>Use actual accounting records. Leave paid health blank to assume the calculated health contribution was paid. An explicit paid-health amount overrides that assumption; enter zero when none was paid. Other required amounts must be supplied.</p>
   <p th:if="${configuredStartDate != null}" th:text="${'Accounting start: ' + configuredStartDate}"></p>
-  <div class="alert alert-warning" th:unless="${missingFields.isEmpty()}">Required facts are missing. Complete paid contribution amounts and configure opening balances in the month when accounting starts.</div>
+  <div class="alert alert-warning" th:unless="${missingFields.isEmpty()}">Required facts are missing. Complete paid-social contribution amounts and configure opening balances in the month when accounting starts.</div>
   <div class="alert alert-danger" role="alert" th:if="${accountingError}" th:text="${accountingError}"></div>
   <p th:if="${month.year != 2026}">Historical inputs are read only. Accounting input changes currently support 2026.</p>
   <form method="post" th:action="@{/profiles/{id}/accounting/periods/{month}/input-settings(id=${profileId},month=${month})}">

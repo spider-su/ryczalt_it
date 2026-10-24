@@ -83,6 +83,7 @@ class RyczaltAccountingPageRenderTest {
     for (var field : RyczaltAccountingInputController.MONTHLY) {
       if (field.required()) request.param(field.name(), "0");
     }
+    request.param("healthContributionPaidOverride", "0");
     for (var field : RyczaltAccountingInputController.OPENING) request.param(field.name(), "0");
     mvc.perform(request).andExpect(status().is3xxRedirection());
     org.mockito.Mockito.verify(accounting).saveInputSettings(
@@ -91,6 +92,26 @@ class RyczaltAccountingPageRenderTest {
             BigDecimal.ZERO.equals(values.get("healthContributionPaidOverride"))
                 && BigDecimal.ZERO.equals(values.get("openingVatCarryForward"))
                 && "2026-01-01".equals(values.get("accountingStartDate"))));
+  }
+
+  @Test
+  void blankPaidHealthIsSentAsNullForCalculatedHealthDefault() throws Exception {
+    when(accounting.inputSettings(7L, YearMonth.of(2026, 2)))
+        .thenReturn(new RyczaltWebAccountingClient.InputSettings(null,
+            java.time.LocalDate.of(2026, 1, 1), List.of()));
+    var request = post("/profiles/7/accounting/periods/2026-02/input-settings")
+        .session(loginSession()).with(csrf()).param("jdgActive", "true")
+        .param("qualifyingUop", "true").param("voluntarySickness", "false")
+        .param("healthContributionPaidOverride", "");
+    for (var field : RyczaltAccountingInputController.MONTHLY) {
+      if (field.required()) request.param(field.name(), "0");
+    }
+    mvc.perform(request).andExpect(status().is3xxRedirection());
+    org.mockito.Mockito.verify(accounting).saveInputSettings(
+        org.mockito.ArgumentMatchers.eq(7L), org.mockito.ArgumentMatchers.eq(YearMonth.of(2026, 2)),
+        org.mockito.ArgumentMatchers.argThat(values ->
+            values.containsKey("healthContributionPaidOverride")
+                && values.get("healthContributionPaidOverride") == null));
   }
 
   @Test

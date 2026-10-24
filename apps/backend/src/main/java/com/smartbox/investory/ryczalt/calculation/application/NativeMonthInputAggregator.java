@@ -44,9 +44,11 @@ public class NativeMonthInputAggregator {
     RyczaltNativeMonthInputEntity settings = monthInputs
         .findByProfileIdAndYearAndMonth(profileId, month.getYear(), month.getMonthValue())
         .orElseThrow(() -> needsReview(month, "monthly paid contribution facts and ZUS settings are missing"));
-    if (settings.socialContributionDeduction() == null || settings.healthContributionPaidOverride() == null) {
-      throw needsReview(month, "actual paid social and health contribution amounts are required; enter zero when none were paid");
+    if (settings.socialContributionDeduction() == null) {
+      throw needsReview(month, "actual paid social contribution amount is required; enter zero when none was paid");
     }
+    // A missing paid-health override intentionally reaches ZusCalculator, which assumes the
+    // calculated health contribution was paid. Explicit values, including zero, take precedence.
     RyczaltNativeMonthInputEntity.ZusSettings zus = settings.zusSettings();
     // An accounting start persists across years; YTD revenue and paid-social totals do not.
     boolean openingInTaxYear = start.getYear() == month.getYear();

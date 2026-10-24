@@ -20,8 +20,9 @@ import org.springframework.transaction.annotation.Transactional;
  * monthly settings row, copying the employment/insurance settings from the latest earlier month.
  *
  * <p>Only the settings carry forward (JDG active, qualifying UoP, ZUS regime, voluntary sickness,
- * and a full-JDG-social override within the same tax year). Paid amounts stay empty, so they are
- * assumed equal to the calculated obligation, and per-month corrections start at zero.
+ * and a full-JDG-social override within the same tax year). Paid amounts stay empty: paid health
+ * defaults to calculated health, while paid social still needs an explicit fact before calculation.
+ * Per-month corrections start at zero.
  */
 @Service
 public class RyczaltMonthPreparationService {
