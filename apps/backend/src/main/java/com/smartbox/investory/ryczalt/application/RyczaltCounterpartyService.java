@@ -1,9 +1,13 @@
 package com.smartbox.investory.ryczalt.application;
 
+import com.smartbox.investory.ryczalt.application.port.RyczaltAuditEventWriter;
 import com.smartbox.investory.ryczalt.domain.*;
 import com.smartbox.investory.ryczalt.persistence.*;
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.util.List;
+import java.util.Objects;
+import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -12,15 +16,21 @@ public class RyczaltCounterpartyService {
   private final RyczaltCounterpartyJpaRepository counterparties;
   private final RyczaltCounterpartyRuleJpaRepository rules;
   private final RyczaltInvoiceJpaRepository invoices;
+  private final RyczaltSourceReferenceJpaRepository sourceReferences;
+  private final RyczaltAuditEventWriter audit;
   private final CounterpartyRuleMatcher matcher = new CounterpartyRuleMatcher();
 
   public RyczaltCounterpartyService(
       RyczaltCounterpartyJpaRepository counterparties,
       RyczaltCounterpartyRuleJpaRepository rules,
-      RyczaltInvoiceJpaRepository invoices) {
+      RyczaltInvoiceJpaRepository invoices,
+      RyczaltSourceReferenceJpaRepository sourceReferences,
+      RyczaltAuditEventWriter audit) {
     this.counterparties = counterparties;
     this.rules = rules;
     this.invoices = invoices;
+    this.sourceReferences = sourceReferences;
+    this.audit = audit;
   }
 
   @Transactional(readOnly = true)
@@ -63,7 +73,9 @@ public class RyczaltCounterpartyService {
   @Transactional
   public CounterpartyRule addRule(long profileId, long counterpartyId, RuleCommand c) {
     var cp = entity(profileId, counterpartyId);
-    return rule(rules.save(c.entity(profileId, cp)));
+    var saved = rule(rules.save(c.entity(profileId, cp)));
+    refreshPaymentPolicies(profileId, counterpartyId);
+    return saved;
   }
 
   @Transactional
@@ -85,7 +97,66 @@ public class RyczaltCounterpartyService {
         c.ryczaltRate(),
         c.autoApprove(),
         c.paymentVerificationPolicy());
-    return rule(rules.save(row));
+    var saved = rule(rules.save(row));
+    refreshPaymentPolicies(profileId, counterpartyId);
+    return saved;
+  }
+
+  /**
+   * Apply unambiguous payment waivers to existing KSeF invoices whose accounting decision does not
+   * conflict with the rule. Missing VAT metadata stays untouched. Never replace bank evidence or
+   * historical manual confirmations.
+   */
+  @Transactional
+  public int refreshPaymentPolicies(long profileId, long counterpartyId) {
+    var cp = entity(profileId, counterpartyId);
+    if (cp.getTaxIdentifier() == null || cp.getTaxIdentifier().isBlank()) return 0;
+    var candidates =
+        invoices.findByProfileIdAndCounterparty_IdOrderByAccountingDateAscIdAsc(
+            profileId, counterpartyId);
+    if (candidates.isEmpty()) return 0;
+    var ksefIds =
+        sourceReferences.findByProfileIdAndEntityTypeAndEntityIdIn(
+                profileId, "INVOICE", candidates.stream().map(RyczaltInvoiceEntity::id).toList())
+            .stream()
+            .filter(ref -> "KSEF".equals(ref.getSource()))
+            .map(RyczaltSourceReferenceEntity::getEntityId)
+            .collect(Collectors.toSet());
+    var match = matcher.match(
+        new InvoiceCandidate(counterpartyId, "KSEF", null, null), rules(profileId, counterpartyId));
+    if (match.kind() != RuleMatchResult.Kind.MATCHED) return 0;
+    var rule = match.rule();
+    if (!rule.autoApprove()
+        || rule.paymentVerificationPolicy() != PaymentVerificationPolicy.NOT_REQUIRED)
+      return 0;
+    int changed = 0;
+    for (var invoice : candidates) {
+      if (!ksefIds.contains(invoice.id())
+          || invoice.getPeriod().getStatus().isFrozen()
+          || invoice.getApprovalStatus() != ApprovalStatus.APPROVED
+          || invoice.getPaymentVerificationPolicy() == PaymentVerificationPolicy.NOT_REQUIRED
+          || "MATCHED".equals(invoice.getPaymentStatus())
+          || "PARTIALLY_MATCHED".equals(invoice.getPaymentStatus())
+          || !Objects.equals(invoice.getClassification(), rule.classification())
+          || (invoice.getVatTreatment() != null
+              && !Objects.equals(invoice.getVatTreatment(), rule.vatTreatment()))
+          || (invoice.getVatDeductionRatio() != null
+              && !sameAmount(invoice.getVatDeductionRatio(), rule.vatDeductionRatio()))
+          || !sameAmount(invoice.getRyczaltRate(), rule.ryczaltRate())) continue;
+      invoice.waivePaymentVerification();
+      invoices.save(invoice);
+      audit.write(
+          profileId, invoice.getPeriod().id(), "INVOICE_PAYMENT_POLICY_CHANGED",
+          "invoiceId=" + invoice.id() + "; ruleId=" + rule.id()
+              + "; paymentVerificationPolicy=NOT_REQUIRED",
+          "system:counterparty-rule", Instant.now());
+      changed++;
+    }
+    return changed;
+  }
+
+  private static boolean sameAmount(BigDecimal left, BigDecimal right) {
+    return left == null ? right == null : right != null && left.compareTo(right) == 0;
   }
 
   @Transactional

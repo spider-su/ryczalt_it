@@ -63,9 +63,9 @@ class RyczaltNativeKsefImportIT {
   private static final String PROFILE_TWO_NIP = "5260250274";
 
   @Autowired private RyczaltKsefImportService ksefImport;
+  @Autowired private com.smartbox.investory.ryczalt.application.RyczaltCounterpartyService counterpartyService;
   @Autowired private ProgrammableInvoiceSource source;
   @Autowired private RecordingNotifier notifier;
-  @Autowired private com.smartbox.investory.ryczalt.application.RyczaltCounterpartyService counterpartyService;
   @Autowired private RyczaltPeriodJpaRepository periods;
   @Autowired private RyczaltInvoiceJpaRepository invoices;
   @Autowired private RyczaltCounterpartyJpaRepository counterparties;
@@ -96,7 +96,8 @@ class RyczaltNativeKsefImportIT {
           "TRUNCATE ryczalt.ryczalt_payment_match, ryczalt.ryczalt_source_reference,"
               + " ryczalt.ryczalt_obligation, ryczalt.ryczalt_transaction,"
               + " ryczalt.ryczalt_invoice, ryczalt.ryczalt_calculation,"
-              + " ryczalt.ryczalt_audit_event, ryczalt.ryczalt_period RESTART IDENTITY"
+              + " ryczalt.ryczalt_audit_event, ryczalt.ryczalt_period,"
+              + " ryczalt.ryczalt_counterparty_rule, ryczalt.ryczalt_counterparty RESTART IDENTITY"
               + " CASCADE");
     }
     seedProfile(1, "ksef-profile-one", PROFILE_ONE_NIP);
@@ -176,6 +177,36 @@ class RyczaltNativeKsefImportIT {
         .isEqualTo(ApprovalStatus.NEEDS_REVIEW);
     assertThat(invoices.findAll().getFirst().getApprovalMethod())
         .isEqualTo(ApprovalMethod.KSEF_TRUSTED);
+  }
+
+  @Test
+  void addingPaymentWaiverRuleRefreshesExistingInvoiceWithoutErasingManualEvidence() {
+    source.records.add(cost("KSEF-WAIVER", "100"));
+    ksefImport.sync(1, YearMonth.of(2026, 2), Set.of(KsefSyncMode.PURCHASES));
+    var invoice = invoices.findAll().getFirst();
+    long id = invoice.id();
+    var cp = counterparties.findByProfileIdAndTaxIdentifierAndCountry(1, "1111111111", "PL").orElseThrow();
+    invoice.applyDecision(cp, "VEHICLE", null, null, null,
+        com.smartbox.investory.ryczalt.domain.PaymentVerificationPolicy.REQUIRED,
+        ApprovalStatus.APPROVED, ApprovalMethod.MANUAL);
+    invoice.markManuallyPaid(LocalDate.of(2026, 2, 20), "Synthetic confirmation");
+    invoices.saveAndFlush(invoice);
+    counterpartyService.addRule(1, cp.id(),
+        new com.smartbox.investory.ryczalt.application.RyczaltCounterpartyService.RuleCommand(
+            "Synthetic waiver", "KSEF", null, null, "VEHICLE", "DOMESTIC_PURCHASE",
+            new BigDecimal("0.5"), null, true,
+            com.smartbox.investory.ryczalt.domain.PaymentVerificationPolicy.NOT_REQUIRED));
+    var refreshed = invoices.findByIdAndProfileId(id, 1).orElseThrow();
+    assertThat(refreshed.getPaymentVerificationPolicy().name()).isEqualTo("NOT_REQUIRED");
+    assertThat(refreshed.getPaymentStatus()).isEqualTo("MANUALLY_CONFIRMED");
+    assertThat(refreshed.getManualPaidDate()).isEqualTo(LocalDate.of(2026, 2, 20));
+    assertThat(refreshed.getApprovalMethod()).isEqualTo(ApprovalMethod.MANUAL);
+    assertThat(refreshed.getVatTreatment()).isNull();
+    assertThat(refreshed.getVatDeductionRatio()).isNull();
+    assertThat(refreshed.getNetAmount()).isEqualByComparingTo("100");
+    assertThat(counterpartyService.refreshPaymentPolicies(1, cp.id())).isZero();
+    assertThat(jdbc.queryForObject("select count(*) from ryczalt.ryczalt_audit_event where event_type='INVOICE_PAYMENT_POLICY_CHANGED'", Integer.class)).isEqualTo(1);
+    assertThat(jdbc.queryForObject("select count(*) from ryczalt.ryczalt_payment_match", Integer.class)).isZero();
   }
 
   @Test
