@@ -185,6 +185,7 @@ public class SettlementService {
       List<RyczaltTransactionEntity> storedTransactions,
       PaymentAccountRules accountRules) {
     if (obligation.isManuallyPaid()) {
+      refreshStatus(profileId, obligation);
       return new PaymentCheckResult(
           PaymentCheckStatus.PAID,
           obligation.getAmount(),

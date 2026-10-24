@@ -5,6 +5,7 @@ import com.smartbox.investory.integrations.management.api.model.IntegrationType;
 import com.smartbox.investory.integrations.management.persistence.IntegrationInstanceRepository;
 import com.smartbox.investory.integrations.management.persistence.IntegrationJobEntity;
 import com.smartbox.investory.integrations.management.persistence.IntegrationJobRepository;
+import com.smartbox.investory.notifications.Notifier;
 import com.smartbox.investory.shared.time.ApplicationTime;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -35,6 +36,7 @@ public class RyczaltKsefJobScheduler {
   private final RyczaltKsefSyncJob sync;
   private final ApplicationTime time;
   private final JdbcTemplate jdbc;
+  private final Notifier notifier;
 
   @Scheduled(fixedDelayString = "${app.integrations.scheduler-poll-ms:60000}")
   public void poll() {
@@ -96,6 +98,7 @@ public class RyczaltKsefJobScheduler {
       job.setLastError(
           message == null ? exception.getClass().getSimpleName() : message.substring(0, Math.min(500, message.length())));
       log.error("KSeF integration job {} failed", job.getId(), exception);
+      notifier.notifyOperators("❌ KSeF sync failed\n" + Notifier.describe(exception));
     } finally {
       job.setLastCompletedAt(time.now(time.businessZone()));
       jobs.save(job);

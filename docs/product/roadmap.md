@@ -49,6 +49,24 @@ records source-supported features and explicit product boundaries.
   (`PUT`, rejected when history exists), and the forecast health band for the
   year. The monthly calculation still uses actual year-to-date revenue.
 
+## Notifications (implemented in source)
+
+Delivered through the global `telegram` integration (`NOTIFICATION` type; `chatId`,
+secret `botToken`, optional `portfolioId` profile filter). Delivery failures are
+logged and never break the triggering flow; `app.notifications.enabled` is the
+master switch.
+
+- **KSeF import.** After a sync commits, one message lists the new invoices split
+  into auto-approved (counterparty rule) and needing manual approval. Duplicates
+  are silent.
+- **Month end.** On the last day of the month (`app.ryczalt.month-end-reminder.cron`,
+  default 10:00 Europe/Warsaw) the calculations are brought up to date, then a
+  reminder asks to issue the sales invoice and confirm the ryczałt, VAT and ZUS
+  amounts, flagging pending approvals and blocked or stale calculations.
+- **Integration failures.** A failed scheduled KSeF sync or NBP exchange-rate
+  refresh sends an alert with the failure reason (ignores the profile filter).
+- Parked: payment matched / month completed messages, mobile push, email.
+
 ## Parked improvements
 
 - **Review the monthly-input carry-forward design.** Settings are copied from

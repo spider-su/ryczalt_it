@@ -64,6 +64,8 @@ class RyczaltNativeKsefImportIT {
 
   @Autowired private RyczaltKsefImportService ksefImport;
   @Autowired private ProgrammableInvoiceSource source;
+  @Autowired private RecordingNotifier notifier;
+  @Autowired private com.smartbox.investory.ryczalt.application.RyczaltCounterpartyService counterpartyService;
   @Autowired private RyczaltPeriodJpaRepository periods;
   @Autowired private RyczaltInvoiceJpaRepository invoices;
   @Autowired private RyczaltCounterpartyJpaRepository counterparties;
@@ -87,6 +89,7 @@ class RyczaltNativeKsefImportIT {
   void clean() throws Exception {
     source.records.clear();
     source.nip = PROFILE_ONE_NIP;
+    notifier.messages.clear();
     try (var connection = dataSource.getConnection();
         var statement = connection.createStatement()) {
       statement.execute(
@@ -224,6 +227,56 @@ class RyczaltNativeKsefImportIT {
     assertThat(invoices.count()).isEqualTo(1);
     assertThat(invoices.findAll().getFirst().getNetAmount()).isEqualByComparingTo("31000");
     assertThat(sourceReferences.count()).isEqualTo(1);
+  }
+
+  @Test
+  void importNotifiesNewInvoicesSplitByApprovalOutcomeAndStaysQuietOnDuplicates() {
+    source.records.add(cost("KSEF-REVIEW", "100"));
+    ksefImport.sync(1, YearMonth.of(2026, 2), Set.of(KsefSyncMode.PURCHASES));
+    var cp = counterparties.findByProfileIdAndTaxIdentifierAndCountry(1, "1111111111", "PL").orElseThrow();
+    counterpartyService.addRule(1, cp.id(),
+        new com.smartbox.investory.ryczalt.application.RyczaltCounterpartyService.RuleCommand(
+            "Auto", "KSEF", null, null, "VEHICLE", "DOMESTIC_PURCHASE",
+            new BigDecimal("0.5"), null, true,
+            com.smartbox.investory.ryczalt.domain.PaymentVerificationPolicy.NOT_REQUIRED));
+    source.records.add(cost("KSEF-AUTO", "200"));
+    source.records.add(income("KSEF-SALE", "300"));
+    ksefImport.sync(1, YearMonth.of(2026, 2), Set.of(KsefSyncMode.PURCHASES, KsefSyncMode.SALES));
+    ksefImport.sync(1, YearMonth.of(2026, 2), Set.of(KsefSyncMode.PURCHASES, KsefSyncMode.SALES));
+
+    assertThat(notifier.messages).hasSize(2);
+    assertThat(notifier.messages.get(0))
+        .startsWith("1:📥 KSeF: 1 new invoice")
+        .contains("Needs your approval (1)", "FZ/KSEF-REVIEW · Seller · 100.00 PLN");
+    assertThat(notifier.messages.get(1))
+        .contains("2 new invoices", "Auto-approved (1)", "cost · FZ/KSEF-AUTO",
+            "Needs your approval (1)", "income · FV/KSEF-SALE · Buyer · 300.00 PLN");
+  }
+
+  @Test
+  void monthEndSummaryReflectsImportedInvoicesAndObligations() {
+    source.records.add(income("KSEF-SALE", "12300"));
+    source.records.add(cost("KSEF-COST", "100"));
+    ksefImport.sync(1, YearMonth.of(2026, 2), Set.of(KsefSyncMode.SALES, KsefSyncMode.PURCHASES));
+    long periodId = jdbc.queryForObject(
+        "SELECT id FROM ryczalt.ryczalt_period WHERE profile_id=1 AND period_year=2026 AND period_month=2",
+        Long.class);
+    jdbc.update("INSERT INTO ryczalt.ryczalt_obligation(profile_id,period_id,obligation_type,amount,currency,due_date,status)"
+        + " VALUES (1,?,'VAT',2829,'PLN','2026-03-25','OPEN'), (1,?,'RYCZALT',1476,'PLN','2026-03-20','OPEN')",
+        periodId, periodId);
+    var reminders = new com.smartbox.investory.ryczalt.application.RyczaltMonthEndReminderService(
+        null, null, jdbc, notifier);
+
+    var summary = reminders.summary(1, YearMonth.of(2026, 2), null);
+
+    assertThat(summary.periodStatus()).isIn("OPEN", "DIRTY");
+    assertThat(summary.incomeInvoices()).isEqualTo(1);
+    assertThat(summary.incomeNet()).isEqualByComparingTo("12300");
+    assertThat(summary.needsReview()).isEqualTo(2);
+    assertThat(summary.obligations())
+        .extracting(com.smartbox.investory.ryczalt.application.RyczaltMonthEndReminderService.Obligation::type)
+        .containsExactly("RYCZALT", "VAT");
+    assertThat(reminders.summary(2, YearMonth.of(2026, 2), null).incomeInvoices()).isZero();
   }
 
   @Test
@@ -452,6 +505,21 @@ class RyczaltNativeKsefImportIT {
     }
   }
 
+  /** Captures notifications instead of sending them. */
+  static class RecordingNotifier implements com.smartbox.investory.notifications.Notifier {
+    final List<String> messages = new ArrayList<>();
+
+    @Override
+    public void notifyProfile(long profileId, String text) {
+      messages.add(profileId + ":" + text);
+    }
+
+    @Override
+    public void notifyOperators(String text) {
+      messages.add("ops:" + text);
+    }
+  }
+
   @Configuration(proxyBeanMethods = false)
   @EnableAutoConfiguration
   @EntityScan(basePackageClasses = RyczaltPeriodEntity.class)
@@ -483,6 +551,11 @@ class RyczaltNativeKsefImportIT {
     @Bean
     ProgrammableInvoiceSource programmableInvoiceSource() {
       return new ProgrammableInvoiceSource();
+    }
+
+    @Bean
+    RecordingNotifier recordingNotifier() {
+      return new RecordingNotifier();
     }
 
     @Bean
