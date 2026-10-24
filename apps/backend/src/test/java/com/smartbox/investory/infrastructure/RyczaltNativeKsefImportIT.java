@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.smartbox.investory.ryczalt.application.RyczaltAutoRecalculationService;
+import com.smartbox.investory.ryczalt.application.ksef.KsefProfileMismatchException;
 import com.smartbox.investory.ryczalt.application.ksef.RyczaltKsefImportService;
 import com.smartbox.investory.ryczalt.application.ksef.RyczaltKsefSyncResult;
 import com.smartbox.investory.ryczalt.application.query.RyczaltInvoiceQueryService;
@@ -58,6 +59,8 @@ import org.springframework.test.context.DynamicPropertySource;
 @SpringBootTest(classes = RyczaltNativeKsefImportIT.TestConfiguration.class)
 class RyczaltNativeKsefImportIT {
   private static final WorkerDatabase DATABASE = MigrationTestDatabase.open("ryczalt_ksef");
+  private static final String PROFILE_ONE_NIP = "1234563218";
+  private static final String PROFILE_TWO_NIP = "5260250274";
 
   @Autowired private RyczaltKsefImportService ksefImport;
   @Autowired private ProgrammableInvoiceSource source;
@@ -83,6 +86,7 @@ class RyczaltNativeKsefImportIT {
   @BeforeEach
   void clean() throws Exception {
     source.records.clear();
+    source.nip = PROFILE_ONE_NIP;
     try (var connection = dataSource.getConnection();
         var statement = connection.createStatement()) {
       statement.execute(
@@ -92,11 +96,11 @@ class RyczaltNativeKsefImportIT {
               + " ryczalt.ryczalt_audit_event, ryczalt.ryczalt_period RESTART IDENTITY"
               + " CASCADE");
     }
-    seedProfile(1, "ksef-profile-one");
-    seedProfile(2, "ksef-profile-two");
+    seedProfile(1, "ksef-profile-one", PROFILE_ONE_NIP);
+    seedProfile(2, "ksef-profile-two", PROFILE_TWO_NIP);
   }
 
-  private void seedProfile(long id, String username) {
+  private void seedProfile(long id, String username, String nip) {
     jdbc.update(
         "INSERT INTO ryczalt.app_users(id, username, display_name) VALUES (?, ?, ?)"
             + " ON CONFLICT (id) DO NOTHING",
@@ -109,6 +113,11 @@ class RyczaltNativeKsefImportIT {
         id,
         username,
         id);
+    jdbc.update(
+        "INSERT INTO ryczalt.ryczalt_profile(profile_id, nip) VALUES (?, ?)"
+            + " ON CONFLICT (profile_id) DO UPDATE SET nip = EXCLUDED.nip",
+        id,
+        nip);
   }
 
   private InvoiceSourceRecord income(String ksefNumber, String amount) {
@@ -218,15 +227,31 @@ class RyczaltNativeKsefImportIT {
   }
 
   @Test
-  void profileIsolationKeepsInvoicesSeparate() {
+  void profileIsolationRejectsSyncIntoProfileNotOwningTheKsefNip() {
     source.records.add(income("KSEF-1", "29600"));
     ksefImport.sync(1, YearMonth.of(2026, 2), Set.of(KsefSyncMode.SALES));
-    ksefImport.sync(2, YearMonth.of(2026, 2), Set.of(KsefSyncMode.SALES));
+
+    assertThatThrownBy(() -> ksefImport.sync(2, YearMonth.of(2026, 2), Set.of(KsefSyncMode.SALES)))
+        .isInstanceOf(KsefProfileMismatchException.class);
+    assertThatThrownBy(() -> ksefImport.reimport(2, YearMonth.of(2026, 2)))
+        .isInstanceOf(KsefProfileMismatchException.class);
 
     assertThat(invoices.findAll())
         .extracting(RyczaltInvoiceEntity::getProfileId)
-        .containsExactlyInAnyOrder(1L, 2L);
-    assertThat(sourceReferences.count()).isEqualTo(2);
+        .containsExactly(1L);
+    assertThat(sourceReferences.count()).isEqualTo(1);
+    assertThat(ksefImport.connectedProfileIds()).containsExactly(1L);
+  }
+
+  @Test
+  void unconfiguredKsefNipConnectsNoProfile() {
+    source.nip = null;
+    source.records.add(income("KSEF-1", "29600"));
+
+    assertThat(ksefImport.connectedProfileIds()).isEmpty();
+    assertThatThrownBy(() -> ksefImport.sync(1, YearMonth.of(2026, 2), Set.of(KsefSyncMode.SALES)))
+        .isInstanceOf(KsefProfileMismatchException.class);
+    assertThat(invoices.count()).isZero();
   }
 
   @Test
@@ -360,6 +385,7 @@ class RyczaltNativeKsefImportIT {
     ksefImport.sync(1, YearMonth.of(2026, 2), Set.of(KsefSyncMode.SALES));
     source.records.clear();
     source.records.add(dateCorrection());
+    source.nip = PROFILE_TWO_NIP; // Profile 2's own KSeF context must not reach profile 1 data.
     assertThat(ksefImport.sync(2, YearMonth.of(2026, 2), Set.of(KsefSyncMode.SALES)).failed()).isEqualTo(1);
     assertThat(invoices.findAll().getFirst().getAccountingDate()).isEqualTo(LocalDate.of(2026, 2, 10));
     assertThat(jdbc.queryForObject("SELECT count(*) FROM ryczalt.ryczalt_correction", Long.class)).isZero();
@@ -382,10 +408,13 @@ class RyczaltNativeKsefImportIT {
   void sharedCorrectionIsAppliedOnceWithinEachProfile() {
     source.records.add(income("ORIGINAL", "1000"));
     ksefImport.sync(1, YearMonth.of(2026, 2), Set.of(KsefSyncMode.SALES));
+    source.nip = PROFILE_TWO_NIP;
     ksefImport.sync(2, YearMonth.of(2026, 2), Set.of(KsefSyncMode.SALES));
     source.records.clear();
     source.records.add(dateCorrection());
+    source.nip = PROFILE_ONE_NIP;
     assertThat(ksefImport.sync(1, YearMonth.of(2026, 2), Set.of(KsefSyncMode.SALES)).updated()).isEqualTo(1);
+    source.nip = PROFILE_TWO_NIP;
     assertThat(ksefImport.sync(2, YearMonth.of(2026, 2), Set.of(KsefSyncMode.SALES)).updated()).isEqualTo(1);
     assertThat(invoices.count()).isEqualTo(2);
     assertThat(invoices.findAll()).allSatisfy(row ->
@@ -410,10 +439,16 @@ class RyczaltNativeKsefImportIT {
   /** In-memory stand-in for the external KSeF transport. */
   static class ProgrammableInvoiceSource implements InvoiceSourcePort {
     final List<InvoiceSourceRecord> records = new ArrayList<>();
+    String nip;
 
     @Override
     public List<InvoiceSourceRecord> fetch(KsefSyncCommand command) {
       return List.copyOf(records);
+    }
+
+    @Override
+    public java.util.Optional<String> taxpayerNip() {
+      return java.util.Optional.ofNullable(nip);
     }
   }
 

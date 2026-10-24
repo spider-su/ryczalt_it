@@ -40,6 +40,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -65,6 +66,7 @@ public class RyczaltKsefImportService implements RyczaltKsefApi {
   private final RyczaltFxRateService fxRates;
   private final RyczaltAutoRecalculationService autoRecalculation;
   private final RyczaltKsefDateCorrectionService dateCorrections;
+  private final JdbcTemplate jdbc;
 
   public RyczaltKsefImportService(
       InvoiceSourcePort source,
@@ -75,7 +77,9 @@ public class RyczaltKsefImportService implements RyczaltKsefApi {
       RyczaltCounterpartyService counterparties,
       RyczaltFxRateService fxRates,
       RyczaltAutoRecalculationService autoRecalculation,
-      RyczaltKsefDateCorrectionService dateCorrections) {
+      RyczaltKsefDateCorrectionService dateCorrections,
+      JdbcTemplate jdbc) {
+    this.jdbc = jdbc;
     this.dateCorrections = dateCorrections;
     this.autoRecalculation = autoRecalculation;
     this.source = source;
@@ -99,8 +103,37 @@ public class RyczaltKsefImportService implements RyczaltKsefApi {
     return acquire(profileId, month, Set.of(KsefSyncMode.SALES, KsefSyncMode.PURCHASES), true);
   }
 
+  @Override
+  @Transactional(readOnly = true)
+  public List<Long> connectedProfileIds() {
+    return source.taxpayerNip().map(RyczaltKsefImportService::digits)
+        .filter(nip -> !nip.isEmpty())
+        .map(nip -> jdbc.queryForList(
+            "SELECT profile_id FROM ryczalt.ryczalt_profile"
+                + " WHERE regexp_replace(nip, '\\D', '', 'g') = ? ORDER BY profile_id",
+            Long.class, nip))
+        .orElse(List.of());
+  }
+
+  /** KSeF invoices belong to exactly one taxpayer; never import them into another profile. */
+  private void requireConnectedProfile(long profileId) {
+    String taxpayer = source.taxpayerNip().map(RyczaltKsefImportService::digits).orElse("");
+    String profileNip = jdbc.query(
+            "SELECT nip FROM ryczalt.ryczalt_profile WHERE profile_id = ?",
+            (rs, row) -> rs.getString(1), profileId)
+        .stream().findFirst().map(RyczaltKsefImportService::digits).orElse("");
+    if (taxpayer.isEmpty() || !taxpayer.equals(profileNip)) {
+      throw new KsefProfileMismatchException(profileId);
+    }
+  }
+
+  private static String digits(String value) {
+    return value == null ? "" : value.replaceAll("\\D", "");
+  }
+
   private RyczaltKsefSyncResult acquire(
       long profileId, YearMonth month, Set<KsefSyncMode> modes, boolean reimport) {
+    requireConnectedProfile(profileId);
     var records = source.fetch(new KsefSyncCommand(month, modes));
     int imported = 0;
     int duplicates = 0;

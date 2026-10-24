@@ -3,7 +3,6 @@ package com.smartbox.investory.config;
 import com.smartbox.investory.integrations.ksef.KsefSyncJobPort;
 import com.smartbox.investory.ryczalt.application.ksef.RyczaltKsefApi;
 import com.smartbox.investory.ryczalt.integration.ksef.KsefSyncMode;
-import com.smartbox.investory.ryczalt.persistence.RyczaltPeriodJpaRepository;
 import java.time.YearMonth;
 import java.util.ArrayList;
 import java.util.Set;
@@ -17,17 +16,21 @@ public class RyczaltKsefIntegrationJobPort implements KsefSyncJobPort {
   private static final Set<KsefSyncMode> MODES = Set.of(KsefSyncMode.SALES, KsefSyncMode.PURCHASES);
 
   private final RyczaltKsefApi ksef;
-  private final RyczaltPeriodJpaRepository periods;
 
-  public RyczaltKsefIntegrationJobPort(RyczaltKsefApi ksef, RyczaltPeriodJpaRepository periods) {
+  public RyczaltKsefIntegrationJobPort(RyczaltKsefApi ksef) {
     this.ksef = ksef;
-    this.periods = periods;
   }
 
+  /** The KSeF connection belongs to one taxpayer: only profiles with that NIP are synced. */
   @Override
   public void sync(YearMonth month) {
+    var profiles = ksef.connectedProfileIds();
+    if (profiles.isEmpty()) {
+      log.warn("KSeF sync skipped: no profile NIP matches the KSeF integration NIP, month={}", month);
+      return;
+    }
     var failures = new ArrayList<Long>();
-    for (long profileId : periods.findDistinctProfileIds()) {
+    for (long profileId : profiles) {
       try {
         var result = ksef.sync(profileId, month, MODES);
         log.info(

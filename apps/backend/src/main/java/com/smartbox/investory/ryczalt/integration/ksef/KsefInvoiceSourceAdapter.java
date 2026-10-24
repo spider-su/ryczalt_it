@@ -49,6 +49,11 @@ public class KsefInvoiceSourceAdapter implements InvoiceSourcePort {
     return records;
   }
 
+  @Override
+  public java.util.Optional<String> taxpayerNip() {
+    return invoices.taxpayerNip();
+  }
+
   private InvoiceSourceRecord toRecord(
       InvoiceMetadata metadata, InvoiceDirection direction, Fa3Invoice invoice) {
     String ksefNumber = metadata.ksefNumber();

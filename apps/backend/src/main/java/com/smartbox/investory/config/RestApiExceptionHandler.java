@@ -8,6 +8,7 @@ import com.smartbox.investory.ryczalt.application.RyczaltInvoiceConflictExceptio
 import com.smartbox.investory.ryczalt.application.RyczaltInvoiceNotFoundException;
 import com.smartbox.investory.ryczalt.application.RyczaltObligationNotFoundException;
 import com.smartbox.investory.ryczalt.application.RyczaltProfileNotFoundException;
+import com.smartbox.investory.ryczalt.application.ksef.KsefProfileMismatchException;
 import com.smartbox.investory.ryczalt.application.query.RyczaltPeriodNotFoundException;
 import com.smartbox.investory.shared.time.ApplicationTime;
 import com.smartbox.investory.user.application.UserInvitationConflictException;
@@ -71,6 +72,12 @@ public class RestApiExceptionHandler {
   @ExceptionHandler(UserInvitationConflictException.class)
   public ResponseEntity<ApiError> invitationConflict(
       UserInvitationConflictException exception, HttpServletRequest request) {
+    return error(HttpStatus.CONFLICT, message(exception), request);
+  }
+
+  @ExceptionHandler(KsefProfileMismatchException.class)
+  public ResponseEntity<ApiError> ksefProfileMismatch(
+      KsefProfileMismatchException exception, HttpServletRequest request) {
     return error(HttpStatus.CONFLICT, message(exception), request);
   }
 
