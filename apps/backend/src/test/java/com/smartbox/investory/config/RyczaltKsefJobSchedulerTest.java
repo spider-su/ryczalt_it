@@ -34,6 +34,8 @@ class RyczaltKsefJobSchedulerTest {
   private final IntegrationInstanceRepository instances = mock(IntegrationInstanceRepository.class);
   private final RyczaltKsefSyncJob sync = mock(RyczaltKsefSyncJob.class);
   private final JdbcTemplate jdbc = mock(JdbcTemplate.class);
+  private final com.smartbox.investory.notifications.Notifier notifier =
+      mock(com.smartbox.investory.notifications.Notifier.class);
   private final ClockApplicationTime time =
       new ClockApplicationTime(
           Clock.fixed(Instant.parse("2026-10-10T00:05:00Z"), ZoneId.of("UTC")),
@@ -57,6 +59,7 @@ class RyczaltKsefJobSchedulerTest {
     verify(sync).run();
     assertThat(statuses).containsExactly("STARTED", "SUCCESS");
     assertThat(job.getLastCompletedAt()).isNotNull();
+    verifyNoInteractions(notifier);
   }
 
   @Test
@@ -141,10 +144,11 @@ class RyczaltKsefJobSchedulerTest {
     assertThat(statuses).containsExactly("STARTED", "FAILED");
     assertThat(job.getLastError()).contains("source unavailable");
     assertThat(job.getLastCompletedAt()).isNotNull();
+    verify(notifier).notifyOperators(org.mockito.ArgumentMatchers.contains("source unavailable"));
   }
 
   private RyczaltKsefJobScheduler scheduler() {
-    return new RyczaltKsefJobScheduler(jobs, instances, sync, time, jdbc);
+    return new RyczaltKsefJobScheduler(jobs, instances, sync, time, jdbc, notifier);
   }
 
   private static IntegrationJobEntity job() {
