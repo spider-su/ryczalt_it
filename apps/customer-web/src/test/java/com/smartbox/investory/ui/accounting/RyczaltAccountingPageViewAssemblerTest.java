@@ -9,6 +9,17 @@ import java.util.List;
 import org.junit.jupiter.api.Test;
 
 class RyczaltAccountingPageViewAssemblerTest {
+  @Test
+  void emptyPeriodDoesNotInventCalculationAmounts() {
+    var period = RyczaltAccountingPageViewAssembler.emptyPeriod(YearMonth.of(2026, 1));
+    org.junit.jupiter.api.Assertions.assertNull(period.audit().revenue());
+    org.junit.jupiter.api.Assertions.assertNull(period.audit().monthlyAdvance());
+    org.junit.jupiter.api.Assertions.assertNull(period.audit().finalPayable());
+    org.junit.jupiter.api.Assertions.assertNull(period.summary().ryczalt());
+    org.junit.jupiter.api.Assertions.assertNull(period.summary().vat());
+    org.junit.jupiter.api.Assertions.assertNull(period.summary().zus());
+  }
+
   @org.junit.jupiter.params.ParameterizedTest
   @org.junit.jupiter.params.provider.CsvSource({"100.00,false", "99.05,false", "101.03,false", "99.04,true", "101.04,true"})
   void zusCardsSuppressOnlyDifferencesBelowOnePln(String comparison, boolean showDifference) {
