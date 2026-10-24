@@ -96,7 +96,8 @@ class RyczaltNativeKsefImportIT {
           "TRUNCATE ryczalt.ryczalt_payment_match, ryczalt.ryczalt_source_reference,"
               + " ryczalt.ryczalt_obligation, ryczalt.ryczalt_transaction,"
               + " ryczalt.ryczalt_invoice, ryczalt.ryczalt_calculation,"
-              + " ryczalt.ryczalt_audit_event, ryczalt.ryczalt_period RESTART IDENTITY"
+              + " ryczalt.ryczalt_audit_event, ryczalt.ryczalt_period,"
+              + " ryczalt.ryczalt_counterparty_rule, ryczalt.ryczalt_counterparty RESTART IDENTITY"
               + " CASCADE");
     }
     seedProfile(1, "ksef-profile-one", PROFILE_ONE_NIP);
