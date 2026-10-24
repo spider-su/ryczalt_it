@@ -164,6 +164,31 @@ class RyczaltAccountingPageRenderTest {
   }
 
   @Test
+  void unknownAuditValuesRenderAsDashesAndWaivedInvoicesHaveNoPaymentAction() throws Exception {
+    var month = YearMonth.of(2026, 8);
+    var period = new RyczaltWebAccountingClient.Period(month, "DIRTY", List.of(),
+        new RyczaltWebAccountingClient.Summary(BigDecimal.ZERO, null, null, null),
+        new RyczaltWebAccountingClient.Audit(null, null, null, null, null, null, null, null, null, null, null),
+        new RyczaltWebAccountingClient.Documents(1, 0),
+        new RyczaltWebAccountingClient.Settlement(0, 0, 0, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, true),
+        new RyczaltWebAccountingClient.Reconciliation(0, 0, 0, 0),
+        new RyczaltWebAccountingClient.Completeness("INCOMPLETE", 1), List.of());
+    when(accounting.periods(7)).thenReturn(List.of(new RyczaltWebAccountingClient.Month(month, "DIRTY")));
+    when(accounting.period(7, month)).thenReturn(period);
+    when(accounting.invoices(7, month)).thenReturn(List.of(new RyczaltWebAccountingClient.Invoice(
+        42, "COST", "SYNTHETIC-COST", LocalDate.of(2026, 8, 10), LocalDate.of(2026, 8, 10),
+        new BigDecimal("100"), new BigDecimal("23"), new BigDecimal("123"), "PLN", "APPROVED",
+        "MANUAL", "NOT_REQUIRED", "NOT_REQUIRED", "Synthetic supplier")));
+    String html = mvc.perform(get("/profiles/7/accounting?month=2026-08").session(loginSession()))
+        .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+    org.assertj.core.api.Assertions.assertThat(html)
+        .contains("Payment check waived")
+        .doesNotContain("/invoices/42/manual-paid", "/invoices/42/manual-unpaid");
+    String audit = html.substring(html.indexOf("id=\"audit\""), html.indexOf("id=\"income\""));
+    org.assertj.core.api.Assertions.assertThat(audit).contains("<td>—</td>").doesNotContain("<td>0,00</td>");
+  }
+
+  @Test
   void counterpartyListUsesPlaceholderForMissingTaxId() throws Exception {
     var session = loginSession();
     when(accounting.counterparties(7))

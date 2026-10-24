@@ -126,37 +126,9 @@ public record RyczaltPeriodReadModel(
       BigDecimal inputVat,
       BigDecimal vatAdjustments,
       BigDecimal finalPayable) {
-    public Audit {
-      revenue = value(revenue);
-      socialDeduction = value(socialDeduction);
-      healthDeduction = value(healthDeduction);
-      otherDeduction = value(otherDeduction);
-      taxableBase = value(taxableBase);
-      cumulativeTax = value(cumulativeTax);
-      monthlyAdvance = value(monthlyAdvance);
-      outputVat = value(outputVat);
-      inputVat = value(inputVat);
-      vatAdjustments = value(vatAdjustments);
-      finalPayable = value(finalPayable);
-    }
-
+    /** Null means no current calculation; it must not be displayed as a calculated zero. */
     public static Audit empty() {
-      return new Audit(
-          BigDecimal.ZERO,
-          BigDecimal.ZERO,
-          BigDecimal.ZERO,
-          BigDecimal.ZERO,
-          BigDecimal.ZERO,
-          BigDecimal.ZERO,
-          BigDecimal.ZERO,
-          BigDecimal.ZERO,
-          BigDecimal.ZERO,
-          BigDecimal.ZERO,
-          BigDecimal.ZERO);
-    }
-
-    private static BigDecimal value(BigDecimal value) {
-      return value == null ? BigDecimal.ZERO : value;
+      return new Audit(null, null, null, null, null, null, null, null, null, null, null);
     }
   }
 
