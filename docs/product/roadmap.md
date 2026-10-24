@@ -27,8 +27,9 @@ records source-supported features and explicit product boundaries.
 - **Months open themselves.** A daily job (`app.ryczalt.month-rollover.cron`,
   only with `app.scheduling.enabled=true`) creates the new period and copies the
   employment/insurance settings (JDG active, qualifying UoP, ZUS regime,
-  voluntary sickness) from the previous month. Paid amounts stay empty (assumed
-  equal to the obligation) and per-month corrections start at zero.
+  voluntary sickness) from the previous month. Paid amounts stay empty: paid
+  health assumes calculated health; paid social needs an explicit fact.
+  Per-month corrections start at zero.
 - **Every change recalculates.** Invoice approval, KSeF import, a settings
   change and a no-revenue confirmation recalculate from the changed month up to
   the current month, including months never calculated. The chain stops at the
@@ -61,9 +62,10 @@ records source-supported features and explicit product boundaries.
   `auto_approve_known_counterparties` and the three payment accounts on
   `ryczalt_profile`. Payment matching uses `ryczalt_payment_account_rule` and
   UoP is a monthly setting; wire or remove them.
-- **Derive paid ZUS amounts from settlement.** Paid social/health amounts are
-  optional: when absent, the calculation assumes the month's calculated ZUS
-  obligation was paid in full. Replace this simplification with amounts taken
+- **Derive paid ZUS amounts from settlement.** Missing paid health assumes the
+  calculated health contribution was paid; explicit overrides, including zero,
+  take precedence. Paid social still requires an explicit monthly fact. Replace
+  the paid-health simplification with amounts taken
   from matched/confirmed ZUS payments, and confirm with an accountant whether
   the deduction belongs to the contribution month or the payment month.
 
