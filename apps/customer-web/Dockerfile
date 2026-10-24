@@ -5,6 +5,8 @@ COPY src src
 RUN mvn -B -DskipTests package
 
 FROM eclipse-temurin:25-jre-alpine@sha256:b7528962e65d43064d8a8b67ba175367896bc948363ea2d3fcd7f10d34e1f048
+# Pull Alpine security fixes released after the pinned base digest (e.g. CVE-2026-111497 brotli).
+RUN apk upgrade --no-cache
 WORKDIR /app
 COPY --from=build /workspace/target/*.jar app.jar
 EXPOSE 8080
