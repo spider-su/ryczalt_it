@@ -90,6 +90,13 @@ public class KsefInvoiceService {
         upoReferenceNumber);
   }
 
+  /** NIP of the KSeF authentication context, when the integration is enabled. */
+  public java.util.Optional<String> taxpayerNip() {
+    return configurationService
+        .resolveEnabledGlobal(IntegrationType.E_INVOICING, KsefIntegrationPlugin.ID)
+        .flatMap(config -> config.value(KsefIntegrationPlugin.NIP));
+  }
+
   private KsefClient.KsefAccess authenticate(PluginConfig config) {
     return client.authenticateWithToken(
         plugin.environment(config),
