@@ -130,6 +130,9 @@ class RyczaltNativeBankImportIT {
     jdbc.update("UPDATE ryczalt.ryczalt_obligation SET status='FROZEN' WHERE id=?", obligationId);
     settlement.markObligationPaid(1, java.time.YearMonth.of(2026, 2), obligationId, java.time.LocalDate.of(2026, 2, 20), "Confirmed remainder");
     settlement.markObligationPaid(1, java.time.YearMonth.of(2026, 2), obligationId, java.time.LocalDate.of(2026, 2, 20), "Confirmed remainder");
+    // Repeated settlement must repair a stale status even when confirmation already exists.
+    jdbc.update("UPDATE ryczalt.ryczalt_obligation SET status='FROZEN' WHERE id=?", obligationId);
+    settlement.settlePeriod(1, java.time.YearMonth.of(2026, 2));
     var query = new com.smartbox.investory.ryczalt.application.query.RyczaltPaymentQueryService(
         periods, obligationRows, paymentMatches, java.math.BigDecimal.ZERO);
     var paid = query.getObligations(1, java.time.YearMonth.of(2026, 2)).getFirst();
