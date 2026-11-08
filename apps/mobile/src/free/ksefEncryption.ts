@@ -120,9 +120,9 @@ export function encodeBase64(bytes: Uint8Array): string {
     const a = bytes[i]!;
     const b = bytes[i + 1] ?? 0;
     const c = bytes[i + 2] ?? 0;
-    result += B64[a >> 2] + B64[((a & 3) << 4) | (b >> 4)] +
-      (i + 1 < bytes.length ? B64[((b & 15) << 2) | (c >> 6)] : "=") +
-      (i + 2 < bytes.length ? B64[c & 63] : "=");
+    result += B64.charAt(a >> 2) + B64.charAt(((a & 3) << 4) | (b >> 4)) +
+      (i + 1 < bytes.length ? B64.charAt(((b & 15) << 2) | (c >> 6)) : "=") +
+      (i + 2 < bytes.length ? B64.charAt(c & 63) : "=");
   }
   return result;
 }
