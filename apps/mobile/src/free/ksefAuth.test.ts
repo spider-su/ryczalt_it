@@ -49,7 +49,7 @@ describe("KSeF v2 authentication coordinator", () => {
 
   it("rejects malformed authentication responses", async () => {
     const transport = vi.fn().mockResolvedValue(reply({}));
-    const client = new KsefAuthClient("test", { encryptTokenWithKsefPublicKey: async () => "YQ==" }, transport);
+    const client = new KsefAuthClient("test", { encryptTokenWithKsefPublicKey: async () => ({ encryptedToken: "YQ==", publicKeyId: "public-key-1" }) }, transport);
     await expect(client.authenticate(nip, token)).rejects.toThrow();
     expect(transport).toHaveBeenCalledOnce();
   });
