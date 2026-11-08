@@ -42,7 +42,8 @@ No product backend / no own server
 ## Implementation checkpoint (2026-11-08)
 
 - **Implemented in branch:** default free mobile entrypoint (opt back into legacy with `EXPO_PUBLIC_PRODUCT_TIER=hosted`), independent company/NIP setup, official MF VAT registry lookup with checksum and fixture tests, explicit user confirmation, secure native company profile storage, clear KSeF/tax not-yet-available states.
-- **Not implemented yet:** KSeF authentication/sync, invoice local store, mobile calculation engine, complete free app parity tests and Android device acceptance. The tax and KSeF tabs deliberately display unavailability; the free app is **not ready for release**.
+- **Implemented in branch, but unverified end-to-end:** KSeF token onboarding tied to the confirmed NIP, secure native secret storage, metadata-only status, credential deletion on company removal/change, and an isolated KSeF v2 challenge/auth/poll/redeem coordinator with injected RSA-OAEP encryption interface and sanitized mocked protocol tests. It is **not wired to the UI** because a vetted native RSA-OAEP SHA-256 implementation and test-environment verification are still needed.
+- **Not implemented yet:** working native RSA-OAEP crypto adapter, live KSeF authentication/sync, invoice local store, mobile calculation engine, complete free app parity tests and Android device acceptance. The tax and KSeF tabs deliberately display unavailability; the free app is **not ready for release**.
 - Official VAT registry API moved to `https://wykazpodatnikowvat.mf.gov.pl/api` on 2026-10-15; old domain is supported only temporarily.
 
 ## Porting / implementation sequence
