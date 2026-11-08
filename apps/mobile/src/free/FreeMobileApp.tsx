@@ -5,6 +5,8 @@ import { StatusBar } from "expo-status-bar";
 import type { VatCompany } from "./nip";
 import { lookupCompanyByNip, validNip } from "./nip";
 import { loadCompany, removeCompany, saveCompany } from "./localCompany";
+import { deleteKsefToken } from "./ksefCredentials";
+import { KsefSetup } from "./KsefSetup";
 
 type Screen = "company" | "invoices" | "taxes";
 const BACKGROUND = "#f7f9fc";
@@ -54,6 +56,10 @@ function FreeContent() {
     setBusy(true);
     setError(null);
     try {
+      if (company && company.nip !== candidate.nip) {
+        // Remove the old company credential before changing the active identity.
+        await deleteKsefToken();
+      }
       await saveCompany(candidate);
       setCompany(candidate);
       setCandidate(null);
@@ -67,7 +73,7 @@ function FreeContent() {
     Alert.alert("Usuń dane firmy?", "Spowoduje to usunięcie lokalnie zapisanego profilu firmy.", [
       { text: "Anuluj", style: "cancel" },
       { text: "Usuń", style: "destructive", onPress: () => {
-        void removeCompany().then(() => { setCompany(null); setCandidate(null); setNip(""); setError(null); })
+        void deleteKsefToken().then(removeCompany).then(() => { setCompany(null); setCandidate(null); setNip(""); setError(null); })
           .catch(() => setError("Nie udało się usunąć danych."));
       } },
     ]);
@@ -116,7 +122,7 @@ function FreeContent() {
           <View style={styles.card}>
             <Text style={styles.heading}>Faktury KSeF</Text>
             <Text style={styles.muted}>{company ? `Firma: ${company.name} (NIP ${company.nip})` : "Najpierw potwierdź NIP na karcie Firma."}</Text>
-            <Text style={styles.note}>Połączenie z KSeF jest w przygotowaniu. W tym wydaniu nie przyjmujemy jeszcze tokenu, nie odczytujemy faktur i nie przechowujemy danych uwierzytelniających.</Text>
+            {company ? <KsefSetup nip={company.nip} /> : null}
           </View>
         ) : null}
         {!loading && screen === "taxes" ? (
