@@ -16,7 +16,7 @@ describe("KSeF v2 authentication coordinator", () => {
       .mockResolvedValueOnce(reply({ status: { code: 100 } }))
       .mockResolvedValueOnce(reply({ status: { code: 200 } }))
       .mockResolvedValueOnce(reply({ accessToken: { token: "jwt-1" }, refreshToken: { token: "refresh-1" } }));
-    const encrypt = vi.fn().mockResolvedValue("ZmFrZWNpcGhlcg==");
+    const encrypt = vi.fn().mockResolvedValue({ encryptedToken: "ZmFrZWNpcGhlcg==", publicKeyId: "public-key-1" });
     const delay = vi.fn().mockResolvedValue(undefined);
     const client = new KsefAuthClient("test", { encryptTokenWithKsefPublicKey: encrypt }, transport, delay);
     await expect(client.authenticate(nip, token)).resolves.toEqual({
@@ -33,6 +33,7 @@ describe("KSeF v2 authentication coordinator", () => {
     const requests = transport.mock.calls.map((call: unknown[]) => JSON.stringify(call));
     expect(requests.join(" ")).not.toContain(token);
     expect(requests[1]).toContain('"type":"Nip"');
+    expect(requests[1]).toContain('"publicKeyId":"public-key-1"');
     expect(delay).toHaveBeenCalledOnce();
   });
 
@@ -41,7 +42,7 @@ describe("KSeF v2 authentication coordinator", () => {
       .mockResolvedValueOnce(reply({ challenge: "c", timestamp: "2026-11-08T12:00:00Z" }))
       .mockResolvedValueOnce(reply({ referenceNumber: "ref", authenticationToken: { token: "temporary" } }))
       .mockResolvedValueOnce(reply({ status: { code: 400 } }));
-    const client = new KsefAuthClient("test", { encryptTokenWithKsefPublicKey: async () => "YQ==" }, transport);
+    const client = new KsefAuthClient("test", { encryptTokenWithKsefPublicKey: async () => ({ encryptedToken: "YQ==", publicKeyId: "public-key-1" }) }, transport);
     await expect(client.authenticate(nip, token)).rejects.toBeInstanceOf(KsefAuthError);
     expect(transport).toHaveBeenCalledTimes(3);
   });
