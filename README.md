@@ -14,6 +14,10 @@ The product is intentionally narrow at first: **JDG, 12% ryczałt, active VAT, m
 
 All four applications belong to one product repository but have independent build and deployment cycles.
 
+## Free Android release direction (not yet implemented)
+
+The next free Android release is scoped to **local-first, no product backend**, with NIP-based company lookup, user-provided read-only KSeF access, and mobile-owned monthly tax calculations. The existing backend/invitation and web workflows remain in source for a future hosted/premium tier. This is a **scope decision, not current runtime behavior**: the existing mobile app still requires backend access and calculations remain server-side until they are ported and independently validated. See [free mobile MVP and migration gates](docs/product/free-mobile-mvp.md).
+
 ## First use
 
 The current account lifecycle is invitation-based: backend-provisioned users

@@ -1,0 +1,10 @@
+{
+  "platforms": [
+    "android"
+  ],
+  "android": {
+    "modules": [
+      "pl.ryczalt.ksefcrypto.KsefCryptoModule"
+    ]
+  }
+}
