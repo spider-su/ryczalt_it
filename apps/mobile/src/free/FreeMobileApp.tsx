@@ -94,7 +94,7 @@ function FreeContent() {
             <Text style={styles.muted}>Wpisz NIP, aby pobrać dane z oficjalnego Wykazu podatników VAT Ministerstwa Finansów. Nie jest to logowanie ani potwierdzenie uprawnień do firmy.</Text>
             <Text style={styles.label}>NIP</Text>
             <TextInput accessibilityLabel="NIP" style={styles.input} keyboardType="number-pad" maxLength={13}
-              value={nip} onChangeText={setNip} placeholder="1234567890" editable={!busy} />
+              value={nip} onChangeText={(value) => { setNip(value); setCandidate(null); setError(null); }} placeholder="1234567890" editable={!busy} />
             <Action label={busy ? "Pobieranie…" : "Pobierz dane firmy"} disabled={busy || !validNip(nip)} onPress={() => void search()} />
             {candidate ? (
               <View style={styles.card}>
