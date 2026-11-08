@@ -33,11 +33,17 @@ No product backend / no own server
 
 - Keep all credentials and invoice information on device. Store KSeF secrets in Android Keystore-backed secure storage (`expo-secure-store`), NOT AsyncStorage, logs, Sentry events, analytics, query strings or exported backups. If secure storage is unavailable, fail closed. Provide disconnect / remove local data controls. Verify local database encryption independently; AsyncStorage alone is not an encrypted accounting-data store.
 - Direct KSeF v2 authentication is **not** an HTTP bearer token copy/paste. KSeF system token -> challenge -> encrypt `token|timestamp` using current MF RSA-OAEP/SHA-256 public key -> initiate auth -> poll -> obtain short-lived JWT -> query read-authorized invoice endpoints. Implement against current OpenAPI and integration guide, handle token expiry and permission failures. There must be no private server-side key.
-- **2027 authentication gate**: MF's March 2026 manual states KSeF token authentication is transitional through 2026 and certificates are intended from 2027. Validate current law and API behavior before shipping/advertising KSeF token onboarding for 2027. Certificate authentication must be supported or the feature visibly marked unavailable; never silently simulate a sync. Make credential type a pluggable interface to avoid rewriting the invoice module.
+- **KSeF authentication**: MF's updated KSeF 2.0 FAQ (question 39, checked 2026-11-08) confirms that token authentication is to remain available indefinitely, superseding the earlier 2026 sunset statement in its manual. Validate current API behaviour and legal rules at release; implement official token authentication first and keep certificate support extensible. Never simulate a sync.
 - Use safe deterministic decimal/cents arithmetic; no JavaScript floating-point calculations for tax. Version tax rules by effective date and source. Port existing Java backend calculations, not UI display/DTO functions, and compare with Java reference outputs including rounding, year-to-date history, VAT carry-forward and missing prior contributions.
 - KSeF cannot establish whether an invoice is paid, whether every expense is VAT deductible, the applicable ryczałt rate for mixed services, cash-basis choices or complete opening-year ZUS/VAT history. Separate imported facts from user-confirmed accounting classifications. Unsupported invoice features or missing FX rates block “ready” output.
 - Offline: prior synced data and validated tax estimates remain readable; live NIP lookup and KSeF refresh require internet. Do not show offline data as current after a failed refresh.
 - Prefer local schema migrations and tests. Preserve existing backend and customer apps for premium; do not delete them as part of free Android scope.
+
+## Implementation checkpoint (2026-11-08)
+
+- **Implemented in branch:** default free mobile entrypoint (opt back into legacy with `EXPO_PUBLIC_PRODUCT_TIER=hosted`), independent company/NIP setup, official MF VAT registry lookup with checksum and fixture tests, explicit user confirmation, secure native company profile storage, clear KSeF/tax not-yet-available states.
+- **Not implemented yet:** KSeF authentication/sync, invoice local store, mobile calculation engine, complete free app parity tests and Android device acceptance. The tax and KSeF tabs deliberately display unavailability; the free app is **not ready for release**.
+- Official VAT registry API moved to `https://wykazpodatnikowvat.mf.gov.pl/api` on 2026-10-15; old domain is supported only temporarily.
 
 ## Porting / implementation sequence
 
