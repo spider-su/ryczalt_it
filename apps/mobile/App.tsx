@@ -1,4 +1,5 @@
 import { NavigationContainer } from '@react-navigation/native';
+import { FreeMobileApp } from './src/free/FreeMobileApp';
 import { StatusBar, setStatusBarStyle } from 'expo-status-bar';
 import { ActivityIndicator, Platform, Pressable, Text, View } from 'react-native';
 import { NavigationBar } from 'expo-navigation-bar';
@@ -20,9 +21,15 @@ import { NetworkStatusBanner } from './src/components/NetworkStatusBanner';
 import { captureAppException, initializeCrashMonitoring } from './src/monitoring/sentry';
 import { appSafeAreaEdges, fallbackSafeAreaEdges } from './src/navigation/safeAreaLayout';
 
-initializeCrashMonitoring();
-
+// The free release performs no calls to Ryczalt-controlled services.
+// Set EXPO_PUBLIC_PRODUCT_TIER=hosted only for the legacy authenticated application.
 export default function App() {
+  if (process.env.EXPO_PUBLIC_PRODUCT_TIER !== 'hosted') return <FreeMobileApp />;
+  return <HostedApp />;
+}
+
+function HostedApp() {
+  useEffect(() => { initializeCrashMonitoring(); }, []);
   return (
     <AppErrorBoundary>
       <SafeAreaProvider>
