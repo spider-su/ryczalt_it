@@ -90,8 +90,6 @@ export function extractSpkiFromX509Der(der: Uint8Array): Uint8Array {
   const parts = children(der, spki);
   if (parts.length !== 2 || parts[0]?.tag !== 0x30 || parts[1]?.tag !== 0x03)
     throw new Error("Niepoprawny klucz publiczny X.509.");
-  const start = spki.start - (spki.next - spki.end); // overwritten below by direct tag search
-  void start;
   // SPKI begins at the original DER element's tag position. Find it by
   // traversing from TBS start so we retain tag+length bytes intact.
   let cursor = tbs.start;
