@@ -14,7 +14,7 @@ const HOSTS: Record<KsefEnvironment, string> = {
 
 export interface KsefRsaEncryptor {
   /** Encrypt UTF-8 token|timestampMs with current KSeF public RSA key, RSA-OAEP SHA-256; return Base64 ciphertext. */
-  encryptTokenWithKsefPublicKey(plaintext: string, environment: KsefEnvironment): Promise<string>;
+  encryptTokenWithKsefPublicKey(plaintext: string, environment: KsefEnvironment): Promise<{ encryptedToken: string; publicKeyId: string }>;
 }
 export interface KsefAuthResult {
   accessToken: string;
@@ -75,14 +75,15 @@ export class KsefAuthClient {
     const challengeId = requiredString(challenge.challenge);
     const timestampMs = Date.parse(requiredString(challenge.timestamp));
     if (!Number.isFinite(timestampMs)) throw new KsefAuthError("protocol");
-    const encryptedToken = await this.encryptor.encryptTokenWithKsefPublicKey(
+    const encrypted = await this.encryptor.encryptTokenWithKsefPublicKey(
       `${systemToken}|${timestampMs}`, this.environment,
     );
-    if (!encryptedToken || !/^[A-Za-z0-9+/]+={0,2}$/.test(encryptedToken)) throw new KsefAuthError("protocol");
+    if (!encrypted.encryptedToken || !/^[A-Za-z0-9+/]+={0,2}$/.test(encrypted.encryptedToken) || !encrypted.publicKeyId) throw new KsefAuthError("protocol");
     const started = await this.json<AuthInitiation>("/v2/auth/ksef-token", "POST", {
       challenge: challengeId,
       contextIdentifier: { type: "Nip", value: nip },
-      encryptedToken,
+      encryptedToken: encrypted.encryptedToken,
+      publicKeyId: encrypted.publicKeyId,
     });
     const ref = requiredString(started.referenceNumber);
     const temporary = requiredString(started.authenticationToken?.token);
