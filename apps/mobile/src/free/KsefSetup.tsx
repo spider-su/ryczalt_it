@@ -4,19 +4,25 @@ import {
   deleteKsefToken,
   loadKsefCredentialMetadata,
   saveKsefToken,
+  getKsefTokenForAuthentication,
   type KsefCredentialMetadata,
 } from "./ksefCredentials";
+import { KsefAuthClient } from "./ksefAuth";
+import { KsefAndroidEncryptor } from "./ksefNativeEncryption";
 
 export function KsefSetup({ nip }: { nip: string }) {
   const [token, setToken] = useState("");
   const [metadata, setMetadata] = useState<KsefCredentialMetadata | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [verifying, setVerifying] = useState(false);
+  const [verified, setVerified] = useState(false);
   const [error, setError] = useState<string | null>(null);
   useEffect(() => {
     let live = true;
     setLoading(true);
     setMetadata(null);
+    setVerified(false);
     setError(null);
     void loadKsefCredentialMetadata(nip).then((value) => {
       if (live) setMetadata(value);
@@ -32,17 +38,36 @@ export function KsefSetup({ nip }: { nip: string }) {
     setError(null);
     try {
       setMetadata(await saveKsefToken(nip, token));
+      setVerified(false);
       setToken("");
     } catch {
       setError("Nie udało się bezpiecznie zapisać tokenu. Nie jest on aktywny.");
     } finally { setSaving(false); }
   }
 
+  async function verifyConnection() {
+    if (verifying || loading || !metadata) return;
+    setVerifying(true);
+    setError(null);
+    setVerified(false);
+    try {
+      const savedToken = await getKsefTokenForAuthentication(nip);
+      if (!savedToken) throw new Error("Nie znaleziono zapisanego tokenu.");
+      // Only official production KSeF endpoints; auth tokens stay in memory and
+      // are discarded immediately. Do not persist API JWTs or log exceptions.
+      const auth = new KsefAuthClient("production", new KsefAndroidEncryptor());
+      await auth.authenticate(nip, savedToken);
+      setVerified(true);
+    } catch {
+      setError("KSeF nie potwierdził połączenia. Sprawdź token, uprawnienia oraz dostępność systemu.");
+    } finally { setVerifying(false); }
+  }
+
   function disconnect() {
     Alert.alert("Usuń token KSeF?", "Token zostanie usunięty z tego urządzenia. Nie zostanie unieważniony w systemie KSeF.", [
       { text: "Anuluj", style: "cancel" },
       { text: "Usuń", style: "destructive", onPress: () => {
-        void deleteKsefToken().then(() => { setMetadata(null); setToken(""); setError(null); })
+        void deleteKsefToken().then(() => { setMetadata(null); setToken(""); setVerified(false); setError(null); })
           .catch(() => setError("Nie udało się usunąć tokenu."));
       } },
     ]);
@@ -56,6 +81,11 @@ export function KsefSetup({ nip }: { nip: string }) {
     {metadata && !loading ? <>
       <Text style={styles.ok}>Token zapisany na urządzeniu dla NIP {metadata.nip}</Text>
       <Text style={styles.help}>Zapisano: {new Date(metadata.savedAt).toLocaleDateString("pl-PL")}. Token nie został jeszcze sprawdzony w KSeF.</Text>
+      <Pressable accessibilityRole="button" accessibilityState={{ disabled: verifying }}
+        disabled={verifying} onPress={() => void verifyConnection()} style={styles.button}>
+        <Text style={styles.buttonText}>{verifying ? "Sprawdzanie połączenia…" : "Sprawdź połączenie z KSeF"}</Text>
+      </Pressable>
+      {verified ? <Text style={styles.ok}>Uwierzytelnienie KSeF zakończone pomyślnie w tej sesji. Uprawnienia odczytu faktur nie zostały jeszcze sprawdzone.</Text> : null}
       <Pressable accessibilityRole="button" onPress={disconnect} style={styles.buttonAlt}><Text style={styles.red}>Usuń token z urządzenia</Text></Pressable>
     </> : null}
     {!loading ? <>
@@ -67,7 +97,7 @@ export function KsefSetup({ nip }: { nip: string }) {
         disabled={saving || !token.trim()} style={[styles.button, (saving || !token.trim()) && styles.disabled]}
         onPress={() => void save()}><Text style={styles.buttonText}>Zapisz bezpiecznie</Text></Pressable>
     </> : null}
-    <Text style={styles.warn}>Odczyt faktur nie jest jeszcze aktywny. Zapisanie tokenu nie oznacza połączenia ani jego weryfikacji. Do uruchomienia synchronizacji potrzebne będzie zgodne z KSeF 2.0 uwierzytelnienie RSA-OAEP.</Text>
+    <Text style={styles.warn}>Odczyt i synchronizacja faktur nie są jeszcze aktywne. Możesz jedynie przetestować uwierzytelnienie w środowisku produkcyjnym KSeF. Token nigdy nie jest wysyłany w postaci jawnej.</Text>
   </View>;
 }
 
