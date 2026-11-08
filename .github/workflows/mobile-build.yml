@@ -46,10 +46,12 @@ jobs:
           packages: platform-tools
       - run: sdkmanager 'platforms;android-36' 'build-tools;36.0.0' 'ndk;27.1.12297006' 'cmake;3.22.1'
       - run: npm ci
+      - name: Align Expo CLI with Expo Doctor
+        run: npm install --no-save --package-lock=false '@expo/cli@^57.0.29'
       - run: npm run ci
       - run: npx expo-doctor
       - name: Generate native Android project locally
-        run: npx expo prebuild --clean --platform android --no-install
+        run: npx expo prebuild --clean --platform android
       - name: Assemble debug APK locally
         working-directory: apps/mobile/android
         run: ./gradlew --no-daemon assembleDebug
