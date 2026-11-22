@@ -76,14 +76,8 @@ Build and environment rules are defined in [release baseline](../../docs/operati
 
 ## Android APK from CI
 
-The **Local Android APK** workflow follows the `ryczalt` project's native build
-pattern: Node 24, Java 17, Android SDK 36, local `expo prebuild`, then Gradle
-`assembleDebug` on the GitHub runner. It does not submit an EAS Build request or
-consume Expo cloud build quota. Dependencies come from the committed lockfile;
-CI runs `npm ci`, the mobile quality checks, and Expo Doctor before building.
+The **Local Android APK** workflow builds a standalone, locally signed release APK using Node 24, Java 17, Android SDK 36, Expo prebuild and Gradle `assembleRelease`. The build explicitly selects the free product tier (`EXPO_PUBLIC_PRODUCT_TIER=free`), so it does not require the Ryczałt backend.
 
-After a successful run, download the **ryczalt-it-debug-apk** artifact from the
-workflow's Artifacts section. It contains the debug APK and is retained for
-14 days. This debug build uses Metro for its JavaScript bundle; it is a developer
-artifact. A standalone local QA release build is documented in
-[the APK build skill](../../.codex/skills/ryczalt-it-build-apk/SKILL.md).
+The workflow checks that `index.android.bundle` is packaged in the APK. This is an installable, self-contained QA APK that **does not require Metro or a development computer**. It is not signed with the Play Store release key and is not intended for store distribution.
+
+Download **ryczalt-it-standalone-apk** from the successful workflow run's Artifacts section, extract the archive and install the APK on your Android device. The artifact is retained for 14 days.
