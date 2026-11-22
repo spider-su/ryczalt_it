@@ -1,0 +1,100 @@
+name: Google Play Android AAB
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-aab:
+    runs-on: ubuntu-latest
+    timeout-minutes: 75
+    defaults:
+      run:
+        working-directory: apps/mobile
+    env:
+      CI: '1'
+      EXPO_NO_TELEMETRY: '1'
+      SENTRY_DISABLE_AUTO_UPLOAD: 'true'
+      EXPO_PUBLIC_PRODUCT_TIER: free
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: apps/mobile/package-lock.json
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v3
+        with:
+          packages: platform-tools
+      - run: sdkmanager 'platforms;android-36' 'build-tools;36.0.0' 'ndk;27.1.12297006' 'cmake;3.22.1'
+      - run: npm ci
+      - run: npm run ci
+      - run: npx expo-doctor
+      - name: Generate Android project
+        run: npx expo prebuild --clean --platform android --no-install
+      - name: Configure Play upload signing
+        env:
+          PLAY_UPLOAD_KEYSTORE_BASE64: ${{ secrets.PLAY_UPLOAD_KEYSTORE_BASE64 }}
+          PLAY_UPLOAD_STORE_PASSWORD: ${{ secrets.PLAY_UPLOAD_STORE_PASSWORD }}
+          PLAY_UPLOAD_KEY_ALIAS: ${{ secrets.PLAY_UPLOAD_KEY_ALIAS }}
+          PLAY_UPLOAD_KEY_PASSWORD: ${{ secrets.PLAY_UPLOAD_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          for key in PLAY_UPLOAD_KEYSTORE_BASE64 PLAY_UPLOAD_STORE_PASSWORD PLAY_UPLOAD_KEY_ALIAS PLAY_UPLOAD_KEY_PASSWORD; do
+            if [ -z "${!key:-}" ]; then echo "::error::Missing signing secret $key"; exit 1; fi
+          done
+          printf '%s' "$PLAY_UPLOAD_KEYSTORE_BASE64" | base64 --decode > android/app/play-upload.jks
+          cat >> android/gradle.properties <<EOF
+          PLAY_UPLOAD_STORE_FILE=play-upload.jks
+          PLAY_UPLOAD_STORE_PASSWORD=$PLAY_UPLOAD_STORE_PASSWORD
+          PLAY_UPLOAD_KEY_ALIAS=$PLAY_UPLOAD_KEY_ALIAS
+          PLAY_UPLOAD_KEY_PASSWORD=$PLAY_UPLOAD_KEY_PASSWORD
+          EOF
+          python3 - <<'PY'
+          from pathlib import Path
+          path=Path('android/app/build.gradle')
+          data=path.read_text()
+          anchor='    buildTypes {'
+          assert anchor in data, 'Gradle buildTypes block not found'
+          data=data.replace(anchor, '''    signingConfigs {
+              playUpload {
+                  storeFile file(project.property("PLAY_UPLOAD_STORE_FILE"))
+                  storePassword project.property("PLAY_UPLOAD_STORE_PASSWORD")
+                  keyAlias project.property("PLAY_UPLOAD_KEY_ALIAS")
+                  keyPassword project.property("PLAY_UPLOAD_KEY_PASSWORD")
+              }
+          }
+          '''+anchor,1)
+          import re
+          pattern=r'(release\\s*\\{[^{}]*?)signingConfig signingConfigs\\.debug'
+          data,count=re.subn(pattern,r'\\1signingConfig signingConfigs.playUpload',data,count=1,flags=re.S)
+          assert count==1, 'Release signingConfig not found; review generated Gradle configuration'
+          path.write_text(data)
+          PY
+      - name: Build signed release AAB
+        working-directory: apps/mobile/android
+        run: ./gradlew --no-daemon bundleRelease
+      - name: Verify AAB
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          from zipfile import ZipFile
+          paths=list(Path('android/app/build/outputs/bundle/release').glob('*.aab'))
+          assert len(paths)==1, f'Expected one AAB: {paths}'
+          with ZipFile(paths[0]) as bundle:
+              assert any(n.endswith('index.android.bundle') for n in bundle.namelist()), 'JavaScript bundle missing'
+          print('Standalone AAB bundle present:',paths[0])
+          PY
+      - name: Upload AAB for manual Play Console submission
+        uses: actions/upload-artifact@v4
+        with:
+          name: ryczalt-it-play-aab
+          path: apps/mobile/android/app/build/outputs/bundle/release/*.aab
+          retention-days: 14
+          if-no-files-found: error
