@@ -1,0 +1,1 @@
+Pierwsza wersja testowa: wyszukiwanie firmy po NIP, lokalny profil oraz bezpieczna konfiguracja i test uwierzytelnienia KSeF.
