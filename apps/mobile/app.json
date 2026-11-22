@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "Investory Accounting",
+    "name": "Ryczałt IT",
     "slug": "smart-box",
     "version": "0.1.0",
     "orientation": "portrait",
@@ -16,15 +16,15 @@
     },
     "android": {
       "package": "pl.investory.accounting",
-      "versionCode": 2,
+      "versionCode": 3,
       "adaptiveIcon": {
         "foregroundImage": "assets/brand/adaptive-foreground.png",
         "backgroundColor": "#E30620"
       }
     },
     "web": {
-      "name": "Investory",
-      "shortName": "Investory",
+      "name": "Ryczałt IT",
+      "shortName": "Ryczałt IT",
       "lang": "en",
       "themeColor": "#E30620",
       "backgroundColor": "#F5F7FC",
@@ -48,7 +48,7 @@
       [
         "expo-local-authentication",
         {
-          "faceIDPermission": "Allow Investory Accounting to use Face ID to unlock your account."
+          "faceIDPermission": "Allow Ryczałt IT to use Face ID to unlock your account."
         }
       ],
       "expo-notifications",
