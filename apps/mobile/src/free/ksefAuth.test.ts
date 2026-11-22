@@ -32,8 +32,12 @@ describe("KSeF v2 authentication coordinator", () => {
     ]);
     const requests = transport.mock.calls.map((call: unknown[]) => JSON.stringify(call));
     expect(requests.join(" ")).not.toContain(token);
-    expect(requests[1]).toContain('"type":"Nip"');
-    expect(requests[1]).toContain('"publicKeyId":"public-key-1"');
+    const authOptions = transport.mock.calls[1]?.[1];
+    expect(authOptions).toBeDefined();
+    const authRequest = JSON.parse((authOptions as RequestInit).body as string);
+    expect(authRequest.contextIdentifier).toEqual({ type: "Nip", value: nip });
+    expect(authRequest.publicKeyId).toBe("public-key-1");
+    expect(authRequest.encryptedToken).toBe("ZmFrZWNpcGhlcg==");
     expect(delay).toHaveBeenCalledOnce();
   });
 
