@@ -71,10 +71,11 @@ jobs:
               }
           }
           '''+anchor,1)
-          import re
-          pattern=r'(release\\s*\\{[^{}]*?)signingConfig signingConfigs\\.debug'
-          data,count=re.subn(pattern,r'\\1signingConfig signingConfigs.playUpload',data,count=1,flags=re.S)
-          assert count==1, 'Release signingConfig not found; review generated Gradle configuration'
+          marker='signingConfig signingConfigs.debug'
+          assert marker in data, 'Release signingConfig not found'
+          release=data.index('release {',data.index('buildTypes {'))
+          position=data.index(marker,release)
+          data=data[:position]+data[position:].replace(marker,'signingConfig signingConfigs.playUpload',1)
           path.write_text(data)
           PY
       - name: Build signed release AAB
