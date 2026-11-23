@@ -9,12 +9,6 @@ export function monthOffset(month: string, delta: number): string {
   const date = new Date(Date.UTC(year, number - 1 + delta, 1));
   return date.toISOString().slice(0, 7);
 }
-function money(minor: string | null): string {
-  if (minor === null) return "Wymaga kursu walutowego";
-  const value = BigInt(minor);
-  const abs = value < 0n ? -value : value;
-  return `${value < 0n ? "-" : ""}${abs / 100n},${(abs % 100n).toString().padStart(2, "0")} zł`;
-}
 export function LocalAccountingOverview({ nip, mode }: { nip: string; mode: "invoices" | "taxes" }) {
   const [month, setMonth] = useState(() => new Date().toISOString().slice(0, 7));
   // No import adapter is wired yet. Do not claim that an empty ledger was synchronized.
