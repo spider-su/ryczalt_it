@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { readSecureLedger } from "./secureInvoiceLedger";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { assessTaxReadiness, type InvoiceLedger } from "./invoiceLedger";
 import { summarizeKsefMonth } from "./monthlyInvoiceSummary";
@@ -12,7 +13,16 @@ export function monthOffset(month: string, delta: number): string {
 export function LocalAccountingOverview({ nip, mode }: { nip: string; mode: "invoices" | "taxes" }) {
   const [month, setMonth] = useState(() => new Date().toISOString().slice(0, 7));
   // No import adapter is wired yet. Do not claim that an empty ledger was synchronized.
-  const ledger: InvoiceLedger = { taxpayerNip: nip, invoices: [] };
+  const [ledger, setLedger] = useState<InvoiceLedger>({ taxpayerNip: nip, invoices: [] });
+  const [loadError, setLoadError] = useState<string | null>(null);
+  useEffect(() => {
+    let active = true;
+    setLedger({ taxpayerNip: nip, invoices: [] });
+    setLoadError(null);
+    void readSecureLedger(nip).then((saved) => { if (active) setLedger(saved); })
+      .catch(() => { if (active) setLoadError("Nie można odczytać zaszyfrowanych faktur."); });
+    return () => { active = false; };
+  }, [nip]);
   const summary = summarizeKsefMonth(ledger, month);
   const readiness = assessTaxReadiness(ledger, month, {});
   return <View style={styles.container}>
@@ -21,10 +31,11 @@ export function LocalAccountingOverview({ nip, mode }: { nip: string; mode: "inv
       <Text style={styles.title}>{month}</Text>
       <Pressable accessibilityRole="button" accessibilityLabel="Następny miesiąc" onPress={() => setMonth((m) => monthOffset(m, 1))} style={styles.nav}><Text>›</Text></Pressable>
     </View>
+    {loadError ? <Text accessibilityRole="alert" style={styles.muted}>{loadError}</Text> : null}
     {mode === "invoices" ? <>
       <Text style={styles.title}>Faktury z KSeF</Text>
       <Text>Sprzedaż: {summary.issuedCount} • Zakupy: {summary.receivedCount}</Text>
-      <Text style={styles.muted}>Synchronizacja nie została wykonana. Brak faktur w pamięci aplikacji nie oznacza braku faktur w KSeF.</Text>
+      <Text style={styles.muted}>{ledger.lastSuccessfulSync ? `Ostatnia synchronizacja: ${ledger.lastSuccessfulSync}` : "Synchronizacja nie została wykonana. Brak lokalnych faktur nie oznacza braku faktur w KSeF."}</Text>
       <Text style={styles.muted}>Kwoty i szczegóły pojawią się dopiero po uruchomieniu bezpiecznego importu KSeF.</Text>
     </> : <>
       <Text style={styles.title}>Gotowość rozliczenia</Text>
