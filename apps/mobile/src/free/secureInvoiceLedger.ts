@@ -49,7 +49,7 @@ export async function writeSecureLedger(ledger: InvoiceLedger, store: SecureLedg
   const payload = JSON.stringify(verified);
   // All records are ASCII-safe except user-controlled fields. Conservative
   // UTF-8 bound without relying on Node Buffer in React Native.
-  const bytes = new TextEncoder().encode(payload).length;
+  const bytes = encodeURIComponent(payload).replace(/%[0-9A-F]{2}|[^%]/g, (part) => part.startsWith('%') ? 'x' : part).length;
   if (bytes > MAX_BYTES) throw new Error("Ledger exceeds secure storage capacity; no data saved");
   await store.setItemAsync(key(ledger.taxpayerNip), payload, {
     keychainAccessible: SecureStore.WHEN_UNLOCKED_THIS_DEVICE_ONLY,
