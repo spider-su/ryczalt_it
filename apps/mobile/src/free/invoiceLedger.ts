@@ -24,11 +24,11 @@ export interface InvoiceLedger {
   invoices: KsefInvoice[];
   lastSuccessfulSync?: string;
 }
-const MONEY = /^-?\\d+$/;
-const DATE = /^\\d{4}-\\d{2}-\\d{2}$/;
+const MONEY = /^-?\d+$/;
+const DATE = /^\d{4}-\d{2}-\d{2}$/;
 function validInvoice(invoice: KsefInvoice, nip: string): boolean {
   return invoice.source === "ksef" && invoice.taxpayerNip === nip &&
-    /^\\d{10}$/.test(nip) && Boolean(invoice.ksefId.trim()) &&
+    /^\d{10}$/.test(nip) && Boolean(invoice.ksefId.trim()) &&
     DATE.test(invoice.issueDate) && /^[A-Z]{3}$/.test(invoice.currency) &&
     MONEY.test(invoice.netMinor) && MONEY.test(invoice.vatMinor) && MONEY.test(invoice.grossMinor) &&
     ["issued", "received"].includes(invoice.direction) &&
@@ -37,7 +37,7 @@ function validInvoice(invoice: KsefInvoice, nip: string): boolean {
 }
 /** An atomic merge of a validated KSeF page, deduplicated by official ID. */
 export function mergeKsefInvoices(ledger: InvoiceLedger, incoming: readonly KsefInvoice[]): InvoiceLedger {
-  if (!/^\\d{10}$/.test(ledger.taxpayerNip)) throw new Error("Invalid taxpayer context");
+  if (!/^\d{10}$/.test(ledger.taxpayerNip)) throw new Error("Invalid taxpayer context");
   if (incoming.some((invoice) => !validInvoice(invoice, ledger.taxpayerNip))) {
     throw new Error("Invalid KSeF invoice or taxpayer mismatch");
   }
@@ -63,7 +63,7 @@ export function assessTaxReadiness(
   facts: { openingVatMinor?: string; paidZusSocialMinor?: string; paidZusHealthMinor?: string; priorYearRevenueMinor?: string },
 ): TaxReadiness {
   const missing: string[] = [];
-  if (!/^\\d{4}-(0[1-9]|1[0-2])$/.test(month)) missing.push("Nieprawidłowy miesiąc");
+  if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(month)) missing.push("Nieprawidłowy miesiąc");
   if (!ledger.lastSuccessfulSync) missing.push("Brak synchronizacji KSeF");
   if (ledger.invoices.some((i) => i.issueDate.startsWith(month) && i.classification === "unclassified"))
     missing.push("Niesklasyfikowane faktury");
