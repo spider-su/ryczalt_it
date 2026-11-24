@@ -9,6 +9,7 @@ import {
 } from "./ksefCredentials";
 import { KsefAuthClient } from "./ksefAuth";
 import { KsefAndroidEncryptor } from "./ksefNativeEncryption";
+import { KsefInvoiceQuery } from "./ksefInvoiceQuery";
 
 export function KsefSetup({ nip }: { nip: string }) {
   const [token, setToken] = useState("");
@@ -17,12 +18,14 @@ export function KsefSetup({ nip }: { nip: string }) {
   const [saving, setSaving] = useState(false);
   const [verifying, setVerifying] = useState(false);
   const [verified, setVerified] = useState(false);
+  const [remoteCounts, setRemoteCounts] = useState<{ issued: number; received: number; month: string } | null>(null);
   const [error, setError] = useState<string | null>(null);
   useEffect(() => {
     let live = true;
     setLoading(true);
     setMetadata(null);
     setVerified(false);
+    setRemoteCounts(null);
     setError(null);
     void loadKsefCredentialMetadata(nip).then((value) => {
       if (live) setMetadata(value);
@@ -56,8 +59,15 @@ export function KsefSetup({ nip }: { nip: string }) {
       // Only official production KSeF endpoints; auth tokens stay in memory and
       // are discarded immediately. Do not persist API JWTs or log exceptions.
       const auth = new KsefAuthClient("production", new KsefAndroidEncryptor());
-      await auth.authenticate(nip, savedToken);
+      const session = await auth.authenticate(nip, savedToken);
       setVerified(true);
+      const month = new Date().toISOString().slice(0, 7);
+      const query = new KsefInvoiceQuery("production");
+      const [issued, received] = await Promise.all([
+        query.listMonth(session.accessToken, month, "Subject1"),
+        query.listMonth(session.accessToken, month, "Subject2"),
+      ]);
+      setRemoteCounts({ issued: issued.length, received: received.length, month });
     } catch {
       setError("KSeF nie potwierdził połączenia. Sprawdź token, uprawnienia oraz dostępność systemu.");
     } finally { setVerifying(false); }
@@ -85,7 +95,8 @@ export function KsefSetup({ nip }: { nip: string }) {
         disabled={verifying} onPress={() => void verifyConnection()} style={styles.button}>
         <Text style={styles.buttonText}>{verifying ? "Sprawdzanie połączenia…" : "Sprawdź połączenie z KSeF"}</Text>
       </Pressable>
-      {verified ? <Text style={styles.ok}>Uwierzytelnienie KSeF zakończone pomyślnie w tej sesji. Uprawnienia odczytu faktur nie zostały jeszcze sprawdzone.</Text> : null}
+      {verified ? <Text style={styles.ok}>Uwierzytelnienie KSeF zakończone pomyślnie w tej sesji.</Text> : null}
+      {remoteCounts ? <Text style={styles.ok}>KSeF {remoteCounts.month}: wystawione {remoteCounts.issued}, otrzymane {remoteCounts.received} (metadane online, jeszcze nie zapisane lokalnie).</Text> : null}
       <Pressable accessibilityRole="button" onPress={disconnect} style={styles.buttonAlt}><Text style={styles.red}>Usuń token z urządzenia</Text></Pressable>
     </> : null}
     {!loading ? <>
@@ -97,7 +108,7 @@ export function KsefSetup({ nip }: { nip: string }) {
         disabled={saving || !token.trim()} style={[styles.button, (saving || !token.trim()) && styles.disabled]}
         onPress={() => void save()}><Text style={styles.buttonText}>Zapisz bezpiecznie</Text></Pressable>
     </> : null}
-    <Text style={styles.warn}>Odczyt i synchronizacja faktur nie są jeszcze aktywne. Możesz jedynie przetestować uwierzytelnienie w środowisku produkcyjnym KSeF. Token nigdy nie jest wysyłany w postaci jawnej.</Text>
+    <Text style={styles.warn}>Sprawdzenie połączenia odczytuje teraz listę numerów faktur za bieżący miesiąc bezpośrednio z KSeF. Pobieranie XML FA(3), zapis lokalny i obliczenia podatkowe nie są jeszcze aktywne.</Text>
   </View>;
 }
 
