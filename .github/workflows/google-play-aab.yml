@@ -19,6 +19,20 @@ jobs:
       SENTRY_DISABLE_AUTO_UPLOAD: 'true'
       EXPO_PUBLIC_PRODUCT_TIER: free
     steps:
+      - name: Check Play upload signing secrets
+        env:
+          PLAY_UPLOAD_KEYSTORE_BASE64: ${{ secrets.PLAY_UPLOAD_KEYSTORE_BASE64 }}
+          PLAY_UPLOAD_STORE_PASSWORD: ${{ secrets.PLAY_UPLOAD_STORE_PASSWORD }}
+          PLAY_UPLOAD_KEY_ALIAS: ${{ secrets.PLAY_UPLOAD_KEY_ALIAS }}
+          PLAY_UPLOAD_KEY_PASSWORD: ${{ secrets.PLAY_UPLOAD_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          for key in PLAY_UPLOAD_KEYSTORE_BASE64 PLAY_UPLOAD_STORE_PASSWORD PLAY_UPLOAD_KEY_ALIAS PLAY_UPLOAD_KEY_PASSWORD; do
+            if [ -z "${!key:-}" ]; then
+              echo "::error title=Missing Google Play signing secret::$key is not configured. See docs/google-play/README.md for secure one-time setup."
+              exit 1
+            fi
+          done
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
