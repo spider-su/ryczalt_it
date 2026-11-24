@@ -19,6 +19,12 @@ describe("KSeF-only ledger", () => {
     expect(() => mergeKsefInvoices(ledger, [{ ...invoice, source: "manual" as "ksef" }])).toThrow();
     expect(ledger.invoices).toHaveLength(0);
   });
+  it("rejects impossible invoice dates and accepts leap days", () => {
+    for (const issueDate of ["2026-02-29", "2026-04-31", "2026-00-10", "2026-13-01", "0000-01-01"]) {
+      expect(() => mergeKsefInvoices(ledger, [{ ...invoice, issueDate }])).toThrow();
+    }
+    expect(mergeKsefInvoices(ledger, [{ ...invoice, issueDate: "2024-02-29" }]).invoices).toHaveLength(1);
+  });
   it("does not assume absent opening balances or ZUS equal zero", () => {
     const state = assessTaxReadiness({ ...ledger, invoices: [invoice] }, "2026-11", {});
     expect(state.ready).toBe(false);
