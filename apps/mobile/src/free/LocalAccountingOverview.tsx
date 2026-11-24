@@ -17,6 +17,7 @@ export function LocalAccountingOverview({ nip, mode }: { nip: string; mode: "inv
   const [ledger, setLedger] = useState<InvoiceLedger>({ taxpayerNip: nip, invoices: [] });
   const [loadError, setLoadError] = useState<string | null>(null);
   const [syncing, setSyncing] = useState(false);
+  const [direction, setDirection] = useState<"all" | "issued" | "received">("all");
   const [loadedNip, setLoadedNip] = useState<string | null>(null);
   useEffect(() => {
     let active = true;
@@ -37,6 +38,9 @@ export function LocalAccountingOverview({ nip, mode }: { nip: string; mode: "inv
   }
   const summary = summarizeKsefMonth(ledger, month);
   const readiness = assessTaxReadiness(ledger, month, {});
+  const monthly = ledger.invoices.filter((invoice) => invoice.issueDate.startsWith(month));
+  const visible = monthly.filter((invoice) => direction === "all" || invoice.direction === direction);
+  const money = (minor: string, currency: string) => `${(Number(minor) / 100).toLocaleString("pl-PL", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${currency}`;
   return <View style={styles.container}>
     <View style={styles.monthRow}>
       <Pressable accessibilityRole="button" accessibilityLabel="Poprzedni miesiąc" onPress={() => setMonth((m) => monthOffset(m, -1))} style={styles.nav}><Text>‹</Text></Pressable>
@@ -47,12 +51,15 @@ export function LocalAccountingOverview({ nip, mode }: { nip: string; mode: "inv
     {loadedNip === nip && !loadError ? (mode === "invoices" ? <>
       <Text style={styles.title}>Faktury z KSeF</Text>
       <Pressable accessibilityRole="button" disabled={syncing} onPress={() => void sync()} style={styles.nav}><Text>{syncing ? "Synchronizacja…" : "Synchronizuj z KSeF"}</Text></Pressable>
-      <Text>Sprzedaż: {summary.issuedCount} • Zakupy: {summary.receivedCount}</Text>
+      <View style={styles.metrics}><View style={styles.metric}><Text style={styles.muted}>Sprzedaż</Text><Text style={styles.title}>{summary.issuedCount}</Text></View><View style={styles.metric}><Text style={styles.muted}>Zakupy</Text><Text style={styles.title}>{summary.receivedCount}</Text></View></View>
+      <View style={styles.filters}>{([["all", "Wszystkie"], ["issued", "Sprzedaż"], ["received", "Zakupy"]] as const).map(([value, label]) => <Pressable key={value} accessibilityRole="button" accessibilityState={{ selected: direction === value }} onPress={() => setDirection(value)} style={[styles.filter, direction === value && styles.activeFilter]}><Text style={direction === value ? styles.activeText : styles.muted}>{label}</Text></Pressable>)}</View>
       <Text style={styles.muted}>{ledger.lastSuccessfulSync ? `Ostatnia synchronizacja: ${ledger.lastSuccessfulSync}` : "Synchronizacja nie została wykonana. Brak lokalnych faktur nie oznacza braku faktur w KSeF."}</Text>
-      {ledger.invoices.filter((invoice) => invoice.issueDate.startsWith(month)).map((invoice) => <View key={invoice.ksefId} style={styles.invoiceRow}><Text>{invoice.direction === "issued" ? "Sprzedaż" : "Zakup"} • {invoice.issueDate}</Text><Text>{invoice.grossMinor} / 100 {invoice.currency} • {invoice.ksefId}</Text></View>)}
+      {visible.length === 0 ? <Text style={styles.muted}>Brak zapisanych faktur dla wybranego miesiąca i filtra.</Text> : visible.map((invoice) => <View key={invoice.ksefId} style={styles.invoiceRow}><View style={styles.row}><Text style={styles.title}>{invoice.direction === "issued" ? "Sprzedaż" : "Zakup"}</Text><Text style={styles.amount}>{money(invoice.grossMinor, invoice.currency)}</Text></View><Text style={styles.muted}>{invoice.issueDate} • {invoice.kind === "correction" ? "Korekta" : "Faktura"}</Text><Text style={styles.muted} numberOfLines={1}>KSeF: {invoice.ksefId}</Text><Text style={styles.muted}>Netto: {money(invoice.netMinor, invoice.currency)} • VAT: {money(invoice.vatMinor, invoice.currency)}</Text></View>)}
     </> : <>
       <Text style={styles.title}>Gotowość rozliczenia</Text>
-      <Text style={styles.muted}>PIT, VAT i ZUS: brak wyliczenia (nie 0 zł).</Text>
+      <View style={styles.metrics}>{(["PIT", "VAT", "ZUS"] as const).map((label) => <View key={label} style={styles.metric}><Text style={styles.muted}>{label}</Text><Text style={styles.title}>—</Text><Text style={styles.muted}>Do wyliczenia</Text></View>)}</View>
+      <Text style={styles.muted}>Podsumowanie KSeF: {summary.issuedCount} sprzedaży, {summary.receivedCount} zakupów.</Text>
+      <Text style={styles.muted}>Kwoty podatków będą dostępne po uzupełnieniu danych i uruchomieniu lokalnego silnika rozliczeń.</Text>
       {readiness.missing.map((reason) => <Text key={reason} style={styles.muted}>• {reason}</Text>)}
       <Text style={styles.muted}>Podsumowanie faktur jest informacyjne, nie stanowi deklaracji podatkowej.</Text>
     </>) : !loadError ? <Text style={styles.muted}>Wczytywanie faktur…</Text> : null}
@@ -64,5 +71,13 @@ const styles = StyleSheet.create({
   nav: { paddingHorizontal: 20, paddingVertical: 10, backgroundColor: "#e2e8f0", borderRadius: 10 },
   title: { fontWeight: "700", fontSize: 17, color: "#132a48" },
   muted: { color: "#64748b", lineHeight: 21 },
+  metrics: { flexDirection: "row", gap: 8 },
+  metric: { flex: 1, backgroundColor: "#f1f5f9", borderRadius: 12, padding: 12, gap: 5 },
+  filters: { flexDirection: "row", gap: 8 },
+  filter: { flex: 1, alignItems: "center", padding: 9, borderRadius: 10, backgroundColor: "#f1f5f9" },
+  activeFilter: { backgroundColor: "#dbeafe" },
+  activeText: { color: "#1565c0", fontWeight: "700" },
+  row: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", gap: 8 },
+  amount: { fontWeight: "700", color: "#1565c0", fontSize: 16 },
   invoiceRow: { borderBottomWidth: 1, borderBottomColor: "#e2e8f0", paddingVertical: 10, gap: 4 },
 });
