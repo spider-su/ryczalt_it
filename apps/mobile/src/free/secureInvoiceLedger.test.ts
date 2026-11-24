@@ -1,4 +1,13 @@
 import { describe, expect, it, vi } from "vitest";
+
+// Unit tests provide a storage fake: do not initialize Expo native modules in Node.
+vi.mock("expo-secure-store", () => ({
+  WHEN_UNLOCKED_THIS_DEVICE_ONLY: 6,
+  getItemAsync: vi.fn(),
+  setItemAsync: vi.fn(),
+  deleteItemAsync: vi.fn(),
+}));
+vi.mock("react-native", () => ({ Platform: { OS: "android" } }));
 import { deleteSecureLedger, readSecureLedger, writeSecureLedger, type SecureLedgerStore } from "./secureInvoiceLedger";
 function memoryStore() {
   const values = new Map<string, string>();
