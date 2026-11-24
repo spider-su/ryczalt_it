@@ -51,40 +51,16 @@ jobs:
       - run: npx expo-doctor
       - name: Generate native Android project locally
         run: npx expo prebuild --clean --platform android --no-install
-      - name: Use runner JDK instead of Foojay auto-provisioning in local CI
+      - name: Use installed JDK instead of remote Foojay toolchain provisioning
         run: |
           python3 - <<'PY'
           from pathlib import Path
-          import re
           settings = Path('node_modules/@react-native/gradle-plugin/settings.gradle.kts')
           source = settings.read_text()
-          marker = r'^\\s*id\\("org\\.gradle\\.toolchains\\.foojay-resolver-convention"\\)\\.version\\("1\\.0\\.0"\\)\\s*        working-directory: apps/mobile/android
-        run: ./gradlew --no-daemon assembleRelease
-      - name: Verify bundled JavaScript in release APK
-        run: |
-          python3 - <<'PY'
-          from pathlib import Path
-          from zipfile import ZipFile
-          apks = list(Path('android/app/build/outputs/apk/release').glob('*.apk'))
-          assert len(apks) == 1, f'Expected one release APK, got {apks}'
-          with ZipFile(apks[0]) as archive:
-              names = archive.namelist()
-              assert any(name.endswith('index.android.bundle') for name in names), 'Standalone JavaScript bundle missing from APK'
-          print(f'Validated standalone JS bundle: {apks[0]}')
-          PY
-      - name: Upload standalone release APK
-        uses: actions/upload-artifact@v4
-        with:
-          name: ryczalt-it-standalone-apk
-          path: apps/mobile/android/app/build/outputs/apk/release/*.apk
-          if-no-files-found: error
-          retention-days: 14
-
-          updated, count = re.subn(marker, '', source, flags=re.MULTILINE)
-          if count != 1:
-              raise SystemExit('Expected exactly one Foojay plugin declaration in React Native settings')
-          settings.write_text(updated)
-          print('Using preinstalled Java 17; disabled only nested Foojay toolchain download')
+          plugin = 'id("org.gradle.toolchains.foojay-resolver-convention").version("1.0.0")'
+          if source.count(plugin) != 1:
+              raise SystemExit('React Native Foojay plugin declaration has changed')
+          settings.write_text(source.replace(plugin, '// Java 17 installed in CI; no Foojay resolver required'))
           PY
       - name: Assemble standalone release APK locally
         working-directory: apps/mobile/android
