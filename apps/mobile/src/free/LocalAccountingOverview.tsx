@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { readSecureLedger } from "./secureInvoiceLedger";
+import { synchronizeKsefMonth } from "./synchronizeKsefMonth";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { assessTaxReadiness, type InvoiceLedger } from "./invoiceLedger";
 import { summarizeKsefMonth } from "./monthlyInvoiceSummary";
@@ -15,6 +16,7 @@ export function LocalAccountingOverview({ nip, mode }: { nip: string; mode: "inv
   // No import adapter is wired yet. Do not claim that an empty ledger was synchronized.
   const [ledger, setLedger] = useState<InvoiceLedger>({ taxpayerNip: nip, invoices: [] });
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [syncing, setSyncing] = useState(false);
   const [loadedNip, setLoadedNip] = useState<string | null>(null);
   useEffect(() => {
     let active = true;
@@ -25,6 +27,14 @@ export function LocalAccountingOverview({ nip, mode }: { nip: string; mode: "inv
       .catch(() => { if (active) setLoadError("Nie można odczytać zaszyfrowanych faktur."); });
     return () => { active = false; };
   }, [nip]);
+  async function sync() {
+    if (syncing) return;
+    setSyncing(true);
+    setLoadError(null);
+    try { setLedger(await synchronizeKsefMonth(nip, month)); }
+    catch { setLoadError("Nie udało się ukończyć synchronizacji. Poprzednie dane pozostają zapisane; sprawdź token i połączenie."); }
+    finally { setSyncing(false); }
+  }
   const summary = summarizeKsefMonth(ledger, month);
   const readiness = assessTaxReadiness(ledger, month, {});
   return <View style={styles.container}>
@@ -36,9 +46,10 @@ export function LocalAccountingOverview({ nip, mode }: { nip: string; mode: "inv
     {loadError ? <Text accessibilityRole="alert" style={styles.muted}>{loadError}</Text> : null}
     {loadedNip === nip && !loadError ? (mode === "invoices" ? <>
       <Text style={styles.title}>Faktury z KSeF</Text>
+      <Pressable accessibilityRole="button" disabled={syncing} onPress={() => void sync()} style={styles.nav}><Text>{syncing ? "Synchronizacja…" : "Synchronizuj z KSeF"}</Text></Pressable>
       <Text>Sprzedaż: {summary.issuedCount} • Zakupy: {summary.receivedCount}</Text>
       <Text style={styles.muted}>{ledger.lastSuccessfulSync ? `Ostatnia synchronizacja: ${ledger.lastSuccessfulSync}` : "Synchronizacja nie została wykonana. Brak lokalnych faktur nie oznacza braku faktur w KSeF."}</Text>
-      <Text style={styles.muted}>Kwoty i szczegóły pojawią się dopiero po uruchomieniu bezpiecznego importu KSeF.</Text>
+      {ledger.invoices.filter((invoice) => invoice.issueDate.startsWith(month)).map((invoice) => <View key={invoice.ksefId} style={styles.invoiceRow}><Text>{invoice.direction === "issued" ? "Sprzedaż" : "Zakup"} • {invoice.issueDate}</Text><Text>{invoice.grossMinor} / 100 {invoice.currency} • {invoice.ksefId}</Text></View>)}
     </> : <>
       <Text style={styles.title}>Gotowość rozliczenia</Text>
       <Text style={styles.muted}>PIT, VAT i ZUS: brak wyliczenia (nie 0 zł).</Text>
@@ -53,4 +64,5 @@ const styles = StyleSheet.create({
   nav: { paddingHorizontal: 20, paddingVertical: 10, backgroundColor: "#e2e8f0", borderRadius: 10 },
   title: { fontWeight: "700", fontSize: 17, color: "#132a48" },
   muted: { color: "#64748b", lineHeight: 21 },
+  invoiceRow: { borderBottomWidth: 1, borderBottomColor: "#e2e8f0", paddingVertical: 10, gap: 4 },
 });
