@@ -7,6 +7,8 @@ import { lookupCompanyByNip, validNip } from "./nip";
 import { loadCompany, removeCompany, saveCompany } from "./localCompany";
 import { deleteKsefToken } from "./ksefCredentials";
 import { KsefSetup } from "./KsefSetup";
+import { LocalAccountingOverview } from "./LocalAccountingOverview";
+import { deleteSecureLedger } from "./secureInvoiceLedger";
 
 type Screen = "company" | "invoices" | "taxes";
 const BACKGROUND = "#f7f9fc";
@@ -70,10 +72,10 @@ function FreeContent() {
   }
 
   function erase() {
-    Alert.alert("Usuń dane firmy?", "Spowoduje to usunięcie lokalnie zapisanego profilu firmy.", [
+    Alert.alert("Usuń dane firmy?", "Spowoduje to usunięcie lokalnego profilu firmy, tokenu KSeF i zapisanych faktur tej firmy.", [
       { text: "Anuluj", style: "cancel" },
       { text: "Usuń", style: "destructive", onPress: () => {
-        void deleteKsefToken().then(removeCompany).then(() => { setCompany(null); setCandidate(null); setNip(""); setError(null); })
+        void deleteKsefToken().then(() => company ? deleteSecureLedger(company.nip) : undefined).then(removeCompany).then(() => { setCompany(null); setCandidate(null); setNip(""); setError(null); })
           .catch(() => setError("Nie udało się usunąć danych."));
       } },
     ]);
@@ -122,14 +124,13 @@ function FreeContent() {
           <View style={styles.card}>
             <Text style={styles.heading}>Faktury KSeF</Text>
             <Text style={styles.muted}>{company ? `Firma: ${company.name} (NIP ${company.nip})` : "Najpierw potwierdź NIP na karcie Firma."}</Text>
-            {company ? <KsefSetup nip={company.nip} /> : null}
+            {company ? <><KsefSetup nip={company.nip} /><LocalAccountingOverview nip={company.nip} mode="invoices" /></> : null}
           </View>
         ) : null}
         {!loading && screen === "taxes" ? (
           <View style={styles.card}>
             <Text style={styles.heading}>Podatki miesięczne</Text>
-            <Text style={styles.note}>Obliczenia PIT, VAT i ZUS będą wykonywane na urządzeniu po przeniesieniu i przetestowaniu reguł z backendu. Bez faktur, klasyfikacji i sald początkowych nie można bezpiecznie wyliczyć zobowiązań.</Text>
-            <Text style={styles.muted}>Brak wyliczenia nie oznacza podatku 0 zł.</Text>
+            {company ? <LocalAccountingOverview nip={company.nip} mode="taxes" /> : <Text style={styles.muted}>Najpierw skonfiguruj firmę.</Text>}
           </View>
         ) : null}
       </ScrollView>

@@ -51,6 +51,17 @@ jobs:
       - run: npx expo-doctor
       - name: Generate native Android project locally
         run: npx expo prebuild --clean --platform android --no-install
+      - name: Use installed JDK instead of remote Foojay toolchain provisioning
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          settings = Path('node_modules/@react-native/gradle-plugin/settings.gradle.kts')
+          source = settings.read_text()
+          plugin = 'id("org.gradle.toolchains.foojay-resolver-convention").version("1.0.0")'
+          if source.count(plugin) != 1:
+              raise SystemExit('React Native Foojay plugin declaration has changed')
+          settings.write_text(source.replace(plugin, ''))
+          PY
       - name: Assemble standalone release APK locally
         working-directory: apps/mobile/android
         run: ./gradlew --no-daemon assembleRelease
