@@ -60,7 +60,7 @@ jobs:
           plugin = 'id("org.gradle.toolchains.foojay-resolver-convention").version("1.0.0")'
           if source.count(plugin) != 1:
               raise SystemExit('React Native Foojay plugin declaration has changed')
-          settings.write_text(source.replace(plugin, '// Java 17 installed in CI; no Foojay resolver required'))
+          settings.write_text(source.replace(plugin, ''))
           PY
       - name: Assemble standalone release APK locally
         working-directory: apps/mobile/android
