@@ -15,11 +15,13 @@ export function LocalAccountingOverview({ nip, mode }: { nip: string; mode: "inv
   // No import adapter is wired yet. Do not claim that an empty ledger was synchronized.
   const [ledger, setLedger] = useState<InvoiceLedger>({ taxpayerNip: nip, invoices: [] });
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [loadedNip, setLoadedNip] = useState<string | null>(null);
   useEffect(() => {
     let active = true;
+    setLoadedNip(null);
     setLedger({ taxpayerNip: nip, invoices: [] });
     setLoadError(null);
-    void readSecureLedger(nip).then((saved) => { if (active) setLedger(saved); })
+    void readSecureLedger(nip).then((saved) => { if (active) { setLedger(saved); setLoadedNip(nip); } })
       .catch(() => { if (active) setLoadError("Nie można odczytać zaszyfrowanych faktur."); });
     return () => { active = false; };
   }, [nip]);
@@ -32,7 +34,7 @@ export function LocalAccountingOverview({ nip, mode }: { nip: string; mode: "inv
       <Pressable accessibilityRole="button" accessibilityLabel="Następny miesiąc" onPress={() => setMonth((m) => monthOffset(m, 1))} style={styles.nav}><Text>›</Text></Pressable>
     </View>
     {loadError ? <Text accessibilityRole="alert" style={styles.muted}>{loadError}</Text> : null}
-    {mode === "invoices" ? <>
+    {loadedNip === nip && !loadError ? (mode === "invoices" ? <>
       <Text style={styles.title}>Faktury z KSeF</Text>
       <Text>Sprzedaż: {summary.issuedCount} • Zakupy: {summary.receivedCount}</Text>
       <Text style={styles.muted}>{ledger.lastSuccessfulSync ? `Ostatnia synchronizacja: ${ledger.lastSuccessfulSync}` : "Synchronizacja nie została wykonana. Brak lokalnych faktur nie oznacza braku faktur w KSeF."}</Text>
@@ -42,7 +44,7 @@ export function LocalAccountingOverview({ nip, mode }: { nip: string; mode: "inv
       <Text style={styles.muted}>PIT, VAT i ZUS: brak wyliczenia (nie 0 zł).</Text>
       {readiness.missing.map((reason) => <Text key={reason} style={styles.muted}>• {reason}</Text>)}
       <Text style={styles.muted}>Podsumowanie faktur jest informacyjne, nie stanowi deklaracji podatkowej.</Text>
-    </>}
+    </>) : !loadError ? <Text style={styles.muted}>Wczytywanie faktur…</Text> : null}
   </View>;
 }
 const styles = StyleSheet.create({

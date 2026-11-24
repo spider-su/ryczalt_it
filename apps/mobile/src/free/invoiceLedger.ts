@@ -35,7 +35,7 @@ function validCalendarDate(value: string): boolean {
   if (year < 1 || month < 1 || month > 12 || day < 1) return false;
   const daysInMonth = [31, (year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0)) ? 29 : 28,
     31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
-  return day <= daysInMonth[month - 1];
+  return day <= (daysInMonth[month - 1] ?? 0);
 }
 function validInvoice(invoice: KsefInvoice, nip: string): boolean {
   return invoice.source === "ksef" && invoice.taxpayerNip === nip &&

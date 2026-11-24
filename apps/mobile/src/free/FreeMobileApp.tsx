@@ -61,7 +61,6 @@ function FreeContent() {
       if (company && company.nip !== candidate.nip) {
         // Remove the old company credential before changing the active identity.
         await deleteKsefToken();
-        await deleteSecureLedger(company.nip);
       }
       await saveCompany(candidate);
       setCompany(candidate);
@@ -73,7 +72,7 @@ function FreeContent() {
   }
 
   function erase() {
-    Alert.alert("Usuń dane firmy?", "Spowoduje to usunięcie lokalnie zapisanego profilu firmy.", [
+    Alert.alert("Usuń dane firmy?", "Spowoduje to usunięcie lokalnego profilu firmy, tokenu KSeF i zapisanych faktur tej firmy.", [
       { text: "Anuluj", style: "cancel" },
       { text: "Usuń", style: "destructive", onPress: () => {
         void deleteKsefToken().then(() => company ? deleteSecureLedger(company.nip) : undefined).then(removeCompany).then(() => { setCompany(null); setCandidate(null); setNip(""); setError(null); })
