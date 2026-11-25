@@ -72,3 +72,9 @@ No product backend / no own server
 - [MF KSeF manual, March 2026](https://ksef.podatki.gov.pl/media/sthoiadq/podrecznik-ksef-20-cz-i-rozpoczecie-korzystania-z-ksef-25032026.pdf)
 
 > Decision/spec only. Existing source is still backend-dependent until the implementation and validation gates above are completed. Do not label the current app “local-first” or “ready for free release” based only on this document.
+
+## Mobile import checkpoint (2026-11-25)
+
+The current branch includes direct read-only KSeF metadata and document requests, a namespace-aware XML extractor, and a small local SecureStore ledger. A successful query is tracked per selected month; truncated or malformed pages are rejected. Source invoice conflicts are rejected and classification is retained. The VAT calculation module contains a pure integer port of the backend settlement examples, but it is not connected to the UI.
+
+This checkpoint is **not a production-ready standalone accounting release**. The ledger remains limited to 1,600 bytes and needs encrypted scalable persistence, migration and recovery; synchronization needs robust retries, cancellation, rate limits, date coverage and concurrent account-change protection; XML extraction does not cover all FA(3) document variants. PIT and ZUS, tax configuration, FX, recognition rules and end-to-end calculation parity are not implemented. Live KSeF invoice import, offline upgrade, database encryption, scale and physical-device behavior remain unverified. Continue showing tax estimates as unavailable until those gates pass.

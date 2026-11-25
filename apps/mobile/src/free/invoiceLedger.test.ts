@@ -14,6 +14,18 @@ describe("KSeF-only ledger", () => {
     expect(next.invoices).toHaveLength(1);
     expect(next.invoices[0]?.classification).toBe("taxable");
   });
+  it("rejects conflicting source documents while keeping classification", () => {
+    const first = mergeKsefInvoices(ledger, [{ ...invoice, classification: "taxable" }]);
+    expect(() => mergeKsefInvoices(first, [{ ...invoice, grossMinor: "1" }])).toThrow("Conflicting");
+    expect(first.invoices[0]?.grossMinor).toBe("12300");
+    expect(mergeKsefInvoices(first, [invoice]).invoices[0]?.classification).toBe("taxable");
+  });
+  it("requires synchronization coverage for the requested month", () => {
+    const facts = { openingVatMinor: "0", paidZusSocialMinor: "0", paidZusHealthMinor: "0", priorYearRevenueMinor: "0" };
+    const state = { ...ledger, lastSuccessfulSync: "2026-11-25T00:00:00Z", synchronizedMonths: { "2026-10": "2026-11-25T00:00:00Z" } };
+    expect(assessTaxReadiness(state, "2026-11", facts).ready).toBe(false);
+    expect(assessTaxReadiness(state, "2026-10", facts).ready).toBe(true);
+  });
   it("rejects cross-company and non-KSeF invoice records atomically", () => {
     expect(() => mergeKsefInvoices(ledger, [{ ...invoice, taxpayerNip: "0000000000" }])).toThrow();
     expect(() => mergeKsefInvoices(ledger, [{ ...invoice, source: "manual" as "ksef" }])).toThrow();

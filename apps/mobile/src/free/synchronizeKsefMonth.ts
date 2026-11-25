@@ -5,16 +5,23 @@ import { KsefInvoiceReader } from "./ksefInvoiceReader";
 import { parseMinimalFa3 } from "./parseMinimalFa3";
 import { readSecureLedger, writeSecureLedger } from "./secureInvoiceLedger";
 import { mergeKsefInvoices, type InvoiceLedger, type InvoiceDirection } from "./invoiceLedger";
+import { loadCompany } from "./localCompany";
+
+const activeCompanies = new Set<string>();
 
 /** Explicitly bounded checkpoint-based sync. Never mark a partial import successful. */
 export async function synchronizeKsefMonth(nip: string, month: string): Promise<InvoiceLedger> {
   if (!/^\d{10}$/.test(nip) || !/^\d{4}-(0[1-9]|1[0-2])$/.test(month))
     throw new Error("Invalid taxpayer or month");
+  if (activeCompanies.has(nip)) throw new Error("Synchronization already in progress");
+  activeCompanies.add(nip);
+  try {
   const credential = await getKsefTokenForAuthentication(nip);
   if (!credential) throw new Error("KSeF token is not configured");
   const auth = await new KsefAuthClient("production", new KsefAndroidEncryptor()).authenticate(nip, credential);
   const reader = new KsefInvoiceReader();
-  const [year, monthNumber] = month.split("-").map(Number);
+  const year = Number(month.slice(0, 4));
+  const monthNumber = Number(month.slice(5, 7));
   const nextMonth = new Date(Date.UTC(year, monthNumber, 1)).toISOString().slice(0, 10);
   const from = month + "-01T00:00:00+00:00";
   const to = nextMonth + "T00:00:00+00:00";
@@ -31,13 +38,14 @@ export async function synchronizeKsefMonth(nip: string, month: string): Promise<
         newInvoices.push(parseMinimalFa3(xml, ref.ksefNumber, nip, direction as InvoiceDirection));
       }
       ledger = mergeKsefInvoices(ledger, newInvoices);
-      // Existing SecureStore is intentionally fail-closed for larger ledgers.
-      await writeSecureLedger(ledger);
       if (!result.hasMore) break;
       page += 1;
     }
   }
-  ledger = { ...ledger, lastSuccessfulSync: new Date().toISOString() };
+  const completedAt = new Date().toISOString();
+  ledger = { ...ledger, lastSuccessfulSync: completedAt, synchronizedMonths: { ...ledger.synchronizedMonths, [month]: completedAt } };
+  if ((await loadCompany())?.nip !== nip) throw new Error("Active company changed during synchronization");
   await writeSecureLedger(ledger);
   return ledger;
+  } finally { activeCompanies.delete(nip); }
 }

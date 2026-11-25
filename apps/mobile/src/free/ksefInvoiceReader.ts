@@ -47,8 +47,10 @@ export class KsefInvoiceReader {
       { subjectType, dateRange: { dateType: "Issue", from, to } },
     );
     const payload = record(await response.json());
-    if (!Array.isArray(payload.invoices) || typeof payload.hasMore !== "boolean")
+    if (!Array.isArray(payload.invoices) || typeof payload.hasMore !== "boolean" || typeof payload.isTruncated !== "boolean")
       throw new Error("Unexpected KSeF metadata response");
+    if (payload.isTruncated) throw new Error("KSeF results are truncated; sync is incomplete");
+    if (payload.hasMore && payload.invoices.length === 0) throw new Error("Empty KSeF page with more results");
     const invoices = payload.invoices.map((item) => {
       const value = record(item);
       return {

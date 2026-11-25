@@ -1,40 +1,38 @@
-import type { KsefInvoice, InvoiceDirection } from "./invoiceLedger";
+import { DOMParser } from "@xmldom/xmldom";
+import type { KsefInvoice, InvoiceDirection, InvoiceKind } from "./invoiceLedger";
 
-/** Minimal FA(3) extractor. Reject missing amounts rather than storing fabricated zeroes. */
-function field(xml: string, name: string): string | undefined {
-  const match = new RegExp(`<(?:[A-Za-z_][\\w.-]*:)?${name}(?:\\s[^>]*)?>([^<]*)<\\/(?:[A-Za-z_][\\w.-]*:)?${name}>`).exec(xml);
-  return match?.[1]?.trim();
+function money(value: string): bigint {
+  const match = /^(-?)(\d+)(?:\.(\d{1,2}))?$/.exec(value.trim());
+  if (!match) throw new Error("Unsupported invoice amount");
+  const result = BigInt(match[2] ?? "0") * 100n + BigInt((match[3] ?? "").padEnd(2, "0"));
+  return match[1] ? -result : result;
 }
-function money(value: string | undefined): string {
-  if (!value || !/^-?\d+(?:\.\d{1,2})?$/.test(value)) throw new Error("Missing or invalid invoice amount");
-  const negative = value.startsWith("-");
-  const [whole, fraction = ""] = (negative ? value.slice(1) : value).split(".");
-  const cents = (BigInt(whole) * 100n + BigInt(fraction.padEnd(2, "0"))).toString();
-  return negative ? "-" + cents : cents;
-}
-export function parseMinimalFa3(
-  xml: string, ksefId: string, taxpayerNip: string, direction: InvoiceDirection,
-): KsefInvoice {
-  if (!/<(?:\w+:)?Faktura[\s>]/.test(xml) || !xml.includes("http://crd.gov.pl/wzor/"))
-    throw new Error("Not a recognized Polish e-invoice");
-  const issueDate = field(xml, "P_1");
-  const currency = field(xml, "KodWaluty");
-  if (!issueDate || !/^\d{4}-\d{2}-\d{2}$/.test(issueDate) || !currency) throw new Error("Missing invoice date/currency");
-  const gross = money(field(xml, "P_15"));
-  // FA(3) net and VAT totals depend on rate-specific fields. Require them explicitly.
-  const netFields = ["P_13_1", "P_13_2", "P_13_3", "P_13_4", "P_13_5", "P_13_6", "P_13_7"];
-  const vatFields = ["P_14_1", "P_14_2", "P_14_3", "P_14_4", "P_14_5"];
-  const sum = (fields: string[]): string => fields.reduce((total, name) => {
-    const value = field(xml, name);
-    return total + (value === undefined ? 0n : BigInt(money(value)));
-  }, 0n).toString();
-  if (!netFields.some((name) => field(xml, name) !== undefined))
-    throw new Error("Unsupported invoice: net totals missing");
-  const kindCode = field(xml, "RodzajFaktury");
-  const kind = kindCode === "KOR" ? "correction" : kindCode === "ZAL" ? "advance" : kindCode === "ROZ" ? "final" : "standard";
-  return {
-    ksefId, taxpayerNip, direction, kind, issueDate, currency,
-    grossMinor: gross, netMinor: sum(netFields), vatMinor: sum(vatFields),
-    classification: "unclassified", source: "ksef",
+/** Namespace-aware extraction. Refuse documents we cannot interpret instead of guessing. */
+export function parseMinimalFa3(xml: string, ksefId: string, taxpayerNip: string, direction: InvoiceDirection): KsefInvoice {
+  if (!xml.trim() || xml.length > 2_000_000 || /<!\s*(?:DOCTYPE|ENTITY)\b/i.test(xml)) throw new Error("Unsafe invoice XML");
+  let doc: ReturnType<DOMParser["parseFromString"]>;
+  try { doc = new DOMParser({ onError: () => { throw new Error("Invalid XML"); } }).parseFromString(xml, "application/xml"); }
+  catch { throw new Error("Invalid invoice XML"); }
+  if (doc.doctype || doc.documentElement?.localName !== "Faktura" || !doc.documentElement.namespaceURI?.startsWith("http://crd.gov.pl/wzor/")) throw new Error("Unsupported invoice schema");
+  const elements = (name: string) => Array.from(doc.getElementsByTagNameNS("*", name));
+  const first = (name: string) => elements(name)[0]?.textContent?.trim() || undefined;
+  const party = direction === "issued" ? "Podmiot1" : "Podmiot2";
+  const nip = elements(party)[0]?.getElementsByTagNameNS("*", "NIP")[0]?.textContent?.trim();
+  if (nip !== taxpayerNip) throw new Error("Invoice taxpayer mismatch");
+  const issueDate = first("P_1"); const currency = first("KodWaluty"); const invoiceType = first("RodzajFaktury");
+  if (!issueDate || !/^\d{4}-\d{2}-\d{2}$/.test(issueDate) || !currency || !/^[A-Z]{3}$/.test(currency)) throw new Error("Missing invoice date or currency");
+  const kinds: Record<string, InvoiceKind> = { VAT: "standard", KOR: "correction", ZAL: "advance", ROZ: "final", KOR_ZAL: "correction", KOR_ROZ: "correction" };
+  const kind = invoiceType ? kinds[invoiceType] : undefined;
+  if (!kind) throw new Error("Unsupported invoice type");
+  const all = Array.from(doc.getElementsByTagNameNS("*", "*"));
+  const sum = (prefix: string): bigint | null => {
+    const fields = all.filter((element) => element.localName?.startsWith(prefix));
+    return fields.length ? fields.reduce((total, field) => total + money(field.textContent ?? ""), 0n) : null;
   };
+  let net = sum("P_13_"); let vat = sum("P_14_"); const grossText = first("P_15"); let gross = grossText ? money(grossText) : null;
+  if (net === null && gross !== null && vat !== null) net = gross - vat;
+  if (vat === null && gross !== null && net !== null) vat = gross - net;
+  if (gross === null && net !== null && vat !== null) gross = net + vat;
+  if (gross === null || net === null || vat === null) throw new Error("Invoice totals are incomplete");
+  return { ksefId, taxpayerNip, direction, kind, issueDate, currency, grossMinor: gross.toString(), netMinor: net.toString(), vatMinor: vat.toString(), classification: "unclassified", source: "ksef" };
 }

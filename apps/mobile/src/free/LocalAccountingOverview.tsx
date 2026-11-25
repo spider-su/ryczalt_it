@@ -17,6 +17,7 @@ export function LocalAccountingOverview({ nip, mode }: { nip: string; mode: "inv
   const [ledger, setLedger] = useState<InvoiceLedger>({ taxpayerNip: nip, invoices: [] });
   const [loadError, setLoadError] = useState<string | null>(null);
   const [syncing, setSyncing] = useState(false);
+  const [syncError, setSyncError] = useState<string | null>(null);
   const [direction, setDirection] = useState<"all" | "issued" | "received">("all");
   const [loadedNip, setLoadedNip] = useState<string | null>(null);
   useEffect(() => {
@@ -31,16 +32,19 @@ export function LocalAccountingOverview({ nip, mode }: { nip: string; mode: "inv
   async function sync() {
     if (syncing) return;
     setSyncing(true);
-    setLoadError(null);
+    setSyncError(null);
     try { setLedger(await synchronizeKsefMonth(nip, month)); }
-    catch { setLoadError("Nie udało się ukończyć synchronizacji. Poprzednie dane pozostają zapisane; sprawdź token i połączenie."); }
+    catch { setSyncError("Nie udało się ukończyć synchronizacji. Poprzednie dane pozostają zapisane; sprawdź token i połączenie."); }
     finally { setSyncing(false); }
   }
   const summary = summarizeKsefMonth(ledger, month);
   const readiness = assessTaxReadiness(ledger, month, {});
   const monthly = ledger.invoices.filter((invoice) => invoice.issueDate.startsWith(month));
   const visible = monthly.filter((invoice) => direction === "all" || invoice.direction === direction);
-  const money = (minor: string, currency: string) => `${(Number(minor) / 100).toLocaleString("pl-PL", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${currency}`;
+  const money = (minor: string, currency: string) => {
+    const amount = BigInt(minor); const absolute = amount < 0n ? -amount : amount;
+    return `${amount < 0n ? "-" : ""}${(absolute / 100n).toString()},${(absolute % 100n).toString().padStart(2, "0")} ${currency}`;
+  };
   return <View style={styles.container}>
     <View style={styles.monthRow}>
       <Pressable accessibilityRole="button" accessibilityLabel="Poprzedni miesiąc" onPress={() => setMonth((m) => monthOffset(m, -1))} style={styles.nav}><Text>‹</Text></Pressable>
@@ -48,12 +52,13 @@ export function LocalAccountingOverview({ nip, mode }: { nip: string; mode: "inv
       <Pressable accessibilityRole="button" accessibilityLabel="Następny miesiąc" onPress={() => setMonth((m) => monthOffset(m, 1))} style={styles.nav}><Text>›</Text></Pressable>
     </View>
     {loadError ? <Text accessibilityRole="alert" style={styles.muted}>{loadError}</Text> : null}
+    {syncError ? <Text accessibilityRole="alert" style={styles.muted}>{syncError}</Text> : null}
     {loadedNip === nip && !loadError ? (mode === "invoices" ? <>
       <Text style={styles.title}>Faktury z KSeF</Text>
       <Pressable accessibilityRole="button" disabled={syncing} onPress={() => void sync()} style={styles.nav}><Text>{syncing ? "Synchronizacja…" : "Synchronizuj z KSeF"}</Text></Pressable>
       <View style={styles.metrics}><View style={styles.metric}><Text style={styles.muted}>Sprzedaż</Text><Text style={styles.title}>{summary.issuedCount}</Text></View><View style={styles.metric}><Text style={styles.muted}>Zakupy</Text><Text style={styles.title}>{summary.receivedCount}</Text></View></View>
       <View style={styles.filters}>{([["all", "Wszystkie"], ["issued", "Sprzedaż"], ["received", "Zakupy"]] as const).map(([value, label]) => <Pressable key={value} accessibilityRole="button" accessibilityState={{ selected: direction === value }} onPress={() => setDirection(value)} style={[styles.filter, direction === value && styles.activeFilter]}><Text style={direction === value ? styles.activeText : styles.muted}>{label}</Text></Pressable>)}</View>
-      <Text style={styles.muted}>{ledger.lastSuccessfulSync ? `Ostatnia synchronizacja: ${ledger.lastSuccessfulSync}` : "Synchronizacja nie została wykonana. Brak lokalnych faktur nie oznacza braku faktur w KSeF."}</Text>
+      <Text style={styles.muted}>{ledger.synchronizedMonths?.[month] ? `Ostatnia synchronizacja tego miesiąca: ${ledger.synchronizedMonths[month]}` : "Synchronizacja nie została wykonana. Brak lokalnych faktur nie oznacza braku faktur w KSeF."}</Text>
       {visible.length === 0 ? <Text style={styles.muted}>Brak zapisanych faktur dla wybranego miesiąca i filtra.</Text> : visible.map((invoice) => <View key={invoice.ksefId} style={styles.invoiceRow}><View style={styles.row}><Text style={styles.title}>{invoice.direction === "issued" ? "Sprzedaż" : "Zakup"}</Text><Text style={styles.amount}>{money(invoice.grossMinor, invoice.currency)}</Text></View><Text style={styles.muted}>{invoice.issueDate} • {invoice.kind === "correction" ? "Korekta" : "Faktura"}</Text><Text style={styles.muted} numberOfLines={1}>KSeF: {invoice.ksefId}</Text><Text style={styles.muted}>Netto: {money(invoice.netMinor, invoice.currency)} • VAT: {money(invoice.vatMinor, invoice.currency)}</Text></View>)}
     </> : <>
       <Text style={styles.title}>Gotowość rozliczenia</Text>
