@@ -58,10 +58,9 @@ export function mergeKsefInvoices(ledger: InvoiceLedger, incoming: readonly Ksef
     merged.set(invoice.ksefId, invoice);
   }
   for (const invoice of incoming) {
-    const previous = merged.get(invoice.ksefId);
-    // Preserve user-confirmed classifications when a KSeF sync refreshes raw data.
-    merged.set(invoice.ksefId, previous && previous.classification !== "unclassified"
-      ? { ...invoice, classification: previous.classification } : invoice);
+    // KSeF invoices are immutable: once imported, never overwrite their content.
+    // A correction is a separate document with its own KSeF identifier.
+    if (!merged.has(invoice.ksefId)) merged.set(invoice.ksefId, invoice);
   }
   return { ...ledger, invoices: [...merged.values()].sort((a, b) =>
     a.issueDate.localeCompare(b.issueDate) || a.ksefId.localeCompare(b.ksefId)) };
