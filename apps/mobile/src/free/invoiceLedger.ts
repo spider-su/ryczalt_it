@@ -23,6 +23,7 @@ export interface InvoiceLedger {
   taxpayerNip: string;
   invoices: KsefInvoice[];
   lastSuccessfulSync?: string;
+  synchronizedMonths?: Record<string, string>;
 }
 const MONEY = /^-?\d+$/;
 const DATE = /^(\d{4})-(\d{2})-(\d{2})$/;
@@ -58,10 +59,16 @@ export function mergeKsefInvoices(ledger: InvoiceLedger, incoming: readonly Ksef
     merged.set(invoice.ksefId, invoice);
   }
   for (const invoice of incoming) {
+    // KSeF invoices are immutable: once imported, never overwrite their content.
+    // A correction is a separate document with its own KSeF identifier.
     const previous = merged.get(invoice.ksefId);
-    // Preserve user-confirmed classifications when a KSeF sync refreshes raw data.
-    merged.set(invoice.ksefId, previous && previous.classification !== "unclassified"
-      ? { ...invoice, classification: previous.classification } : invoice);
+    if (previous) {
+      const same = previous.taxpayerNip === invoice.taxpayerNip && previous.direction === invoice.direction &&
+        previous.kind === invoice.kind && previous.issueDate === invoice.issueDate && previous.currency === invoice.currency &&
+        previous.grossMinor === invoice.grossMinor && previous.netMinor === invoice.netMinor && previous.vatMinor === invoice.vatMinor &&
+        previous.correctionOf === invoice.correctionOf && previous.source === invoice.source;
+      if (!same) throw new Error("Conflicting immutable KSeF invoice");
+    } else merged.set(invoice.ksefId, invoice);
   }
   return { ...ledger, invoices: [...merged.values()].sort((a, b) =>
     a.issueDate.localeCompare(b.issueDate) || a.ksefId.localeCompare(b.ksefId)) };
@@ -75,7 +82,7 @@ export function assessTaxReadiness(
 ): TaxReadiness {
   const missing: string[] = [];
   if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(month)) missing.push("Nieprawidłowy miesiąc");
-  if (!ledger.lastSuccessfulSync) missing.push("Brak synchronizacji KSeF");
+  if (!ledger.synchronizedMonths?.[month]) missing.push("Brak synchronizacji KSeF dla tego miesiąca");
   if (ledger.invoices.some((i) => i.issueDate.startsWith(month) && i.classification === "unclassified"))
     missing.push("Niesklasyfikowane faktury");
   for (const [field, label] of [
