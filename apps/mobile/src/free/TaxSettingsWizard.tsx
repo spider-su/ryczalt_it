@@ -37,7 +37,12 @@ export function TaxSettingsWizard({ nip }: { nip: string }) {
   const effective = settingsForMonth(history, month);
   function copyPrevious() {
     if (!effective) return;
-    setValues(Object.fromEntries(fields.map(([key]) => [key, toDisplay(effective[key])])) as Record<AmountField,string>);
+    setValues({
+      priorYearRevenueMinor: toDisplay(effective.priorYearRevenueMinor),
+      openingVatMinor: "",
+      paidZusSocialMinor: "",
+      paidZusHealthMinor: "",
+    });
     setSaved(false);
   }
   async function submit() {
@@ -63,12 +68,12 @@ export function TaxSettingsWizard({ nip }: { nip: string }) {
     <Text style={styles.label}>Obowiązuje od miesiąca (RRRR-MM)</Text>
     <TextInput accessibilityLabel="Obowiązuje od" style={styles.input} value={month} onChangeText={v => {setMonth(v);setSaved(false);}} placeholder="2026-11" />
     {effective ? <Text style={styles.hint}>Dla wybranego miesiąca obowiązuje wersja od {effective.effectiveFrom}. Nowa wersja nie zmienia wcześniejszych miesięcy.</Text> : <Text style={styles.hint}>Brak wcześniejszych ustawień. Uzupełnij dane początkowe.</Text>}
-    <Pressable accessibilityRole="button" onPress={copyPrevious} disabled={!effective} style={styles.link}><Text style={styles.action}>Skopiuj poprzednie ustawienia</Text></Pressable>
+    <Pressable accessibilityRole="button" onPress={copyPrevious} disabled={!effective} style={styles.link}><Text style={styles.action}>Skopiuj stałe dane (bez składek i VAT)</Text></Pressable>
     <Text style={styles.heading}>Krok {step+1} z {fields.length}</Text>
     <Text style={styles.label}>{label}</Text>
     <TextInput accessibilityLabel={label} style={styles.input} keyboardType="decimal-pad" value={values[key]}
       onChangeText={v => {setValues(old => ({...old,[key]:v}));setSaved(false);}} placeholder="0,00" />
-    <Text style={styles.hint}>Wprowadź potwierdzoną kwotę. Puste pole nie oznacza zera.</Text>
+    <Text style={styles.hint}>Wprowadź potwierdzoną kwotę dla tego miesiąca. Składki i saldo VAT nie są automatycznie przenoszone z poprzednich miesięcy. Puste pole nie oznacza zera.</Text>
     <View style={styles.row}>
       {step > 0 ? <Pressable accessibilityRole="button" onPress={() => setStep(s => s-1)} style={styles.link}><Text style={styles.action}>Wstecz</Text></Pressable> : null}
       {step < fields.length-1 ? <Pressable accessibilityRole="button" onPress={() => setStep(s => s+1)} style={styles.link}><Text style={styles.action}>Dalej</Text></Pressable>
