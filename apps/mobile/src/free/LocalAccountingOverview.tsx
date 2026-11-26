@@ -2,8 +2,10 @@ import { useEffect, useState } from "react";
 import { readInvoiceLedger } from "./jsonInvoiceLedger";
 import { synchronizeKsefHistory } from "./synchronizeKsefHistory";
 import { Pressable, StyleSheet, Text, View } from "react-native";
-import { assessTaxReadiness, type InvoiceLedger } from "./invoiceLedger";
+import type { InvoiceLedger } from "./invoiceLedger";
 import { summarizeKsefMonth } from "./monthlyInvoiceSummary";
+import { loadTaxSettings, type TaxSettings } from "./taxSettings";
+import { estimateLocalTaxes } from "./localTaxEstimate";
 
 export function monthOffset(month: string, delta: number): string {
   const [year, number] = month.split("-").map(Number);
@@ -14,6 +16,7 @@ export function monthOffset(month: string, delta: number): string {
 export function LocalAccountingOverview({ nip, mode }: { nip: string; mode: "invoices" | "taxes" }) {
   const [month, setMonth] = useState(() => new Date().toISOString().slice(0, 7));
   const [ledger, setLedger] = useState<InvoiceLedger>({ taxpayerNip: nip, invoices: [] });
+  const [taxSettings, setTaxSettings] = useState<TaxSettings[]>([]);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [syncing, setSyncing] = useState(false);
   const [syncError, setSyncError] = useState<string | null>(null);
@@ -25,7 +28,7 @@ export function LocalAccountingOverview({ nip, mode }: { nip: string; mode: "inv
     setLoadedNip(null);
     setLedger({ taxpayerNip: nip, invoices: [] });
     setLoadError(null);
-    void readInvoiceLedger(nip).then((saved) => { if (active) { setLedger(saved); setLoadedNip(nip); } })
+    void Promise.all([readInvoiceLedger(nip), loadTaxSettings(nip)]).then(([saved, settings]) => { if (active) { setLedger(saved); setTaxSettings(settings); setLoadedNip(nip); } })
       .catch(() => { if (active) setLoadError("Nie można odczytać zapisanych faktur."); });
     return () => { active = false; };
   }, [nip]);
@@ -42,7 +45,7 @@ export function LocalAccountingOverview({ nip, mode }: { nip: string; mode: "inv
   }
   const summary = summarizeKsefMonth(ledger, month);
   const formatSync = (value: string) => new Date(value).toLocaleString("pl-PL", { dateStyle: "medium", timeStyle: "short" });
-  const readiness = assessTaxReadiness(ledger, month, {});
+  const estimate = estimateLocalTaxes(ledger, taxSettings, month);
   const monthly = ledger.invoices.filter((invoice) => invoice.issueDate.startsWith(month));
   const visible = monthly.filter((invoice) => direction === "all" || invoice.direction === direction);
   const money = (minor: string, currency: string) => {
@@ -67,10 +70,11 @@ export function LocalAccountingOverview({ nip, mode }: { nip: string; mode: "inv
       {visible.length === 0 ? <Text style={styles.muted}>Brak zapisanych faktur dla wybranego miesiąca i filtra.</Text> : visible.map((invoice) => <View key={invoice.ksefId} style={styles.invoiceRow}><View style={styles.row}><Text style={styles.title}>{invoice.direction === "issued" ? "Sprzedaż" : "Zakup"}</Text><Text style={styles.amount}>{money(invoice.grossMinor, invoice.currency)}</Text></View><Text style={styles.muted}>{invoice.issueDate} • {invoice.kind === "correction" ? "Korekta" : "Faktura"}</Text><Text style={styles.muted} numberOfLines={1}>KSeF: {invoice.ksefId}</Text><Text style={styles.muted}>Netto: {money(invoice.netMinor, invoice.currency)} • VAT: {money(invoice.vatMinor, invoice.currency)}</Text></View>)}
     </> : <>
       <Text style={styles.title}>Gotowość rozliczenia</Text>
-      <View style={styles.metrics}>{(["PIT", "VAT", "ZUS"] as const).map((label) => <View key={label} style={styles.metric}><Text style={styles.muted}>{label}</Text><Text style={styles.title}>—</Text><Text style={styles.muted}>Do wyliczenia</Text></View>)}</View>
+      <View style={styles.metrics}>{(["PIT", "VAT", "ZUS"] as const).map((label) => <View key={label} style={styles.metric}><Text style={styles.muted}>{label}</Text><Text style={styles.title}>{label === "VAT" && estimate.vatPayablePln !== undefined ? `${estimate.vatPayablePln} PLN` : "—"}</Text><Text style={styles.muted}>{label === "VAT" && estimate.vatPayablePln !== undefined ? "Szacunek VAT" : "Wymaga danych"}</Text></View>)}</View>
       <Text style={styles.muted}>Podsumowanie KSeF: {summary.issuedCount} sprzedaży, {summary.receivedCount} zakupów.</Text>
-      <Text style={styles.muted}>Kwoty podatków będą dostępne po uzupełnieniu danych i uruchomieniu lokalnego silnika rozliczeń.</Text>
-      {readiness.missing.map((reason) => <Text key={reason} style={styles.muted}>• {reason}</Text>)}
+      {estimate.vatCarryForwardPln !== undefined ? <Text style={styles.muted}>VAT do przeniesienia: {estimate.vatCarryForwardPln} PLN</Text> : null}
+      <Text style={styles.muted}>PIT i ZUS wymagają dalszej walidacji względem silnika backendu; nie pokazujemy niezweryfikowanych kwot.</Text>
+      {estimate.missing.map((reason) => <Text key={reason} style={styles.muted}>• {reason}</Text>)}
       <Text style={styles.muted}>Podsumowanie faktur jest informacyjne, nie stanowi deklaracji podatkowej.</Text>
     </>) : !loadError ? <Text style={styles.muted}>Wczytywanie faktur…</Text> : null}
   </View>;
