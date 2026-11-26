@@ -1,4 +1,4 @@
-import { readSecureLedger } from "./secureInvoiceLedger";
+import { readInvoiceLedger } from "./jsonInvoiceLedger";
 import { synchronizeKsefMonth } from "./synchronizeKsefMonth";
 
 /** A successful checkpoint, not a nonempty invoice list, determines coverage. */
@@ -30,7 +30,7 @@ export async function synchronizeKsefHistory(
   try {
     const now = new Date();
     const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
-    const ledger = await readSecureLedger(nip);
+    const ledger = await readInvoiceLedger(nip);
     const months = monthsToSynchronize(ledger.synchronizedMonths ?? {}, currentMonth);
     for (let index = 0; index < months.length; index++) {
       onProgress?.(index + 1, months.length, months[index]);
