@@ -9,8 +9,9 @@ import { deleteKsefToken } from "./ksefCredentials";
 import { KsefSetup } from "./KsefSetup";
 import { LocalAccountingOverview } from "./LocalAccountingOverview";
 import { deleteInvoiceLedger } from "./jsonInvoiceLedger";
+import { TaxSettingsWizard } from "./TaxSettingsWizard";
 
-type Screen = "company" | "invoices" | "taxes";
+type Screen = "company" | "invoices" | "taxes" | "settings";
 const BACKGROUND = "#f7f9fc";
 const PRIMARY = "#1565c0";
 
@@ -92,6 +93,7 @@ function FreeContent() {
         <Tab label="Firma" selected={screen === "company"} onPress={() => setScreen("company")} />
         <Tab label="Faktury" selected={screen === "invoices"} onPress={() => setScreen("invoices")} />
         <Tab label="Podatki" selected={screen === "taxes"} onPress={() => setScreen("taxes")} />
+        <Tab label="Ustawienia" selected={screen === "settings"} onPress={() => setScreen("settings")} />
       </View>
       <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={styles.content}>
         {loading ? <ActivityIndicator /> : null}
@@ -125,6 +127,11 @@ function FreeContent() {
             <Text style={styles.heading}>Faktury KSeF</Text>
             <Text style={styles.muted}>{company ? `Firma: ${company.name} (NIP ${company.nip})` : "Najpierw potwierdź NIP na karcie Firma."}</Text>
             {company ? <><KsefSetup nip={company.nip} /><LocalAccountingOverview nip={company.nip} mode="invoices" /></> : null}
+          </View>
+        ) : null}
+        {!loading && screen === "settings" ? (
+          <View style={styles.card}>
+            {company ? <TaxSettingsWizard nip={company.nip} /> : <Text style={styles.muted}>Najpierw skonfiguruj firmę.</Text>}
           </View>
         ) : null}
         {!loading && screen === "taxes" ? (
