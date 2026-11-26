@@ -62,3 +62,16 @@ export async function saveTaxSettings(nip: string, settings: TaxSettings): Promi
   try { await FS.moveAsync({ from: temp, to: target }); }
   catch (error) { await FS.deleteAsync(temp, { idempotent: true }); throw error; }
 }
+
+/** Period-specific payments and opening credits must never be inherited from an earlier month.
+ * Effective-dated configuration may carry forward; accounting evidence cannot. */
+export function accountingFactsForMonth(history: readonly TaxSettings[], month: string): Pick<TaxSettings,
+  "openingVatMinor" | "paidZusSocialMinor" | "paidZusHealthMinor"> | null {
+  if (!MONTH.test(month)) throw new Error("Invalid month");
+  const exact = history.find(s => s.effectiveFrom === month);
+  return exact ? {
+    openingVatMinor: exact.openingVatMinor,
+    paidZusSocialMinor: exact.paidZusSocialMinor,
+    paidZusHealthMinor: exact.paidZusHealthMinor,
+  } : null;
+}
