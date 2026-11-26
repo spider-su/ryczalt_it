@@ -28,7 +28,8 @@ export async function synchronizeKsefHistory(
   if (active) throw new Error("Synchronization already in progress");
   active = true;
   try {
-    const currentMonth = new Date().toLocaleDateString("en-CA", { year: "numeric", month: "2-digit", timeZone: "Europe/Warsaw" }).slice(0, 7);
+    const now = new Date();
+    const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
     const ledger = await readSecureLedger(nip);
     const months = monthsToSynchronize(ledger.synchronizedMonths ?? {}, currentMonth);
     for (let index = 0; index < months.length; index++) {
