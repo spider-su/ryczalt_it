@@ -10,6 +10,7 @@ import { KsefSetup } from "./KsefSetup";
 import { LocalAccountingOverview } from "./LocalAccountingOverview";
 import { deleteInvoiceLedger } from "./jsonInvoiceLedger";
 import { TaxSettingsWizard } from "./TaxSettingsWizard";
+import { MonthlyTaxFactsEditor } from "./MonthlyTaxFactsEditor";
 
 type Screen = "company" | "invoices" | "taxes" | "settings";
 const BACKGROUND = "#f7f9fc";
@@ -131,7 +132,7 @@ function FreeContent() {
         ) : null}
         {!loading && screen === "settings" ? (
           <View style={styles.card}>
-            {company ? <TaxSettingsWizard nip={company.nip} /> : <Text style={styles.muted}>Najpierw skonfiguruj firmę.</Text>}
+            {company ? <><TaxSettingsWizard nip={company.nip} /><MonthlyTaxFactsEditor nip={company.nip} /></> : <Text style={styles.muted}>Najpierw skonfiguruj firmę.</Text>}
           </View>
         ) : null}
         {!loading && screen === "taxes" ? (
