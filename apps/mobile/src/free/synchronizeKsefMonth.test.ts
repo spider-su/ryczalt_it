@@ -5,7 +5,7 @@ vi.mock("./ksefNativeEncryption", () => ({ KsefAndroidEncryptor: class {} }));
 vi.mock("./ksefCredentials", () => ({ getKsefTokenForAuthentication: mocks.credential }));
 vi.mock("./ksefInvoiceReader", () => ({ KsefInvoiceReader: class { list = mocks.list; downloadXml = mocks.download; } }));
 vi.mock("./parseMinimalFa3", () => ({ parseMinimalFa3: mocks.parse }));
-vi.mock("./secureInvoiceLedger", () => ({ readSecureLedger: mocks.read, writeSecureLedger: mocks.write }));
+vi.mock("./jsonInvoiceLedger", () => ({ readInvoiceLedger: mocks.read, persistInvoiceLedger: mocks.write }));
 vi.mock("./localCompany", () => ({ loadCompany: mocks.company }));
 import { synchronizeKsefMonth } from "./synchronizeKsefMonth";
 const nip = "8133703437";
