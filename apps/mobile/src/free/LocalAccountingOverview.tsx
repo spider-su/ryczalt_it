@@ -6,6 +6,7 @@ import type { InvoiceLedger } from "./invoiceLedger";
 import { summarizeKsefMonth } from "./monthlyInvoiceSummary";
 import { loadTaxSettings, type TaxSettings } from "./taxSettings";
 import { estimateLocalTaxes } from "./localTaxEstimate";
+import { loadMonthlyTaxFacts, type MonthlyTaxFacts } from "./monthlyTaxFacts";
 
 export function monthOffset(month: string, delta: number): string {
   const [year, number] = month.split("-").map(Number);
@@ -17,6 +18,8 @@ export function LocalAccountingOverview({ nip, mode }: { nip: string; mode: "inv
   const [month, setMonth] = useState(() => new Date().toISOString().slice(0, 7));
   const [ledger, setLedger] = useState<InvoiceLedger>({ taxpayerNip: nip, invoices: [] });
   const [taxSettings, setTaxSettings] = useState<TaxSettings[]>([]);
+  const [monthlyFacts, setMonthlyFacts] = useState<MonthlyTaxFacts | null>(null);
+  const [factsMonth, setFactsMonth] = useState<string | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [syncing, setSyncing] = useState(false);
   const [syncError, setSyncError] = useState<string | null>(null);
@@ -32,6 +35,14 @@ export function LocalAccountingOverview({ nip, mode }: { nip: string; mode: "inv
       .catch(() => { if (active) setLoadError("Nie można odczytać zapisanych faktur."); });
     return () => { active = false; };
   }, [nip]);
+  useEffect(() => {
+    let live = true;
+    setMonthlyFacts(null);
+    setFactsMonth(null);
+    void loadMonthlyTaxFacts(nip, month).then(facts => { if (live) { setMonthlyFacts(facts); setFactsMonth(month); } })
+      .catch(() => { if (live) setLoadError("Nie można odczytać danych podatkowych miesiąca."); });
+    return () => { live = false; };
+  }, [nip, month]);
   async function sync() {
     if (syncing) return;
     setSyncing(true);
@@ -45,7 +56,7 @@ export function LocalAccountingOverview({ nip, mode }: { nip: string; mode: "inv
   }
   const summary = summarizeKsefMonth(ledger, month);
   const formatSync = (value: string) => new Date(value).toLocaleString("pl-PL", { dateStyle: "medium", timeStyle: "short" });
-  const estimate = estimateLocalTaxes(ledger, taxSettings, month);
+  const estimate = estimateLocalTaxes(ledger, taxSettings, month, factsMonth === month ? monthlyFacts : null);
   const monthly = ledger.invoices.filter((invoice) => invoice.issueDate.startsWith(month));
   const visible = monthly.filter((invoice) => direction === "all" || invoice.direction === direction);
   const money = (minor: string, currency: string) => {
