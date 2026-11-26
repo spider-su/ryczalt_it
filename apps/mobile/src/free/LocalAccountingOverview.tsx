@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { readSecureLedger } from "./secureInvoiceLedger";
+import { readInvoiceLedger } from "./jsonInvoiceLedger";
 import { synchronizeKsefHistory } from "./synchronizeKsefHistory";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { assessTaxReadiness, type InvoiceLedger } from "./invoiceLedger";
@@ -25,16 +25,16 @@ export function LocalAccountingOverview({ nip, mode }: { nip: string; mode: "inv
     setLoadedNip(null);
     setLedger({ taxpayerNip: nip, invoices: [] });
     setLoadError(null);
-    void readSecureLedger(nip).then((saved) => { if (active) { setLedger(saved); setLoadedNip(nip); } })
-      .catch(() => { if (active) setLoadError("Nie można odczytać zaszyfrowanych faktur."); });
+    void readInvoiceLedger(nip).then((saved) => { if (active) { setLedger(saved); setLoadedNip(nip); } })
+      .catch(() => { if (active) setLoadError("Nie można odczytać zapisanych faktur."); });
     return () => { active = false; };
   }, [nip]);
   async function sync() {
     if (syncing) return;
     setSyncing(true);
     setSyncError(null);
-    try { await synchronizeKsefHistory(nip, (current, total, target) => setSyncProgress(`Synchronizacja ${current}/${total}: ${target}`)); setLedger(await readSecureLedger(nip)); }
-    catch { setLedger(await readSecureLedger(nip).catch(() => ({ taxpayerNip: nip, invoices: [] }))); setSyncError("Nie udało się ukończyć synchronizacji. Zapisane faktury pozostają dostępne; ponów próbę."); }
+    try { await synchronizeKsefHistory(nip, (current, total, target) => setSyncProgress(`Synchronizacja ${current}/${total}: ${target}`)); setLedger(await readInvoiceLedger(nip)); }
+    catch { setLedger(await readInvoiceLedger(nip).catch(() => ({ taxpayerNip: nip, invoices: [] }))); setSyncError("Nie udało się ukończyć synchronizacji. Zapisane faktury pozostają dostępne; ponów próbę."); }
     finally { setSyncProgress(null); setSyncing(false); }
   }
   const summary = summarizeKsefMonth(ledger, month);
