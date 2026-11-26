@@ -1,7 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
-vi.mock("expo-file-system/legacy", () => ({ documentDirectory: "file:///test/" }));
-vi.mock("expo-secure-store", () => ({}));
-vi.mock("react-native", () => ({ Platform: { OS: "android" } }));
+vi.mock("./jsonInvoiceLedger", () => ({ readInvoiceLedger: vi.fn() }));
+vi.mock("./synchronizeKsefMonth", () => ({ synchronizeKsefMonth: vi.fn() }));
 import { monthsToSynchronize } from "./synchronizeKsefHistory";
 describe("global KSeF synchronization coverage", () => {
   it("initially covers every month since January 2026", () => {
