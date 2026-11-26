@@ -1,4 +1,5 @@
 import * as SecureStore from "expo-secure-store";
+import * as FS from "expo-file-system/legacy";
 import { Platform } from "react-native";
 import type { VatCompany } from "./nip";
 
@@ -18,7 +19,9 @@ function isCompany(value: unknown): value is VatCompany {
 
 export async function loadCompany(): Promise<VatCompany | null> {
   assertNative();
-  const raw = await SecureStore.getItemAsync(KEY);
+  const path = FS.documentDirectory + "RyczaltIT/company.json";
+  const file = await FS.getInfoAsync(path);
+  const raw = file.exists ? await FS.readAsStringAsync(path) : await SecureStore.getItemAsync(KEY);
   if (!raw) return null;
   const parsed: unknown = JSON.parse(raw);
   if (!isCompany(parsed)) throw new Error("Zapisany profil firmy jest nieprawidłowy.");
@@ -27,7 +30,13 @@ export async function loadCompany(): Promise<VatCompany | null> {
 
 export async function saveCompany(company: VatCompany): Promise<void> {
   assertNative();
-  await SecureStore.setItemAsync(KEY, JSON.stringify(company), { keychainAccessible: SecureStore.WHEN_UNLOCKED_THIS_DEVICE_ONLY });
+  const root = FS.documentDirectory + "RyczaltIT/";
+  await FS.makeDirectoryAsync(root, { intermediates: true });
+  const temp = root + "company.json.tmp";
+  await FS.writeAsStringAsync(temp, JSON.stringify(company));
+  await FS.moveAsync({ from: temp, to: root + "company.json" });
+  await SecureStore.deleteItemAsync(KEY);
+  await FS.deleteAsync(FS.documentDirectory + "RyczaltIT/company.json", { idempotent: true });
 }
 
 export async function removeCompany(): Promise<void> {
