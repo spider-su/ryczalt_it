@@ -20,7 +20,8 @@
       "adaptiveIcon": {
         "foregroundImage": "assets/brand/adaptive-foreground.png",
         "backgroundColor": "#E30620"
-      }
+      },
+      "allowBackup": false
     },
     "web": {
       "name": "Ryczałt IT",

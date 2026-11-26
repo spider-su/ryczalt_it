@@ -38,8 +38,6 @@ export async function synchronizeKsefMonth(nip: string, month: string): Promise<
         newInvoices.push(parseMinimalFa3(xml, ref.ksefNumber, nip, direction as InvoiceDirection));
       }
       ledger = mergeKsefInvoices(ledger, newInvoices);
-      // Persist each successful page, but never checkpoint a partially synchronized month.
-      await persistInvoiceLedger(ledger);
       if (!result.hasMore) break;
       page += 1;
     }

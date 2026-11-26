@@ -1,9 +1,16 @@
 import * as FS from "expo-file-system/legacy";
 import { Platform } from "react-native";
+import { requireOptionalNativeModule } from "expo-modules-core";
 import { mergeKsefInvoices, type InvoiceLedger, type KsefInvoice } from "./invoiceLedger";
 import { readSecureLedger, deleteSecureLedger } from "./secureInvoiceLedger";
 
-/** Private app documents; JSON invoice files are not encrypted. KSeF tokens remain in SecureStore. */
+type StorageCipher = { encryptInvoiceRecord(plaintext: string, context: string): Promise<string>; decryptInvoiceRecord(payload: string, context: string): Promise<string> };
+function cipher(): StorageCipher {
+  const module = requireOptionalNativeModule<StorageCipher>("RyczaltKsefCrypto");
+  if (Platform.OS !== "android" || !module) throw new Error("Encrypted invoice storage unavailable");
+  return module;
+}
+/** Records are encrypted and authenticated using a key held in Android Keystore. */
 function root(nip: string): string {
   if (Platform.OS === "web" || !FS.documentDirectory) throw new Error("Android file storage unavailable");
   if (!/^\d{10}$/.test(nip)) throw new Error("Invalid taxpayer NIP");
@@ -18,12 +25,12 @@ async function ensure(path: string): Promise<void> {
 }
 async function atomicJson(path: string, value: unknown): Promise<void> {
   const temp = path + ".tmp";
-  await FS.writeAsStringAsync(temp, JSON.stringify(value));
+  await FS.writeAsStringAsync(temp, await cipher().encryptInvoiceRecord(JSON.stringify(value), path.slice(FS.documentDirectory!.length)));
   try { await FS.moveAsync({ from: temp, to: path }); }
   catch (error) { await FS.deleteAsync(temp, { idempotent: true }); throw error; }
 }
 async function readJson(path: string): Promise<unknown> {
-  return JSON.parse(await FS.readAsStringAsync(path)) as unknown;
+  return JSON.parse(await cipher().decryptInvoiceRecord(await FS.readAsStringAsync(path), path.slice(FS.documentDirectory!.length))) as unknown;
 }
 function invoiceName(id: string): string {
   if (!/^[A-Za-z0-9-]{1,160}$/.test(id)) throw new Error("Unsafe KSeF identifier");
@@ -72,6 +79,10 @@ export async function readInvoiceLedger(nip: string): Promise<InvoiceLedger> {
   const old = await readSecureLedger(nip);
   if (old.invoices.length || Object.keys(old.synchronizedMonths ?? {}).length) {
     await persistInvoiceLedger(old);
+    const saved = await loadFiles(nip);
+    const checked = mergeKsefInvoices(saved, old.invoices);
+    if (checked.invoices.length !== saved.invoices.length || Object.entries(old.synchronizedMonths ?? {}).some(([month, stamp]) => saved.synchronizedMonths?.[month] !== stamp))
+      throw new Error("Invoice migration verification failed");
     await deleteSecureLedger(nip);
   }
   return loadFiles(nip);

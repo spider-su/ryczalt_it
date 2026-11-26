@@ -34,7 +34,10 @@ export function LocalAccountingOverview({ nip, mode }: { nip: string; mode: "inv
     setSyncing(true);
     setSyncError(null);
     try { await synchronizeKsefHistory(nip, (current, total, target) => setSyncProgress(`Synchronizacja ${current}/${total}: ${target}`)); setLedger(await readInvoiceLedger(nip)); }
-    catch { setLedger(await readInvoiceLedger(nip).catch(() => ({ taxpayerNip: nip, invoices: [] }))); setSyncError("Nie udało się ukończyć synchronizacji. Zapisane faktury pozostają dostępne; ponów próbę."); }
+    catch {
+      try { setLedger(await readInvoiceLedger(nip)); setSyncError("Nie udało się ukończyć synchronizacji. Zapisane faktury pozostają dostępne; ponów próbę."); }
+      catch { setLoadedNip(null); setLoadError("Nie można odczytać zapisanych faktur."); }
+    }
     finally { setSyncProgress(null); setSyncing(false); }
   }
   const summary = summarizeKsefMonth(ledger, month);
