@@ -8,12 +8,13 @@ export function monthsToSynchronize(
 ): string[] {
   if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(currentMonth) || currentMonth < "2026-01")
     throw new Error("Unsupported synchronization period");
-  const [year, month] = currentMonth.split("-").map(Number);
+  const year = Number(currentMonth.slice(0, 4));
+  const month = Number(currentMonth.slice(5, 7));
+  const previous = new Date(Date.UTC(year, month - 2, 1)).toISOString().slice(0, 7);
   const months: string[] = [];
   for (let y = 2026; y <= year; y++) {
-    for (let m = y === 2026 ? 1 : 1; m <= (y === year ? month : 12); m++) {
+    for (let m = 1; m <= (y === year ? month : 12); m++) {
       const key = `${y}-${String(m).padStart(2, "0")}`;
-      const previous = new Date(Date.UTC(year, month - 2, 1)).toISOString().slice(0, 7);
       if (!coverage[key] || key === currentMonth || key === previous) months.push(key);
     }
   }
@@ -33,8 +34,10 @@ export async function synchronizeKsefHistory(
     const ledger = await readInvoiceLedger(nip);
     const months = monthsToSynchronize(ledger.synchronizedMonths ?? {}, currentMonth);
     for (let index = 0; index < months.length; index++) {
-      onProgress?.(index + 1, months.length, months[index]);
-      await synchronizeKsefMonth(nip, months[index]);
+      const target = months[index];
+      if (!target) throw new Error("Missing synchronization period");
+      onProgress?.(index + 1, months.length, target);
+      await synchronizeKsefMonth(nip, target);
     }
   } finally { active = false; }
 }
