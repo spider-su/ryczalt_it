@@ -1,7 +1,8 @@
 import type { InvoiceLedger } from "./invoiceLedger";
 import { assessTaxReadiness } from "./invoiceLedger";
 import type { TaxSettings } from "./taxSettings";
-import { accountingFactsForMonth, settingsForMonth } from "./taxSettings";
+import { settingsForMonth } from "./taxSettings";
+import type { MonthlyTaxFacts } from "./monthlyTaxFacts";
 import { calculateVat } from "./tax/vat";
 
 export type LocalTaxEstimate = {
@@ -12,9 +13,8 @@ export type LocalTaxEstimate = {
 };
 /** Estimates are deliberately blocked if source data is not sufficiently classified.
  * KSeF does not prove payment, income recognition, VAT deductibility or ZUS payments. */
-export function estimateLocalTaxes(ledger: InvoiceLedger, history: readonly TaxSettings[], month: string): LocalTaxEstimate {
+export function estimateLocalTaxes(ledger: InvoiceLedger, history: readonly TaxSettings[], month: string, facts: MonthlyTaxFacts | null = null): LocalTaxEstimate {
   const settings = settingsForMonth(history, month);
-  const facts = accountingFactsForMonth(history, month);
   const missing = [...assessTaxReadiness(ledger, month, facts ?? {}).missing];
   if (!settings) missing.push("Brak konfiguracji podatkowej obowiązującej w tym miesiącu");
   if (!facts) missing.push("Brak potwierdzonych danych księgowych dla wybranego miesiąca");
