@@ -36,10 +36,10 @@ export async function saveCompany(company: VatCompany): Promise<void> {
   await FS.writeAsStringAsync(temp, JSON.stringify(company));
   await FS.moveAsync({ from: temp, to: root + "company.json" });
   await SecureStore.deleteItemAsync(KEY);
-  await FS.deleteAsync(FS.documentDirectory + "RyczaltIT/company.json", { idempotent: true });
 }
 
 export async function removeCompany(): Promise<void> {
   assertNative();
   await SecureStore.deleteItemAsync(KEY);
+  await FS.deleteAsync(FS.documentDirectory + "RyczaltIT/company.json", { idempotent: true });
 }
