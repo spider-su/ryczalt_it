@@ -6,7 +6,7 @@ export function monthsToSynchronize(
   coverage: Readonly<Record<string, string>>,
   currentMonth: string,
 ): string[] {
-  if (!/^\\d{4}-(0[1-9]|1[0-2])$/.test(currentMonth) || currentMonth < "2026-01")
+  if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(currentMonth) || currentMonth < "2026-01")
     throw new Error("Unsupported synchronization period");
   const [year, month] = currentMonth.split("-").map(Number);
   const months: string[] = [];
