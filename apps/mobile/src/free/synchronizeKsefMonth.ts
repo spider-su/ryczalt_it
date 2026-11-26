@@ -3,7 +3,7 @@ import { KsefAndroidEncryptor } from "./ksefNativeEncryption";
 import { getKsefTokenForAuthentication } from "./ksefCredentials";
 import { KsefInvoiceReader } from "./ksefInvoiceReader";
 import { parseMinimalFa3 } from "./parseMinimalFa3";
-import { readSecureLedger, writeSecureLedger } from "./secureInvoiceLedger";
+import { readInvoiceLedger, persistInvoiceLedger } from "./jsonInvoiceLedger";
 import { mergeKsefInvoices, type InvoiceLedger, type InvoiceDirection } from "./invoiceLedger";
 import { loadCompany } from "./localCompany";
 
@@ -25,7 +25,7 @@ export async function synchronizeKsefMonth(nip: string, month: string): Promise<
   const nextMonth = new Date(Date.UTC(year, monthNumber, 1)).toISOString().slice(0, 10);
   const from = month + "-01T00:00:00+00:00";
   const to = nextMonth + "T00:00:00+00:00";
-  let ledger = await readSecureLedger(nip);
+  let ledger = await readInvoiceLedger(nip);
   for (const [subject, direction] of [["Subject1", "issued"], ["Subject2", "received"]] as const) {
     let page = 0;
     while (true) {
@@ -45,7 +45,7 @@ export async function synchronizeKsefMonth(nip: string, month: string): Promise<
   const completedAt = new Date().toISOString();
   ledger = { ...ledger, lastSuccessfulSync: completedAt, synchronizedMonths: { ...ledger.synchronizedMonths, [month]: completedAt } };
   if ((await loadCompany())?.nip !== nip) throw new Error("Active company changed during synchronization");
-  await writeSecureLedger(ledger);
+  await persistInvoiceLedger(ledger);
   return ledger;
   } finally { activeCompanies.delete(nip); }
 }

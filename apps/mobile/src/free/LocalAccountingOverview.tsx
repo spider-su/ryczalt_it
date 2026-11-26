@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
-import { readSecureLedger } from "./secureInvoiceLedger";
-import { synchronizeKsefMonth } from "./synchronizeKsefMonth";
+import { readInvoiceLedger } from "./jsonInvoiceLedger";
+import { synchronizeKsefHistory } from "./synchronizeKsefHistory";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { assessTaxReadiness, type InvoiceLedger } from "./invoiceLedger";
 import { summarizeKsefMonth } from "./monthlyInvoiceSummary";
@@ -13,11 +13,11 @@ export function monthOffset(month: string, delta: number): string {
 }
 export function LocalAccountingOverview({ nip, mode }: { nip: string; mode: "invoices" | "taxes" }) {
   const [month, setMonth] = useState(() => new Date().toISOString().slice(0, 7));
-  // No import adapter is wired yet. Do not claim that an empty ledger was synchronized.
   const [ledger, setLedger] = useState<InvoiceLedger>({ taxpayerNip: nip, invoices: [] });
   const [loadError, setLoadError] = useState<string | null>(null);
   const [syncing, setSyncing] = useState(false);
   const [syncError, setSyncError] = useState<string | null>(null);
+  const [syncProgress, setSyncProgress] = useState<string | null>(null);
   const [direction, setDirection] = useState<"all" | "issued" | "received">("all");
   const [loadedNip, setLoadedNip] = useState<string | null>(null);
   useEffect(() => {
@@ -25,19 +25,23 @@ export function LocalAccountingOverview({ nip, mode }: { nip: string; mode: "inv
     setLoadedNip(null);
     setLedger({ taxpayerNip: nip, invoices: [] });
     setLoadError(null);
-    void readSecureLedger(nip).then((saved) => { if (active) { setLedger(saved); setLoadedNip(nip); } })
-      .catch(() => { if (active) setLoadError("Nie można odczytać zaszyfrowanych faktur."); });
+    void readInvoiceLedger(nip).then((saved) => { if (active) { setLedger(saved); setLoadedNip(nip); } })
+      .catch(() => { if (active) setLoadError("Nie można odczytać zapisanych faktur."); });
     return () => { active = false; };
   }, [nip]);
   async function sync() {
     if (syncing) return;
     setSyncing(true);
     setSyncError(null);
-    try { setLedger(await synchronizeKsefMonth(nip, month)); }
-    catch { setSyncError("Nie udało się ukończyć synchronizacji. Poprzednie dane pozostają zapisane; sprawdź token i połączenie."); }
-    finally { setSyncing(false); }
+    try { await synchronizeKsefHistory(nip, (current, total, target) => setSyncProgress(`Synchronizacja ${current}/${total}: ${target}`)); setLedger(await readInvoiceLedger(nip)); }
+    catch {
+      try { setLedger(await readInvoiceLedger(nip)); setSyncError("Nie udało się ukończyć synchronizacji. Zapisane faktury pozostają dostępne; ponów próbę."); }
+      catch { setLoadedNip(null); setLoadError("Nie można odczytać zapisanych faktur."); }
+    }
+    finally { setSyncProgress(null); setSyncing(false); }
   }
   const summary = summarizeKsefMonth(ledger, month);
+  const formatSync = (value: string) => new Date(value).toLocaleString("pl-PL", { dateStyle: "medium", timeStyle: "short" });
   const readiness = assessTaxReadiness(ledger, month, {});
   const monthly = ledger.invoices.filter((invoice) => invoice.issueDate.startsWith(month));
   const visible = monthly.filter((invoice) => direction === "all" || invoice.direction === direction);
@@ -55,10 +59,11 @@ export function LocalAccountingOverview({ nip, mode }: { nip: string; mode: "inv
     {syncError ? <Text accessibilityRole="alert" style={styles.muted}>{syncError}</Text> : null}
     {loadedNip === nip && !loadError ? (mode === "invoices" ? <>
       <Text style={styles.title}>Faktury z KSeF</Text>
-      <Pressable accessibilityRole="button" disabled={syncing} onPress={() => void sync()} style={styles.nav}><Text>{syncing ? "Synchronizacja…" : "Synchronizuj z KSeF"}</Text></Pressable>
+      <Pressable accessibilityRole="button" disabled={syncing} onPress={() => void sync()} style={styles.nav}><Text>{syncing ? "Synchronizacja…" : "Synchronizuj wszystkie faktury"}</Text></Pressable>
+      {syncProgress ? <Text style={styles.muted}>{syncProgress}</Text> : null}
       <View style={styles.metrics}><View style={styles.metric}><Text style={styles.muted}>Sprzedaż</Text><Text style={styles.title}>{summary.issuedCount}</Text></View><View style={styles.metric}><Text style={styles.muted}>Zakupy</Text><Text style={styles.title}>{summary.receivedCount}</Text></View></View>
       <View style={styles.filters}>{([["all", "Wszystkie"], ["issued", "Sprzedaż"], ["received", "Zakupy"]] as const).map(([value, label]) => <Pressable key={value} accessibilityRole="button" accessibilityState={{ selected: direction === value }} onPress={() => setDirection(value)} style={[styles.filter, direction === value && styles.activeFilter]}><Text style={direction === value ? styles.activeText : styles.muted}>{label}</Text></Pressable>)}</View>
-      <Text style={styles.muted}>{ledger.synchronizedMonths?.[month] ? `Ostatnia synchronizacja tego miesiąca: ${ledger.synchronizedMonths[month]}` : "Synchronizacja nie została wykonana. Brak lokalnych faktur nie oznacza braku faktur w KSeF."}</Text>
+      <Text style={styles.muted}>{ledger.synchronizedMonths?.[month] ? `Ostatnia synchronizacja tego miesiąca: ${formatSync(ledger.synchronizedMonths[month])}` : "Synchronizacja nie została wykonana. Brak lokalnych faktur nie oznacza braku faktur w KSeF."}</Text>
       {visible.length === 0 ? <Text style={styles.muted}>Brak zapisanych faktur dla wybranego miesiąca i filtra.</Text> : visible.map((invoice) => <View key={invoice.ksefId} style={styles.invoiceRow}><View style={styles.row}><Text style={styles.title}>{invoice.direction === "issued" ? "Sprzedaż" : "Zakup"}</Text><Text style={styles.amount}>{money(invoice.grossMinor, invoice.currency)}</Text></View><Text style={styles.muted}>{invoice.issueDate} • {invoice.kind === "correction" ? "Korekta" : "Faktura"}</Text><Text style={styles.muted} numberOfLines={1}>KSeF: {invoice.ksefId}</Text><Text style={styles.muted}>Netto: {money(invoice.netMinor, invoice.currency)} • VAT: {money(invoice.vatMinor, invoice.currency)}</Text></View>)}
     </> : <>
       <Text style={styles.title}>Gotowość rozliczenia</Text>

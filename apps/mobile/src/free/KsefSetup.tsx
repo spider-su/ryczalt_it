@@ -97,7 +97,7 @@ export function KsefSetup({ nip }: { nip: string }) {
         disabled={saving || !token.trim()} style={[styles.button, (saving || !token.trim()) && styles.disabled]}
         onPress={() => void save()}><Text style={styles.buttonText}>Zapisz bezpiecznie</Text></Pressable>
     </> : null}
-    <Text style={styles.warn}>Odczyt i synchronizacja faktur nie są jeszcze aktywne. Możesz jedynie przetestować uwierzytelnienie w środowisku produkcyjnym KSeF. Token nigdy nie jest wysyłany w postaci jawnej.</Text>
+    <Text style={styles.warn}>Faktury są pobierane bezpośrednio z KSeF przy użyciu przycisku synchronizacji poniżej. Token jest przechowywany bezpiecznie na urządzeniu.</Text>
   </View>;
 }
 
