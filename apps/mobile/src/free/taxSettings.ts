@@ -10,6 +10,9 @@ export type TaxSettings = {
   openingVatMinor: string;
   paidZusSocialMinor: string;
   paidZusHealthMinor: string;
+  jdgActive?: boolean;
+  qualifyingUop?: boolean;
+  voluntarySickness?: boolean;
 };
 const MONTH = /^\d{4}-(0[1-9]|1[0-2])$/;
 const AMOUNT = /^\d+$/;
@@ -23,6 +26,11 @@ export function validateTaxSettings(settings: TaxSettings): void {
     throw new Error("Nieprawidłowy miesiąc obowiązywania");
   if (settings.ryczaltRate !== "12" || settings.vatPayer !== true || settings.settlement !== "monthly")
     throw new Error("Nieobsługiwany sposób rozliczenia");
+  for (const flag of ["jdgActive", "qualifyingUop", "voluntarySickness"] as const) {
+    if (settings[flag] !== undefined && typeof settings[flag] !== "boolean") throw new Error("Nieprawidłowe ustawienia ZUS: " + flag);
+  }
+  if (settings.voluntarySickness && (settings.jdgActive === false || settings.qualifyingUop === true))
+    throw new Error("Chorobowe dobrowolne jest dostępne tylko dla JDG jako głównego ubezpieczenia");
   for (const key of ["priorYearRevenueMinor", "openingVatMinor", "paidZusSocialMinor", "paidZusHealthMinor"] as const) {
     if (!AMOUNT.test(settings[key])) throw new Error("Nieprawidłowa kwota: " + key);
   }
