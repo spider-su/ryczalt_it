@@ -15,7 +15,10 @@ export type LocalTaxEstimate = {
  * KSeF does not prove payment, income recognition, VAT deductibility or ZUS payments. */
 export function estimateLocalTaxes(ledger: InvoiceLedger, history: readonly TaxSettings[], month: string, facts: MonthlyTaxFacts | null = null): LocalTaxEstimate {
   const settings = settingsForMonth(history, month);
-  const missing = [...assessTaxReadiness(ledger, month, facts ?? {}).missing];
+  const missing = [...assessTaxReadiness(ledger, month, {
+    ...(facts ?? {}),
+    ...(settings ? { priorYearRevenueMinor: settings.priorYearRevenueMinor } : {}),
+  }).missing];
   if (!settings) missing.push("Brak konfiguracji podatkowej obowiązującej w tym miesiącu");
   if (!facts) missing.push("Brak potwierdzonych danych księgowych dla wybranego miesiąca");
   const invoices = ledger.invoices.filter(i => i.issueDate.startsWith(month));
