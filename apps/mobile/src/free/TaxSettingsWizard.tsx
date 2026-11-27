@@ -49,7 +49,8 @@ export function TaxSettingsWizard({ nip }: { nip: string }) {
     setError(null);
     try {
       if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(month) || month < "2026-01") throw Error("Miesiąc musi być od 2026-01");
-      if (history.some(s => s.effectiveFrom === month)) throw Error("Ten miesiąc ma już zapisane ustawienia. Wybierz nowy miesiąc obowiązywania.");
+      if (history.some(s => s.effectiveFrom === month) && month < thisMonth())
+        throw Error("Zamkniętych wcześniejszych wersji nie zmieniamy. Wybierz bieżący lub przyszły miesiąc.");
       const settings: TaxSettings = { effectiveFrom: month, ryczaltRate: "12", vatPayer: true, settlement: "monthly",
         priorYearRevenueMinor: toMinor(values.priorYearRevenueMinor),
         openingVatMinor: "0", paidZusSocialMinor: "0", paidZusHealthMinor: "0",
