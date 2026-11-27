@@ -21,7 +21,10 @@ export class KsefInvoiceReader {
   constructor(private readonly transport: typeof fetch = fetch) {}
   private async request(path: string, token: string, body?: unknown): Promise<Response> {
     if (!token) throw new Error("KSeF authentication required");
-    const response = await this.transport(API + path, {
+    for (let attempt = 0; attempt < 3; attempt++) {
+      let response: Response;
+      try {
+        response = await this.transport(API + path, {
       method: body === undefined ? "GET" : "POST",
       headers: {
         Authorization: `Bearer ${token}`,
@@ -29,9 +32,21 @@ export class KsefInvoiceReader {
         ...(body === undefined ? {} : { "Content-Type": "application/json" }),
       },
       ...(body === undefined ? {} : { body: JSON.stringify(body) }),
-    });
-    if (!response.ok) throw new Error(`KSeF request failed (HTTP ${response.status})`);
-    return response;
+        });
+      } catch (reason) {
+        if (attempt === 2) throw new Error(`KSeF network failure (${path.startsWith("/v2/invoices/ksef/") ? "invoice download" : "metadata query"}): ${reason instanceof Error ? reason.message : String(reason)}`);
+        await new Promise(resolve => setTimeout(resolve, 400 * (attempt + 1)));
+        continue;
+      }
+      if (response.ok) return response;
+      // Retry temporary API outages and rate limits; authorization and data errors are not transient.
+      if ((response.status === 429 || response.status >= 500) && attempt < 2) {
+        await new Promise(resolve => setTimeout(resolve, 400 * (attempt + 1)));
+        continue;
+      }
+      throw new Error(`KSeF request failed (HTTP ${response.status})`);
+    }
+    throw new Error("KSeF retries exhausted");
   }
   async list(
     token: string, subjectType: KsefQuerySubject, from: string, to: string,
