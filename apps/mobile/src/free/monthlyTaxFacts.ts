@@ -7,10 +7,10 @@ export type MonthlyTaxFacts = {
   paidZusSocialMinor: string;
   paidZusHealthMinor: string;
 };
-const MONTH = /^\\d{4}-(0[1-9]|1[0-2])$/;
-const AMOUNT = /^\\d+$/;
+const MONTH = /^\d{4}-(0[1-9]|1[0-2])$/;
+const AMOUNT = /^\d+$/;
 function path(nip: string, month: string): string {
-  if (!/^\\d{10}$/.test(nip) || !MONTH.test(month) || month < "2026-01")
+  if (!/^\d{10}$/.test(nip) || !MONTH.test(month) || month < "2026-01")
     throw new Error("Invalid tax facts period");
   if (Platform.OS === "web" || !FS.documentDirectory) throw new Error("Native storage required");
   return FS.documentDirectory + "RyczaltIT/" + nip + "/" + month.slice(0,4) + "/" + month.slice(5) + "/taxes.json";
