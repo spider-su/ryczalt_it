@@ -55,6 +55,9 @@ export function LocalAccountingOverview({ nip, mode }: { nip: string; mode: "inv
     finally { setSyncProgress(null); setSyncing(false); }
   }
   const summary = summarizeKsefMonth(ledger, month);
+  const today = new Date();
+  const currentMonth = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}`;
+  const historicalPaid = month >= "2026-01" && month < currentMonth;
   const formatSync = (value: string) => new Date(value).toLocaleString("pl-PL", { dateStyle: "medium", timeStyle: "short" });
   const estimate = estimateLocalTaxes(ledger, taxSettings, month, factsMonth === month ? monthlyFacts : null);
   const monthly = ledger.invoices.filter((invoice) => invoice.issueDate.startsWith(month));
@@ -81,6 +84,7 @@ export function LocalAccountingOverview({ nip, mode }: { nip: string; mode: "inv
       {visible.length === 0 ? <Text style={styles.muted}>Brak zapisanych faktur dla wybranego miesiąca i filtra.</Text> : visible.map((invoice) => <View key={invoice.ksefId} style={styles.invoiceRow}><View style={styles.row}><Text style={styles.title}>{invoice.direction === "issued" ? "Sprzedaż" : "Zakup"}</Text><Text style={styles.amount}>{money(invoice.grossMinor, invoice.currency)}</Text></View><Text style={styles.muted}>{invoice.issueDate} • {invoice.kind === "correction" ? "Korekta" : "Faktura"}</Text><Text style={styles.muted} numberOfLines={1}>KSeF: {invoice.ksefId}</Text><Text style={styles.muted}>Netto: {money(invoice.netMinor, invoice.currency)} • VAT: {money(invoice.vatMinor, invoice.currency)}</Text></View>)}
     </> : <>
       <Text style={styles.title}>Gotowość rozliczenia</Text>
+      {historicalPaid ? <Text style={styles.muted}>Poprzedni miesiąc: podatki i składki uznane za opłacone zgodnie z przyjętym założeniem. Nie zwiększają bieżących zaległości.</Text> : null}
       <View style={styles.metrics}>{(["PIT", "VAT", "ZUS"] as const).map((label) => <View key={label} style={styles.metric}><Text style={styles.muted}>{label}</Text><Text style={styles.title}>{label === "VAT" && estimate.vatPayablePln !== undefined ? `${estimate.vatPayablePln} PLN` : "—"}</Text><Text style={styles.muted}>{label === "VAT" && estimate.vatPayablePln !== undefined ? "Szacunek VAT" : "Wymaga danych"}</Text></View>)}</View>
       <Text style={styles.muted}>Podsumowanie KSeF: {summary.issuedCount} sprzedaży, {summary.receivedCount} zakupów.</Text>
       {estimate.vatCarryForwardPln !== undefined ? <Text style={styles.muted}>VAT do przeniesienia: {estimate.vatCarryForwardPln} PLN</Text> : null}
