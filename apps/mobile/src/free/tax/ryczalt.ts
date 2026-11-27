@@ -44,7 +44,7 @@ export function calculateRyczalt(input: RyczaltInput): RyczaltResult {
   let remainder = used;
   const buckets = revenue.map((item,index) => {
     const allocated = index === revenue.length - 1 ? remainder
-      : total === 0n ? 0n : (used * item.revenueMinor * 2n / total + 1n) / 2n;
+      : total === 0n ? 0n : (used * item.revenueMinor * 2n + total) / (2n * total);
     if (index !== revenue.length - 1) remainder -= allocated;
     const taxable = item.revenueMinor > allocated ? item.revenueMinor - allocated : 0n;
     const base = roundWholePln(taxable);
