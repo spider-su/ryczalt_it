@@ -67,8 +67,17 @@ export async function saveTaxSettings(nip: string, settings: TaxSettings): Promi
   const target = folder + settings.effectiveFrom + ".json";
   const temp = target + ".tmp";
   await FS.writeAsStringAsync(temp, JSON.stringify(settings));
-  try { await FS.moveAsync({ from: temp, to: target }); }
-  catch (error) { await FS.deleteAsync(temp, { idempotent: true }); throw error; }
+  const backup = target + ".bak";
+  const exists = (await FS.getInfoAsync(target)).exists;
+  if (exists) await FS.moveAsync({ from: target, to: backup });
+  try {
+    await FS.moveAsync({ from: temp, to: target });
+    if (exists) await FS.deleteAsync(backup, { idempotent: true });
+  } catch (error) {
+    await FS.deleteAsync(temp, { idempotent: true });
+    if (exists && !(await FS.getInfoAsync(target)).exists) await FS.moveAsync({ from: backup, to: target });
+    throw error;
+  }
 }
 
 /** Period-specific payments and opening credits must never be inherited from an earlier month.
