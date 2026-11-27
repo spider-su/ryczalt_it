@@ -16,6 +16,10 @@ export function InvoiceReviewEditor({nip,invoice,review,onSaved}:{
 }){
  const [deductible,setDeductible]=useState(review?.deductibleVatMinor===undefined?"":toPln(review.deductibleVatMinor));
  const [accountingMonth,setAccountingMonth]=useState(review?.accountingMonth??invoice.issueDate.slice(0,7));
+ useEffect(()=>{
+  setDeductible(review?.deductibleVatMinor===undefined?"":toPln(review.deductibleVatMinor));
+  setAccountingMonth(review?.accountingMonth??invoice.issueDate.slice(0,7));
+ },[review?.deductibleVatMinor,review?.accountingMonth,invoice.issueDate]);
  const [busy,setBusy]=useState(false);
  const [error,setError]=useState<string|null>(null);
  async function approve(){
