@@ -50,7 +50,18 @@ export async function loadTaxSettings(nip: string): Promise<TaxSettings[]> {
     if (file !== value.effectiveFrom + ".json") throw new Error("Settings file mismatch");
     versions.push(value);
   }
-  return versions.sort((a,b) => a.effectiveFrom.localeCompare(b.effectiveFrom));
+  versions.sort((a,b) => a.effectiveFrom.localeCompare(b.effectiveFrom));
+  // Initial setup was previously saved with the current month as its effective date.
+  // Our accounting history starts in January 2026: backfill only the earliest version,
+  // preserving every subsequent version and its forward-only effective date.
+  const first = versions[0];
+  if (first && first.effectiveFrom > "2026-01") {
+    const baseline: TaxSettings = { ...first, effectiveFrom: "2026-01",
+      openingVatMinor: "0", paidZusSocialMinor: "0", paidZusHealthMinor: "0" };
+    await saveTaxSettings(nip, baseline);
+    versions.unshift(baseline);
+  }
+  return versions;
 }
 export async function saveTaxSettings(nip: string, settings: TaxSettings): Promise<void> {
   validateTaxSettings(settings);
