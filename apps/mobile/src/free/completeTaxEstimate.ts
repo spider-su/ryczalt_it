@@ -6,6 +6,7 @@ import type { InvoiceLedger } from "./invoiceLedger";
 import type { TaxSettings } from "./taxSettings";
 import { settingsForMonth } from "./taxSettings";
 import type { MonthlyTaxFacts } from "./monthlyTaxFacts";
+import type { InvoiceReview } from "./monthlyInvoiceReview";
 import { calculateNativeMonth } from "./tax/monthly";
 import { calculateZus, healthBand } from "./tax/zus";
 
@@ -33,6 +34,7 @@ export function monthsSince2026(target:string):string[] {
 export function estimateCompleteTaxes(
  ledger:InvoiceLedger,settingsHistory:readonly TaxSettings[],target:string,
  factsByMonth:Readonly<Record<string,MonthlyTaxFacts | null>>,
+ reviews:Readonly<Record<string,InvoiceReview>>={},
 ):CompleteTaxEstimate {
  const missing:string[]=[];
  let vatCreditPln=0n;
@@ -50,14 +52,20 @@ export function estimateCompleteTaxes(
   if(!ledger.synchronizedMonths?.[month]){
    missing.push("Brak pełnej synchronizacji KSeF za "+month);break;
   }
-  const invoices=ledger.invoices.filter(i=>i.issueDate.startsWith(month));
-  if(invoices.some(i=>i.currency!=="PLN" || i.kind!=="standard" || i.classification==="unclassified")){
-   missing.push("Faktury "+month+" wymagają klasyfikacji, kursu PLN lub rozliczenia korekt");break;
+  const invoices=ledger.invoices.filter(i=>
+    (reviews[i.ksefId]?.accountingMonth??i.issueDate.slice(0,7))===month);
+  if(invoices.some(i=>i.currency!=="PLN" || i.kind!=="standard")){
+   missing.push("Faktury "+month+" wymagają kursu PLN lub rozliczenia korekt");break;
   }
-  if(invoices.some(i=>i.direction==="received" && i.classification==="taxable")){
-   missing.push("Potwierdź VAT do odliczenia dla zakupów w "+month);break;
+  if(invoices.some(i=>!reviews[i.ksefId] || reviews[i.ksefId]?.direction!==i.direction)){
+   missing.push("Zatwierdź księgowanie faktur KSeF za "+month);break;
   }
-  const income=invoices.filter(i=>i.direction==="issued" && i.classification==="taxable");
+  if(invoices.some(i=>i.direction==="received" &&
+      (!/^\d+$/.test(reviews[i.ksefId]?.deductibleVatMinor??"") ||
+       BigInt(reviews[i.ksefId]?.deductibleVatMinor??"0")>BigInt(i.vatMinor)))){
+   missing.push("Zweryfikuj VAT do odliczenia z zakupów za "+month);break;
+  }
+  const income=invoices.filter(i=>i.direction==="issued");
   if(income.some(i=>amount(i.netMinor)<0n)){missing.push("Ujemny przychód wymaga korekty okresu "+month);break;}
   if(Number(month.slice(0,4))!==taxYear){
    taxYear=Number(month.slice(0,4));ytdRevenue=0n;ytdPaidSocial=0n;
@@ -82,11 +90,13 @@ export function estimateCompleteTaxes(
   const preZus=calculateZus({...zusBase,explicitHealthBand:band});
   const healthPaid=facts?amount(facts.paidZusHealthMinor):preZus.healthMinor;
   const outputVat=income.reduce((total,i)=>total+amount(i.vatMinor),0n);
+  const inputVat=invoices.filter(i=>i.direction==="received")
+    .reduce((total,i)=>total+BigInt(reviews[i.ksefId]!.deductibleVatMinor!),0n);
   // 2025 opening VAT credit is zero; subsequent months inherit calculated carry-forward.
   result=calculateNativeMonth({
    revenueByRate:[{rateBasisPoints:1200,revenueMinor:revenue}],
    zus:{...zusBase,explicitHealthBand:band,socialContributionPaidMinor:socialPaid,healthContributionPaidMinor:healthPaid},
-   vat:{outputBeforeCorrections:outputVat,salesCorrections:0n,deductibleInput:0n,
+   vat:{outputBeforeCorrections:outputVat,salesCorrections:0n,deductibleInput:inputVat,
         adjustments:0n,carryForward:vatCreditPln*100n},
    deductionCarryForward:deductionCarryMinor,
   });
