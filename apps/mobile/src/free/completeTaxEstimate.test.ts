@@ -29,15 +29,14 @@ describe("sequential offline PIT VAT ZUS integration",()=>{
   expect(result.historicalPeriodsAssumedPaid).toBe(true);
  });
  it("blocks missing KSeF history instead of inventing zero invoices",()=>{
-  const result=estimateCompleteTaxes({...ledger,synchronizedMonths:{"2026-02":"2026-03-01T10:00:00Z"}},[cfg],"2026-02",{"2026-02":feb});
+  const result=estimateCompleteTaxes({...ledger,synchronizedMonths:{"2026-02":"2026-03-01T10:00:00Z"}},[cfg],"2026-02",{"2026-02":feb},reviews);
   expect(result.pitPayablePln).toBeUndefined();
   expect(result.missing[0]).toContain("2026-01");
  });
- it("blocks historical unclassified invoices",()=>{
-  const unclassified={...invoice("2026-01"),classification:"unclassified" as const};
-  const result=estimateCompleteTaxes({...ledger,invoices:[unclassified,invoice("2026-02")]},[cfg],"2026-02",{"2026-02":feb});
+ it("blocks invoices that have not been approved for accounting",()=>{
+  const result=estimateCompleteTaxes(ledger,[cfg],"2026-02",{"2026-02":feb},{"ID-2026-02":reviews["ID-2026-02"]!});
   expect(result.vatPayablePln).toBeUndefined();
-  expect(result.missing[0]).toContain("klasyfikacji");
+  expect(result.missing[0]).toContain("Zatwierdź");
  });
  it("requires explicit paid facts for selected month",()=>{
   const result=estimateCompleteTaxes(ledger,[cfg],"2026-02",{},reviews);
