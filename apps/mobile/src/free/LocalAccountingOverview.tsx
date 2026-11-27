@@ -5,7 +5,7 @@ import { Pressable, StyleSheet, Text, View } from "react-native";
 import type { InvoiceLedger } from "./invoiceLedger";
 import { summarizeKsefMonth } from "./monthlyInvoiceSummary";
 import { loadTaxSettings, type TaxSettings } from "./taxSettings";
-import { estimateLocalTaxes } from "./localTaxEstimate";
+import { estimateCompleteTaxes, monthsSince2026 } from "./completeTaxEstimate";
 import { loadMonthlyTaxFacts, type MonthlyTaxFacts } from "./monthlyTaxFacts";
 
 export function monthOffset(month: string, delta: number): string {
@@ -18,7 +18,7 @@ export function LocalAccountingOverview({ nip, mode }: { nip: string; mode: "inv
   const [month, setMonth] = useState(() => new Date().toISOString().slice(0, 7));
   const [ledger, setLedger] = useState<InvoiceLedger>({ taxpayerNip: nip, invoices: [] });
   const [taxSettings, setTaxSettings] = useState<TaxSettings[]>([]);
-  const [monthlyFacts, setMonthlyFacts] = useState<MonthlyTaxFacts | null>(null);
+  const [factsHistory, setFactsHistory] = useState<Record<string, MonthlyTaxFacts | null>>({});
   const [factsMonth, setFactsMonth] = useState<string | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [syncing, setSyncing] = useState(false);
@@ -37,9 +37,11 @@ export function LocalAccountingOverview({ nip, mode }: { nip: string; mode: "inv
   }, [nip]);
   useEffect(() => {
     let live = true;
-    setMonthlyFacts(null);
+    setFactsHistory({});
     setFactsMonth(null);
-    void loadMonthlyTaxFacts(nip, month).then(facts => { if (live) { setMonthlyFacts(facts); setFactsMonth(month); } })
+    const months = month >= "2026-01" ? monthsSince2026(month) : [];
+    void Promise.all(months.map(async m => [m, await loadMonthlyTaxFacts(nip, m)] as const))
+      .then(rows => { if (live) { setFactsHistory(Object.fromEntries(rows)); setFactsMonth(month); } })
       .catch(() => { if (live) setLoadError("Nie można odczytać danych podatkowych miesiąca."); });
     return () => { live = false; };
   }, [nip, month]);
@@ -59,7 +61,9 @@ export function LocalAccountingOverview({ nip, mode }: { nip: string; mode: "inv
   const currentMonth = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}`;
   const historicalPaid = month >= "2026-01" && month < currentMonth;
   const formatSync = (value: string) => new Date(value).toLocaleString("pl-PL", { dateStyle: "medium", timeStyle: "short" });
-  const estimate = estimateLocalTaxes(ledger, taxSettings, month, factsMonth === month ? monthlyFacts : null);
+  const estimate = month >= "2026-01" && factsMonth === month
+    ? estimateCompleteTaxes(ledger, taxSettings, month, factsHistory)
+    : { missing: ["Wczytywanie danych księgowych miesiąca"] };
   const monthly = ledger.invoices.filter((invoice) => invoice.issueDate.startsWith(month));
   const visible = monthly.filter((invoice) => direction === "all" || invoice.direction === direction);
   const money = (minor: string, currency: string) => {
@@ -85,10 +89,10 @@ export function LocalAccountingOverview({ nip, mode }: { nip: string; mode: "inv
     </> : <>
       <Text style={styles.title}>Gotowość rozliczenia</Text>
       {historicalPaid ? <Text style={styles.muted}>Poprzedni miesiąc: podatki i składki uznane za opłacone zgodnie z przyjętym założeniem. Nie zwiększają bieżących zaległości.</Text> : null}
-      <View style={styles.metrics}>{(["PIT", "VAT", "ZUS"] as const).map((label) => <View key={label} style={styles.metric}><Text style={styles.muted}>{label}</Text><Text style={styles.title}>{label === "VAT" && estimate.vatPayablePln !== undefined ? `${estimate.vatPayablePln} PLN` : "—"}</Text><Text style={styles.muted}>{label === "VAT" && estimate.vatPayablePln !== undefined ? "Szacunek VAT" : "Wymaga danych"}</Text></View>)}</View>
+      <View style={styles.metrics}>{(["PIT", "VAT", "ZUS"] as const).map((label) => <View key={label} style={styles.metric}><Text style={styles.muted}>{label}</Text><Text style={styles.title}>{label === "PIT" && "pitPayablePln" in estimate && estimate.pitPayablePln !== undefined ? `${estimate.pitPayablePln} PLN` : label === "VAT" && "vatPayablePln" in estimate && estimate.vatPayablePln !== undefined ? `${estimate.vatPayablePln} PLN` : label === "ZUS" && "zusPayableMinor" in estimate && estimate.zusPayableMinor !== undefined ? `${(BigInt(estimate.zusPayableMinor)/100n).toString()},${(BigInt(estimate.zusPayableMinor)%100n).toString().padStart(2,"0")} PLN` : "—"}</Text><Text style={styles.muted}>{estimate.missing.length === 0 ? "Szacunek" : "Wymaga danych"}</Text></View>)}</View>
       <Text style={styles.muted}>Podsumowanie KSeF: {summary.issuedCount} sprzedaży, {summary.receivedCount} zakupów.</Text>
       {estimate.vatCarryForwardPln !== undefined ? <Text style={styles.muted}>VAT do przeniesienia: {estimate.vatCarryForwardPln} PLN</Text> : null}
-      <Text style={styles.muted}>PIT i ZUS wymagają dalszej walidacji względem silnika backendu; nie pokazujemy niezweryfikowanych kwot.</Text>
+      <Text style={styles.muted}>Szacunki PIT, VAT i ZUS na podstawie danych KSeF i ustawień. Weryfikuj daty podatkowe, odliczenia oraz faktycznie zapłacone składki.</Text>
       {estimate.missing.map((reason) => <Text key={reason} style={styles.muted}>• {reason}</Text>)}
       <Text style={styles.muted}>Podsumowanie faktur jest informacyjne, nie stanowi deklaracji podatkowej.</Text>
     </>) : !loadError ? <Text style={styles.muted}>Wczytywanie faktur…</Text> : null}
