@@ -1,5 +1,14 @@
 import * as FS from "expo-file-system/legacy";
 import { Platform } from "react-native";
+import { requireOptionalNativeModule } from "expo-modules-core";
+
+type StorageCipher = { encryptInvoiceRecord(plaintext:string,context:string):Promise<string>;decryptInvoiceRecord(payload:string,context:string):Promise<string> };
+function cipher():StorageCipher {
+ const module=requireOptionalNativeModule<StorageCipher>("RyczaltKsefCrypto");
+ if(Platform.OS!=="android"||!module)throw Error("Encrypted invoice review storage unavailable");
+ return module;
+}
+function context(path:string):string {return path.slice(FS.documentDirectory!.length); }
 
 export type InvoiceReview = {
  ksefId:string; direction:"issued"|"received"; accountingMonth:string;
@@ -26,7 +35,7 @@ function validate(review:InvoiceReview):void {
 export async function loadMonthInvoiceReviews(nip:string,month:string):Promise<MonthInvoiceReviews>{
  const path=file(nip,month);
  if(!(await FS.getInfoAsync(path)).exists)return {};
- const parsed=JSON.parse(await FS.readAsStringAsync(path)) as MonthInvoiceReviews;
+ const parsed=JSON.parse(await cipher().decryptInvoiceRecord(await FS.readAsStringAsync(path),context(path))) as MonthInvoiceReviews;
  if(!parsed||Array.isArray(parsed)||typeof parsed!=="object")throw Error("Invalid invoice review data");
  for(const [key,value] of Object.entries(parsed)){
    validate(value);
@@ -42,7 +51,7 @@ export async function saveInvoiceReview(nip:string,issueMonth:string,review:Invo
  const folder=path.slice(0,path.lastIndexOf("/")+1);
  await FS.makeDirectoryAsync(folder,{intermediates:true});
  const temp=path+".tmp";
- await FS.writeAsStringAsync(temp,JSON.stringify(next));
+ await FS.writeAsStringAsync(temp,await cipher().encryptInvoiceRecord(JSON.stringify(next),context(path)));
  const backup=path+".bak";
  const exists=(await FS.getInfoAsync(path)).exists;
  if(exists)await FS.moveAsync({from:path,to:backup});
