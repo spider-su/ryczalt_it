@@ -5,7 +5,7 @@ import { Pressable, StyleSheet, Text, View } from "react-native";
 import type { InvoiceLedger } from "./invoiceLedger";
 import { summarizeKsefMonth } from "./monthlyInvoiceSummary";
 import { loadTaxSettings, type TaxSettings } from "./taxSettings";
-import { estimateCompleteTaxes, monthsSince2026 } from "./completeTaxEstimate";
+import { estimateCompleteTaxes, monthsSince2026, type CompleteTaxEstimate } from "./completeTaxEstimate";
 import { loadMonthlyTaxFacts, type MonthlyTaxFacts } from "./monthlyTaxFacts";
 
 export function monthOffset(month: string, delta: number): string {
@@ -61,7 +61,7 @@ export function LocalAccountingOverview({ nip, mode }: { nip: string; mode: "inv
   const currentMonth = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}`;
   const historicalPaid = month >= "2026-01" && month < currentMonth;
   const formatSync = (value: string) => new Date(value).toLocaleString("pl-PL", { dateStyle: "medium", timeStyle: "short" });
-  const estimate = month >= "2026-01" && factsMonth === month
+  const estimate: CompleteTaxEstimate = month >= "2026-01" && factsMonth === month
     ? estimateCompleteTaxes(ledger, taxSettings, month, factsHistory)
     : { missing: ["Wczytywanie danych księgowych miesiąca"] };
   const monthly = ledger.invoices.filter((invoice) => invoice.issueDate.startsWith(month));
