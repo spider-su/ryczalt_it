@@ -26,22 +26,29 @@ export async function synchronizeKsefMonth(nip: string, month: string): Promise<
   const from = month + "-01T00:00:00+00:00";
   const to = nextMonth + "T00:00:00+00:00";
   let ledger = await readInvoiceLedger(nip);
+  const failures: string[] = [];
   for (const [subject, direction] of [["Subject1", "issued"], ["Subject2", "received"]] as const) {
     let page = 0;
     while (true) {
       if (page >= 100) throw new Error("Too many invoice pages; sync not complete");
       const result = await reader.list(auth.accessToken, subject, from, to, page, 100);
-      const newInvoices = [];
+      const newInvoices: InvoiceLedger["invoices"] = [];
       for (const ref of result.invoices) {
         if (ledger.invoices.some((item) => item.ksefId === ref.ksefNumber && item.direction === direction)) continue;
-        const xml = await reader.downloadXml(auth.accessToken, ref.ksefNumber);
-        newInvoices.push(parseMinimalFa3(xml, ref.ksefNumber, nip, direction as InvoiceDirection));
+        try {
+          const xml = await reader.downloadXml(auth.accessToken, ref.ksefNumber);
+          newInvoices.push(parseMinimalFa3(xml, ref.ksefNumber, nip, direction as InvoiceDirection));
+        } catch (reason) {
+          failures.push(`${ref.ksefNumber}: ${reason instanceof Error ? reason.message : String(reason)}`);
+        }
       }
       ledger = mergeKsefInvoices(ledger, newInvoices);
+      if (newInvoices.length) await persistInvoiceLedger(ledger);
       if (!result.hasMore) break;
       page += 1;
     }
   }
+  if (failures.length) throw new Error(`Nie pobrano ${failures.length} faktur. ${failures.slice(0, 3).join(" | ")}`);
   const completedAt = new Date().toISOString();
   ledger = { ...ledger, lastSuccessfulSync: completedAt, synchronizedMonths: { ...ledger.synchronizedMonths, [month]: completedAt } };
   if ((await loadCompany())?.nip !== nip) throw new Error("Active company changed during synchronization");
