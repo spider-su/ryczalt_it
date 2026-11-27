@@ -24,7 +24,7 @@ export function TaxSettingsWizard({ nip }: { nip: string }) {
   const [qualifyingUop, setQualifyingUop] = useState(false);
   const [voluntarySickness, setVoluntarySickness] = useState(false);
   const [values, setValues] = useState<Record<AmountField,string>>({
-    priorYearRevenueMinor: "", openingVatMinor: "", paidZusSocialMinor: "", paidZusHealthMinor: "",
+    priorYearRevenueMinor: "",
   });
   const [error, setError] = useState<string|null>(null);
   const [saved, setSaved] = useState(false);
@@ -39,9 +39,6 @@ export function TaxSettingsWizard({ nip }: { nip: string }) {
     if (!effective) return;
     setValues({
       priorYearRevenueMinor: toDisplay(effective.priorYearRevenueMinor),
-      openingVatMinor: "",
-      paidZusSocialMinor: "",
-      paidZusHealthMinor: "",
     });
     setJdgActive(effective.jdgActive ?? true);
     setQualifyingUop(effective.qualifyingUop ?? false);
