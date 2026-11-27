@@ -4,9 +4,6 @@ import { loadTaxSettings, saveTaxSettings, settingsForMonth, type TaxSettings } 
 
 const fields = [
   ["priorYearRevenueMinor", "Przychód za poprzedni rok (PLN)"],
-  ["openingVatMinor", "Saldo VAT do przeniesienia (PLN)"],
-  ["paidZusSocialMinor", "Zapłacone składki społeczne (PLN)"],
-  ["paidZusHealthMinor", "Zapłacona składka zdrowotna (PLN)"],
 ] as const;
 type AmountField = typeof fields[number][0];
 const thisMonth = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`; };
@@ -23,6 +20,9 @@ export function TaxSettingsWizard({ nip }: { nip: string }) {
   const [history, setHistory] = useState<TaxSettings[]>([]);
   const [month, setMonth] = useState(thisMonth);
   const [step, setStep] = useState(0);
+  const [jdgActive, setJdgActive] = useState(true);
+  const [qualifyingUop, setQualifyingUop] = useState(false);
+  const [voluntarySickness, setVoluntarySickness] = useState(false);
   const [values, setValues] = useState<Record<AmountField,string>>({
     priorYearRevenueMinor: "", openingVatMinor: "", paidZusSocialMinor: "", paidZusHealthMinor: "",
   });
@@ -30,7 +30,7 @@ export function TaxSettingsWizard({ nip }: { nip: string }) {
   const [saved, setSaved] = useState(false);
   useEffect(() => {
     let active = true;
-    void loadTaxSettings(nip).then(v => { if (active) setHistory(v); })
+    void loadTaxSettings(nip).then(v => { if (active) { setHistory(v); if (!v.length) setMonth("2026-01"); } })
       .catch(e => { if (active) setError(e instanceof Error ? e.message : "Nie można odczytać ustawień"); });
     return () => { active = false; };
   }, [nip]);
@@ -43,6 +43,9 @@ export function TaxSettingsWizard({ nip }: { nip: string }) {
       paidZusSocialMinor: "",
       paidZusHealthMinor: "",
     });
+    setJdgActive(effective.jdgActive ?? true);
+    setQualifyingUop(effective.qualifyingUop ?? false);
+    setVoluntarySickness(effective.voluntarySickness ?? false);
     setSaved(false);
   }
   async function submit() {
@@ -52,9 +55,8 @@ export function TaxSettingsWizard({ nip }: { nip: string }) {
       if (history.some(s => s.effectiveFrom === month)) throw Error("Ten miesiąc ma już zapisane ustawienia. Wybierz nowy miesiąc obowiązywania.");
       const settings: TaxSettings = { effectiveFrom: month, ryczaltRate: "12", vatPayer: true, settlement: "monthly",
         priorYearRevenueMinor: toMinor(values.priorYearRevenueMinor),
-        openingVatMinor: toMinor(values.openingVatMinor),
-        paidZusSocialMinor: toMinor(values.paidZusSocialMinor),
-        paidZusHealthMinor: toMinor(values.paidZusHealthMinor) };
+        openingVatMinor: "0", paidZusSocialMinor: "0", paidZusHealthMinor: "0",
+        jdgActive, qualifyingUop, voluntarySickness };
       await saveTaxSettings(nip, settings);
       setHistory(await loadTaxSettings(nip));
       setSaved(true);
@@ -73,7 +75,10 @@ export function TaxSettingsWizard({ nip }: { nip: string }) {
     <Text style={styles.label}>{label}</Text>
     <TextInput accessibilityLabel={label} style={styles.input} keyboardType="decimal-pad" value={values[key]}
       onChangeText={v => {setValues(old => ({...old,[key]:v}));setSaved(false);}} placeholder="0,00" />
-    <Text style={styles.hint}>Wprowadź potwierdzoną kwotę dla tego miesiąca. Składki i saldo VAT nie są automatycznie przenoszone z poprzednich miesięcy. Puste pole nie oznacza zera.</Text>
+    <Text style={styles.hint}>Te ustawienia obowiązują od wskazanego miesiąca. Zapłacone składki i VAT wprowadza się oddzielnie w danych miesiąca.</Text>
+    <Pressable accessibilityRole="button" onPress={() => setJdgActive(v => !v)} style={styles.link}><Text style={styles.action}>JDG aktywna: {jdgActive ? "Tak" : "Nie"}</Text></Pressable>
+    <Pressable accessibilityRole="button" onPress={() => {setQualifyingUop(v=>!v); setVoluntarySickness(false);}} style={styles.link}><Text style={styles.action}>UoP z ubezpieczeniem głównym: {qualifyingUop ? "Tak" : "Nie"}</Text></Pressable>
+    <Pressable accessibilityRole="button" onPress={() => setVoluntarySickness(v=>!v)} disabled={!jdgActive || qualifyingUop} style={styles.link}><Text style={styles.action}>Dobrowolne chorobowe: {voluntarySickness ? "Tak" : "Nie"}</Text></Pressable>
     <View style={styles.row}>
       {step > 0 ? <Pressable accessibilityRole="button" onPress={() => setStep(s => s-1)} style={styles.link}><Text style={styles.action}>Wstecz</Text></Pressable> : null}
       {step < fields.length-1 ? <Pressable accessibilityRole="button" onPress={() => setStep(s => s+1)} style={styles.link}><Text style={styles.action}>Dalej</Text></Pressable>
