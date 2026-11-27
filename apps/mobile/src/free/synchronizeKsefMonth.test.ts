@@ -24,6 +24,18 @@ describe("KSeF synchronization commit", () => {
     await expect(synchronizeKsefMonth(nip, "2026-11")).rejects.toThrow();
     expect(mocks.write).not.toHaveBeenCalled();
   });
+  it("keeps successfully downloaded invoices but does not mark a month complete after a malformed invoice", async () => {
+    const good = { ksefNumber: "1234567890-20260901-AAA" };
+    const bad = { ksefNumber: "1234567890-20260901-BBB" };
+    mocks.list.mockResolvedValueOnce({invoices:[good,bad],hasMore:false}).mockResolvedValueOnce({invoices:[],hasMore:false});
+    mocks.download.mockResolvedValue("<xml/>");
+    mocks.parse.mockReturnValueOnce({ksefId:good.ksefNumber,taxpayerNip:nip,direction:"issued",kind:"standard",issueDate:"2026-09-01",currency:"PLN",grossMinor:"12300",netMinor:"10000",vatMinor:"2300",classification:"unclassified",source:"ksef"})
+      .mockImplementationOnce(() => { throw new Error("Unsupported invoice type"); });
+    await expect(synchronizeKsefMonth(nip,"2026-09")).rejects.toThrow(bad.ksefNumber);
+    expect(mocks.write).toHaveBeenCalledTimes(1);
+    expect(mocks.write.mock.calls[0]?.[0].invoices).toHaveLength(1);
+    expect(mocks.write.mock.calls[0]?.[0].synchronizedMonths?.["2026-09"]).toBeUndefined();
+  });
   it("does not write after a company change", async () => {
     mocks.company.mockResolvedValue({nip:"0000000000"});
     await expect(synchronizeKsefMonth(nip, "2026-11")).rejects.toThrow("company changed");
