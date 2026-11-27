@@ -10,6 +10,9 @@ export type TaxSettings = {
   openingVatMinor: string;
   paidZusSocialMinor: string;
   paidZusHealthMinor: string;
+  jdgActive?: boolean;
+  qualifyingUop?: boolean;
+  voluntarySickness?: boolean;
 };
 const MONTH = /^\d{4}-(0[1-9]|1[0-2])$/;
 const AMOUNT = /^\d+$/;
@@ -23,6 +26,11 @@ export function validateTaxSettings(settings: TaxSettings): void {
     throw new Error("Nieprawidłowy miesiąc obowiązywania");
   if (settings.ryczaltRate !== "12" || settings.vatPayer !== true || settings.settlement !== "monthly")
     throw new Error("Nieobsługiwany sposób rozliczenia");
+  for (const flag of ["jdgActive", "qualifyingUop", "voluntarySickness"] as const) {
+    if (settings[flag] !== undefined && typeof settings[flag] !== "boolean") throw new Error("Nieprawidłowe ustawienia ZUS: " + flag);
+  }
+  if (settings.voluntarySickness && (settings.jdgActive === false || settings.qualifyingUop === true))
+    throw new Error("Chorobowe dobrowolne jest dostępne tylko dla JDG jako głównego ubezpieczenia");
   for (const key of ["priorYearRevenueMinor", "openingVatMinor", "paidZusSocialMinor", "paidZusHealthMinor"] as const) {
     if (!AMOUNT.test(settings[key])) throw new Error("Nieprawidłowa kwota: " + key);
   }
@@ -59,8 +67,17 @@ export async function saveTaxSettings(nip: string, settings: TaxSettings): Promi
   const target = folder + settings.effectiveFrom + ".json";
   const temp = target + ".tmp";
   await FS.writeAsStringAsync(temp, JSON.stringify(settings));
-  try { await FS.moveAsync({ from: temp, to: target }); }
-  catch (error) { await FS.deleteAsync(temp, { idempotent: true }); throw error; }
+  const backup = target + ".bak";
+  const exists = (await FS.getInfoAsync(target)).exists;
+  if (exists) await FS.moveAsync({ from: target, to: backup });
+  try {
+    await FS.moveAsync({ from: temp, to: target });
+    if (exists) await FS.deleteAsync(backup, { idempotent: true });
+  } catch (error) {
+    await FS.deleteAsync(temp, { idempotent: true });
+    if (exists && !(await FS.getInfoAsync(target)).exists) await FS.moveAsync({ from: backup, to: target });
+    throw error;
+  }
 }
 
 /** Period-specific payments and opening credits must never be inherited from an earlier month.

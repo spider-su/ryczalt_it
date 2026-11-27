@@ -5,8 +5,10 @@ import { Pressable, StyleSheet, Text, View } from "react-native";
 import type { InvoiceLedger } from "./invoiceLedger";
 import { summarizeKsefMonth } from "./monthlyInvoiceSummary";
 import { loadTaxSettings, type TaxSettings } from "./taxSettings";
-import { estimateLocalTaxes } from "./localTaxEstimate";
+import { estimateCompleteTaxes, monthsSince2026, type CompleteTaxEstimate } from "./completeTaxEstimate";
 import { loadMonthlyTaxFacts, type MonthlyTaxFacts } from "./monthlyTaxFacts";
+import { loadMonthInvoiceReviews, type InvoiceReview } from "./monthlyInvoiceReview";
+import { InvoiceReviewEditor } from "./InvoiceReviewEditor";
 
 export function monthOffset(month: string, delta: number): string {
   const [year, number] = month.split("-").map(Number);
@@ -18,7 +20,8 @@ export function LocalAccountingOverview({ nip, mode }: { nip: string; mode: "inv
   const [month, setMonth] = useState(() => new Date().toISOString().slice(0, 7));
   const [ledger, setLedger] = useState<InvoiceLedger>({ taxpayerNip: nip, invoices: [] });
   const [taxSettings, setTaxSettings] = useState<TaxSettings[]>([]);
-  const [monthlyFacts, setMonthlyFacts] = useState<MonthlyTaxFacts | null>(null);
+  const [factsHistory, setFactsHistory] = useState<Record<string, MonthlyTaxFacts | null>>({});
+  const [invoiceReviews, setInvoiceReviews] = useState<Record<string, InvoiceReview>>({});
   const [factsMonth, setFactsMonth] = useState<string | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [syncing, setSyncing] = useState(false);
@@ -37,12 +40,20 @@ export function LocalAccountingOverview({ nip, mode }: { nip: string; mode: "inv
   }, [nip]);
   useEffect(() => {
     let live = true;
-    setMonthlyFacts(null);
+    setFactsHistory({});
+    setInvoiceReviews({});
     setFactsMonth(null);
-    void loadMonthlyTaxFacts(nip, month).then(facts => { if (live) { setMonthlyFacts(facts); setFactsMonth(month); } })
+    const months = month >= "2026-01" ? monthsSince2026(month) : [];
+    void Promise.all(months.map(async m => ({ month: m, facts: await loadMonthlyTaxFacts(nip, m), reviews: await loadMonthInvoiceReviews(nip, m) })))
+      .then(rows => { if (live) { setFactsHistory(Object.fromEntries(rows.map(row => [row.month, row.facts]))); setInvoiceReviews(Object.assign({}, ...rows.map(row => row.reviews))); setFactsMonth(month); } })
       .catch(() => { if (live) setLoadError("Nie można odczytać danych podatkowych miesiąca."); });
     return () => { live = false; };
   }, [nip, month]);
+  async function refreshReviews() {
+    const months = month >= "2026-01" ? monthsSince2026(month) : [];
+    const entries = await Promise.all(months.map(async m => loadMonthInvoiceReviews(nip, m)));
+    setInvoiceReviews(Object.assign({}, ...entries));
+  }
   async function sync() {
     if (syncing) return;
     setSyncing(true);
@@ -59,7 +70,9 @@ export function LocalAccountingOverview({ nip, mode }: { nip: string; mode: "inv
   const currentMonth = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}`;
   const historicalPaid = month >= "2026-01" && month < currentMonth;
   const formatSync = (value: string) => new Date(value).toLocaleString("pl-PL", { dateStyle: "medium", timeStyle: "short" });
-  const estimate = estimateLocalTaxes(ledger, taxSettings, month, factsMonth === month ? monthlyFacts : null);
+  const estimate: CompleteTaxEstimate = month >= "2026-01" && factsMonth === month
+    ? estimateCompleteTaxes(ledger, taxSettings, month, factsHistory, invoiceReviews)
+    : { missing: ["Wczytywanie danych księgowych miesiąca"] };
   const monthly = ledger.invoices.filter((invoice) => invoice.issueDate.startsWith(month));
   const visible = monthly.filter((invoice) => direction === "all" || invoice.direction === direction);
   const money = (minor: string, currency: string) => {
@@ -81,14 +94,16 @@ export function LocalAccountingOverview({ nip, mode }: { nip: string; mode: "inv
       <View style={styles.metrics}><View style={styles.metric}><Text style={styles.muted}>Sprzedaż</Text><Text style={styles.title}>{summary.issuedCount}</Text></View><View style={styles.metric}><Text style={styles.muted}>Zakupy</Text><Text style={styles.title}>{summary.receivedCount}</Text></View></View>
       <View style={styles.filters}>{([["all", "Wszystkie"], ["issued", "Sprzedaż"], ["received", "Zakupy"]] as const).map(([value, label]) => <Pressable key={value} accessibilityRole="button" accessibilityState={{ selected: direction === value }} onPress={() => setDirection(value)} style={[styles.filter, direction === value && styles.activeFilter]}><Text style={direction === value ? styles.activeText : styles.muted}>{label}</Text></Pressable>)}</View>
       <Text style={styles.muted}>{ledger.synchronizedMonths?.[month] ? `Ostatnia synchronizacja tego miesiąca: ${formatSync(ledger.synchronizedMonths[month])}` : "Synchronizacja nie została wykonana. Brak lokalnych faktur nie oznacza braku faktur w KSeF."}</Text>
-      {visible.length === 0 ? <Text style={styles.muted}>Brak zapisanych faktur dla wybranego miesiąca i filtra.</Text> : visible.map((invoice) => <View key={invoice.ksefId} style={styles.invoiceRow}><View style={styles.row}><Text style={styles.title}>{invoice.direction === "issued" ? "Sprzedaż" : "Zakup"}</Text><Text style={styles.amount}>{money(invoice.grossMinor, invoice.currency)}</Text></View><Text style={styles.muted}>{invoice.issueDate} • {invoice.kind === "correction" ? "Korekta" : "Faktura"}</Text><Text style={styles.muted} numberOfLines={1}>KSeF: {invoice.ksefId}</Text><Text style={styles.muted}>Netto: {money(invoice.netMinor, invoice.currency)} • VAT: {money(invoice.vatMinor, invoice.currency)}</Text></View>)}
+      {visible.length === 0 ? <Text style={styles.muted}>Brak zapisanych faktur dla wybranego miesiąca i filtra.</Text> : visible.map((invoice) => <View key={invoice.ksefId} style={styles.invoiceRow}><View style={styles.row}><Text style={styles.title}>{invoice.direction === "issued" ? "Sprzedaż" : "Zakup"}</Text><Text style={styles.amount}>{money(invoice.grossMinor, invoice.currency)}</Text></View><Text style={styles.muted}>{invoice.issueDate} • {invoice.kind === "correction" ? "Korekta" : "Faktura"}</Text><Text style={styles.muted} numberOfLines={1}>KSeF: {invoice.ksefId}</Text><Text style={styles.muted}>Netto: {money(invoice.netMinor, invoice.currency)} • VAT: {money(invoice.vatMinor, invoice.currency)}</Text>
+        <InvoiceReviewEditor nip={nip} invoice={invoice} review={invoiceReviews[invoice.ksefId]} onSaved={() => void refreshReviews()} />
+      </View>)}
     </> : <>
       <Text style={styles.title}>Gotowość rozliczenia</Text>
       {historicalPaid ? <Text style={styles.muted}>Poprzedni miesiąc: podatki i składki uznane za opłacone zgodnie z przyjętym założeniem. Nie zwiększają bieżących zaległości.</Text> : null}
-      <View style={styles.metrics}>{(["PIT", "VAT", "ZUS"] as const).map((label) => <View key={label} style={styles.metric}><Text style={styles.muted}>{label}</Text><Text style={styles.title}>{label === "VAT" && estimate.vatPayablePln !== undefined ? `${estimate.vatPayablePln} PLN` : "—"}</Text><Text style={styles.muted}>{label === "VAT" && estimate.vatPayablePln !== undefined ? "Szacunek VAT" : "Wymaga danych"}</Text></View>)}</View>
+      <View style={styles.metrics}>{(["PIT", "VAT", "ZUS"] as const).map((label) => <View key={label} style={styles.metric}><Text style={styles.muted}>{label}</Text><Text style={styles.title}>{label === "PIT" && "pitPayablePln" in estimate && estimate.pitPayablePln !== undefined ? `${estimate.pitPayablePln} PLN` : label === "VAT" && "vatPayablePln" in estimate && estimate.vatPayablePln !== undefined ? `${estimate.vatPayablePln} PLN` : label === "ZUS" && "zusPayableMinor" in estimate && estimate.zusPayableMinor !== undefined ? `${(BigInt(estimate.zusPayableMinor)/100n).toString()},${(BigInt(estimate.zusPayableMinor)%100n).toString().padStart(2,"0")} PLN` : "—"}</Text><Text style={styles.muted}>{estimate.missing.length === 0 ? "Szacunek" : "Wymaga danych"}</Text></View>)}</View>
       <Text style={styles.muted}>Podsumowanie KSeF: {summary.issuedCount} sprzedaży, {summary.receivedCount} zakupów.</Text>
       {estimate.vatCarryForwardPln !== undefined ? <Text style={styles.muted}>VAT do przeniesienia: {estimate.vatCarryForwardPln} PLN</Text> : null}
-      <Text style={styles.muted}>PIT i ZUS wymagają dalszej walidacji względem silnika backendu; nie pokazujemy niezweryfikowanych kwot.</Text>
+      <Text style={styles.muted}>Szacunki PIT, VAT i ZUS na podstawie danych KSeF i ustawień. Weryfikuj daty podatkowe, odliczenia oraz faktycznie zapłacone składki.</Text>
       {estimate.missing.map((reason) => <Text key={reason} style={styles.muted}>• {reason}</Text>)}
       <Text style={styles.muted}>Podsumowanie faktur jest informacyjne, nie stanowi deklaracji podatkowej.</Text>
     </>) : !loadError ? <Text style={styles.muted}>Wczytywanie faktur…</Text> : null}
