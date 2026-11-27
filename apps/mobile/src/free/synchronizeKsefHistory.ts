@@ -33,11 +33,18 @@ export async function synchronizeKsefHistory(
     const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
     const ledger = await readInvoiceLedger(nip);
     const months = monthsToSynchronize(ledger.synchronizedMonths ?? {}, currentMonth);
+    const failures: string[] = [];
     for (let index = 0; index < months.length; index++) {
       const target = months[index];
       if (!target) throw new Error("Missing synchronization period");
       onProgress?.(index + 1, months.length, target);
-      await synchronizeKsefMonth(nip, target);
+      try {
+        await synchronizeKsefMonth(nip, target);
+      } catch (reason) {
+        const detail = reason instanceof Error ? reason.message : "Unknown KSeF error";
+        failures.push(`${target}: ${detail}`);
+      }
     }
+    if (failures.length) throw new Error(`Nie ukończono ${failures.length} miesięcy. ${failures.join(" | ")}`);
   } finally { active = false; }
 }
