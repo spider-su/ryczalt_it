@@ -103,7 +103,12 @@ export async function persistInvoiceLedger(ledger: InvoiceLedger): Promise<void>
     if (!Number.isFinite(Date.parse(completedAt))) throw new Error("Invalid completion timestamp");
     const folder = monthDir(nip, month);
     await ensure(folder);
-    await atomicJson(folder + "sync.json", { completedAt });
+    const marker = folder + "sync.json";
+    if (await existing(marker)) {
+      const previous = await readJson(marker) as { completedAt?: string };
+      if (previous.completedAt === completedAt) continue;
+    }
+    await atomicJson(marker, { completedAt });
   }
 }
 export async function deleteInvoiceLedger(nip: string): Promise<void> {
