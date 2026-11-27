@@ -21,7 +21,7 @@ const toMinor = (value: string): string => {
 };
 export function TaxSettingsWizard({ nip }: { nip: string }) {
   const [history, setHistory] = useState<TaxSettings[]>([]);
-  const [month, setMonth] = useState(thisMonth);
+  const [month, setMonth] = useState("2026-01");
   const [step, setStep] = useState(0);
   const [values, setValues] = useState<Record<AmountField,string>>({
     priorYearRevenueMinor: "", openingVatMinor: "", paidZusSocialMinor: "", paidZusHealthMinor: "",
@@ -30,7 +30,7 @@ export function TaxSettingsWizard({ nip }: { nip: string }) {
   const [saved, setSaved] = useState(false);
   useEffect(() => {
     let active = true;
-    void loadTaxSettings(nip).then(v => { if (active) setHistory(v); })
+    void loadTaxSettings(nip).then(v => { if (active) { setHistory(v); if (v.length) setMonth(thisMonth()); } })
       .catch(e => { if (active) setError(e instanceof Error ? e.message : "Nie można odczytać ustawień"); });
     return () => { active = false; };
   }, [nip]);
@@ -67,7 +67,7 @@ export function TaxSettingsWizard({ nip }: { nip: string }) {
     <Text style={styles.hint}>JDG • ryczałt 12% • czynny VAT • rozliczenie miesięczne</Text>
     <Text style={styles.label}>Obowiązuje od miesiąca (RRRR-MM)</Text>
     <TextInput accessibilityLabel="Obowiązuje od" style={styles.input} value={month} onChangeText={v => {setMonth(v);setSaved(false);}} placeholder="2026-11" />
-    {effective ? <Text style={styles.hint}>Dla wybranego miesiąca obowiązuje wersja od {effective.effectiveFrom}. Nowa wersja nie zmienia wcześniejszych miesięcy.</Text> : <Text style={styles.hint}>Brak wcześniejszych ustawień. Uzupełnij dane początkowe.</Text>}
+    {effective ? <Text style={styles.hint}>Dla wybranego miesiąca obowiązuje wersja od {effective.effectiveFrom}. Kolejne zmiany dotyczą wskazanego miesiąca i przyszłych, bez zmieniania wcześniejszych.</Text> : <Text style={styles.hint}>Pierwsza konfiguracja dotyczy całej historii od stycznia 2026. Uzupełnij dane początkowe.</Text>}
     <Pressable accessibilityRole="button" onPress={copyPrevious} disabled={!effective} style={styles.link}><Text style={styles.action}>Skopiuj stałe dane (bez składek i VAT)</Text></Pressable>
     <Text style={styles.heading}>Krok {step+1} z {fields.length}</Text>
     <Text style={styles.label}>{label}</Text>
