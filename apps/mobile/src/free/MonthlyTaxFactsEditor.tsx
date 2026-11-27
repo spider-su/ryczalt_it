@@ -22,7 +22,7 @@ export function MonthlyTaxFactsEditor({ nip }: { nip: string }) {
   const [saved, setSaved] = useState(false);
   useEffect(() => {
     let live = true;
-    setVat(""); setSocial(""); setHealth(""); setSaved(false); setError(null);
+    setVat(month === "2026-01" ? "0,00" : ""); setSocial(""); setHealth(""); setSaved(false); setError(null);
     void loadMonthlyTaxFacts(nip, month).then(f => {
       if (live && f) { setVat(display(f.openingVatMinor)); setSocial(display(f.paidZusSocialMinor)); setHealth(display(f.paidZusHealthMinor)); }
     }).catch(e => { if (live) setError(e instanceof Error ? e.message : "Błąd odczytu"); });
@@ -40,7 +40,8 @@ export function MonthlyTaxFactsEditor({ nip }: { nip: string }) {
     <Text>Te kwoty dotyczą tylko wskazanego miesiąca. Nie są kopiowane na następne okresy.</Text>
     <Text>Miesiąc (RRRR-MM)</Text>
     <TextInput accessibilityLabel="Miesiąc danych podatkowych" value={month} onChangeText={setMonth} style={{borderWidth:1,borderRadius:8,padding:10}} />
-    <Text>Potwierdzone saldo VAT do przeniesienia (PLN)</Text>
+    <Text>Saldo VAT do przeniesienia (PLN)</Text>
+    {month === "2026-01" ? <Text>Stan początkowy 2026: 0 PLN (bez salda z 2025).</Text> : null}
     <TextInput accessibilityLabel="Saldo VAT" value={vat} onChangeText={setVat} keyboardType="decimal-pad" style={{borderWidth:1,borderRadius:8,padding:10}} />
     <Text>Zapłacone składki społeczne w miesiącu (PLN)</Text>
     <TextInput accessibilityLabel="Składki społeczne" value={social} onChangeText={setSocial} keyboardType="decimal-pad" style={{borderWidth:1,borderRadius:8,padding:10}} />
