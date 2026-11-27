@@ -26,21 +26,33 @@ export async function synchronizeKsefMonth(nip: string, month: string): Promise<
   const from = month + "-01T00:00:00+00:00";
   const to = nextMonth + "T00:00:00+00:00";
   let ledger = await readInvoiceLedger(nip);
+  const failures: string[] = [];
   for (const [subject, direction] of [["Subject1", "issued"], ["Subject2", "received"]] as const) {
     let page = 0;
     while (true) {
       if (page >= 100) throw new Error("Too many invoice pages; sync not complete");
       const result = await reader.list(auth.accessToken, subject, from, to, page, 100);
-      const newInvoices = [];
+      const newInvoices: InvoiceLedger["invoices"] = [];
       for (const ref of result.invoices) {
         if (ledger.invoices.some((item) => item.ksefId === ref.ksefNumber && item.direction === direction)) continue;
-        const xml = await reader.downloadXml(auth.accessToken, ref.ksefNumber);
-        newInvoices.push(parseMinimalFa3(xml, ref.ksefNumber, nip, direction as InvoiceDirection));
+        try {
+          const xml = await reader.downloadXml(auth.accessToken, ref.ksefNumber);
+          newInvoices.push(parseMinimalFa3(xml, ref.ksefNumber, nip, direction as InvoiceDirection));
+        } catch (reason) {
+          const message = reason instanceof Error ? reason.message : "Unknown KSeF error";
+          failures.push(`${ref.ksefNumber}: ${message}`);
+        }
       }
       ledger = mergeKsefInvoices(ledger, newInvoices);
+      // Persist each page before requesting the next one; retries only download missing invoices.
+      // Never advance the completed-month marker while any invoice has failed.
+      if (newInvoices.length) await persistInvoiceLedger(ledger);
       if (!result.hasMore) break;
       page += 1;
     }
+  }
+  if (failures.length) {
+    throw new Error(`Nie pobrano ${failures.length} faktur KSeF. Pierwsza: ${failures[0]}`);
   }
   const completedAt = new Date().toISOString();
   ledger = { ...ledger, lastSuccessfulSync: completedAt, synchronizedMonths: { ...ledger.synchronizedMonths, [month]: completedAt } };
