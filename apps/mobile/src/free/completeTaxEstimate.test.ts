@@ -28,6 +28,14 @@ describe("sequential offline PIT VAT ZUS integration",()=>{
   expect(result.zusPayableMinor).toBe("228664");
   expect(result.historicalPeriodsAssumedPaid).toBe(true);
  });
+ it("carries excess deductible purchase VAT from January into February",()=>{
+  const received={...invoice("2026-01"),ksefId:"IN-2026-01",direction:"received" as const,vatMinor:"500000"};
+  const receiptReview={ksefId:received.ksefId,direction:"received" as const,accountingMonth:"2026-01",deductibleVatMinor:"500000"};
+  const result=estimateCompleteTaxes({...ledger,invoices:[...ledger.invoices,received]},[cfg],"2026-02",{"2026-02":feb},{...reviews,[received.ksefId]:receiptReview});
+  expect(result.missing).toEqual([]);
+  expect(result.vatPayablePln).toBe("0");
+  expect(result.vatCarryForwardPln).toBe("400");
+ });
  it("blocks missing KSeF history instead of inventing zero invoices",()=>{
   const result=estimateCompleteTaxes({...ledger,synchronizedMonths:{"2026-02":"2026-03-01T10:00:00Z"}},[cfg],"2026-02",{"2026-02":feb},reviews);
   expect(result.pitPayablePln).toBeUndefined();
